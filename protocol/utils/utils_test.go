@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/hex"
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -91,17 +92,49 @@ func TestCreateVerifyCode(t *testing.T) {
 }
 
 func TestTime2BCD(t *testing.T) {
-	time := "200707192359"
+	time := "202410010000"
 	bcd := Time2BCD(time)
-	want := []byte{32, 7, 7, 25, 35, 89}
+	want := []byte{32, 36, 16, 1, 0, 0}
 	if !reflect.DeepEqual(bcd, want) {
-		t.Errorf("Time2BCD() = %x\n want %x", bcd, want)
+		t.Errorf("Time2BCD() got = %x\n want %x", bcd, want)
 	}
 }
 
 func BenchmarkTime2BCD(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		Time2BCD("200707192359")
+		Time2BCD("20241001000000")
+	}
+}
+
+func TestBCD2Time(t *testing.T) {
+	tests := []struct {
+		name string
+		args string
+		want string
+	}{
+		{
+			name: "6位的时间",
+			args: "241001000000",
+			want: "2024-10-01 00:00:00",
+		},
+		{
+			name: "7位的时间",
+			args: "20241001000000",
+			want: "20241001000000",
+		},
+		{
+			name: "非正常的时间格式",
+			args: "2024100100000",
+			want: "02024100100000", //
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bcd := Time2BCD(tt.args)
+			if got := BCD2Time(bcd); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("TestBCD2Time() got = %s\n want %s", got, tt.want)
+			}
+		})
 	}
 }
 
@@ -136,6 +169,51 @@ func TestString2FillingBytes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := String2FillingBytes(tt.args.text, tt.args.size); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("String2FillingBytes() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestEncodingConversion(t *testing.T) {
+	type args struct {
+		data               []byte
+		encodingConversion func([]byte) []byte
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "gbk -> utf8",
+			args: args{
+				data:               []byte{178, 226, 65, 49, 50, 51, 52},
+				encodingConversion: GBK2UTF8,
+			},
+			want: "测A1234",
+		},
+		{
+			name: "utf8 -> gbk",
+			args: args{
+				data:               []byte("测A1234"),
+				encodingConversion: UTF82GBK,
+			},
+			want: string([]byte{178, 226, 65, 49, 50, 51, 52}),
+		},
+		{
+			name: "utf8 -> gbk 错误的情况",
+			args: args{
+				data:               []byte{178, 226, 65, 49, 50, 51, 52},
+				encodingConversion: UTF82GBK,
+			},
+			want: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fmt.Println(tt.args.encodingConversion(tt.args.data))
+			if got := tt.args.encodingConversion(tt.args.data); !reflect.DeepEqual(string(got), tt.want) {
+				t.Errorf("EncodingConversion() = %s, want %s", string(got), tt.want)
 			}
 		})
 	}

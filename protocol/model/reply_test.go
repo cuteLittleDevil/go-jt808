@@ -68,6 +68,20 @@ func TestReply(t *testing.T) {
 				result2019: "7e80014005010000000001729984173800000000010200877e",
 			},
 		},
+		{
+			name: "T0x0100 终端-注册",
+			args: args{
+				Handler: &T0x0100{},
+				msg2011: "7e010000200123456789010000001f007363640000007777772e3830382e3736353433323101b2e24131323334a17e",
+				msg2013: "7e0100002c0123456789010000001f007363640000007777772e3830382e636f6d0000000000000000003736353433323101b2e24131323334cc7e",
+				msg2019: "7e0100405301000000000172998417380000001f007363640000000000000000007777772e3830382e636f6d0000000000000000000000000000000000000037363534333231000000000000000000000000000000000000000000000001b2e241313233343b7e",
+			},
+			want: want{
+				result2011: "7e8100000e01234567890100000000003132333435363738393031377e",
+				result2013: "7e8100000e01234567890100000000003132333435363738393031377e",
+				result2019: "7e8100400e010000000001729984173800000000003137323939383431373338ba7e",
+			},
+		},
 	}
 	checkReplyInfo := func(t *testing.T, msg string, handler Handler, expectedResult string) {
 		if msg == "" {
@@ -114,10 +128,31 @@ func TestT0x0102Reply(t *testing.T) {
 	}
 }
 
-func TestT0x002Encode(t *testing.T) {
+func TestT0x0002Encode(t *testing.T) {
 	handler := &T0x0002{}
 	got := handler.Encode()
 	if got != nil {
 		t.Errorf("T0x002 Encode() got = [%x]", got)
+	}
+}
+
+func TestT0x0200Encode(t *testing.T) {
+	handler := &T0x0200{
+		T0x0200LocationItem: T0x0200LocationItem{
+			AlarmSign:  1024,
+			StatusSign: 2048,
+			Latitude:   119552894,
+			Longitude:  40058359,
+			Altitude:   312,
+			Speed:      3,
+			Direction:  99,
+			DateTime:   "2024-10-01 23:59:59",
+		},
+	}
+	body := handler.Encode()
+	got := fmt.Sprintf("%x", body)
+	want := "000004000000080007203b7e02633df7013800030063241001235959"
+	if got != want {
+		t.Errorf("T0x0200 Encode() got = %s\n want = %s", got, want)
 	}
 }

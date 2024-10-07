@@ -100,6 +100,120 @@ func TestParse(t *testing.T) {
 				Version:         consts.JT808Protocol2019,
 			},
 		},
+		{
+			name: "T0x0100 终端注册 2011版本",
+			args: args{
+				msg:      "7e010000200123456789010000001f007363640000007777772e3830382e3736353433323101b2e24131323334a17e",
+				Handler:  &T0x0100{},
+				bodyLens: []int{24},
+			},
+			fields: &T0x0100{
+				ProvinceID:         31,
+				CityID:             115,
+				ManufacturerID:     "cd",
+				TerminalModel:      "www.808.",
+				TerminalID:         "7654321",
+				PlateColor:         1,
+				LicensePlateNumber: "测A1234",
+				Version:            consts.JT808Protocol2011,
+			},
+		},
+		{
+			name: "T0x0100 终端注册 2013版本",
+			args: args{
+				msg:      "7e0100002c0123456789010000001f007363640000007777772e3830382e636f6d0000000000000000003736353433323101b2e24131323334cc7e",
+				Handler:  &T0x0100{},
+				bodyLens: []int{36},
+			},
+			fields: &T0x0100{
+				ProvinceID:         31,
+				CityID:             115,
+				ManufacturerID:     "cd",
+				TerminalModel:      "www.808.com",
+				TerminalID:         "7654321",
+				PlateColor:         1,
+				LicensePlateNumber: "测A1234",
+				Version:            consts.JT808Protocol2013,
+			},
+		},
+		{
+			name: "T0x0100 终端注册 2019版本",
+			args: args{
+				msg:      "7e0100405301000000000172998417380000001f007363640000000000000000007777772e3830382e636f6d0000000000000000000000000000000000000037363534333231000000000000000000000000000000000000000000000001b2e241313233343b7e",
+				Handler:  &T0x0100{},
+				bodyLens: []int{75},
+			},
+			fields: &T0x0100{
+				ProvinceID:         31,
+				CityID:             115,
+				ManufacturerID:     "cd",
+				TerminalModel:      "www.808.com",
+				TerminalID:         "7654321",
+				PlateColor:         1,
+				LicensePlateNumber: "测A1234",
+				Version:            consts.JT808Protocol2019,
+			},
+		},
+		{
+			name: "T0x0200 位置上报",
+			args: args{
+				msg:      "7e0200001c0123456789010000000004000000080007203b7d0202633df70138000300632410012359591c7e",
+				Handler:  &T0x0200{},
+				bodyLens: []int{27},
+			},
+			fields: &T0x0200{
+				T0x0200LocationItem: T0x0200LocationItem{
+					AlarmSign:  1024,
+					StatusSign: 2048,
+					Latitude:   119552894,
+					Longitude:  40058359,
+					Altitude:   312,
+					Speed:      3,
+					Direction:  99,
+					DateTime:   "2024-10-01 23:59:59",
+				},
+			},
+		},
+		{
+			name: "T0x0704 位置批量上传",
+			args: args{
+				msg:      "7e0704003f0123456789010000000200001c000004000000080007203b7d0202633df7013800030063241001235959001c000004000000080007203b7d0202633df7013800030063241001235959b67e",
+				Handler:  &T0x0704{},
+				bodyLens: []int{30, 60, 68},
+			},
+			fields: &T0x0704{
+				Num:          2,
+				LocationType: 0,
+				Items: []T0x0704LocationItem{
+					{
+						Len: 28,
+						T0x0200LocationItem: T0x0200LocationItem{
+							AlarmSign:  1024,
+							StatusSign: 2048,
+							Latitude:   119552894,
+							Longitude:  40058359,
+							Altitude:   312,
+							Speed:      3,
+							Direction:  99,
+							DateTime:   "2024-10-01 23:59:59",
+						},
+					},
+					{
+						Len: 28,
+						T0x0200LocationItem: T0x0200LocationItem{
+							AlarmSign:  1024,
+							StatusSign: 2048,
+							Latitude:   119552894,
+							Longitude:  40058359,
+							Altitude:   312,
+							Speed:      3,
+							Direction:  99,
+							DateTime:   "2024-10-01 23:59:59",
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -113,7 +227,6 @@ func TestParse(t *testing.T) {
 				t.Errorf("Parse() error = %v", err)
 				return
 			}
-
 			//fmt.Println(tt.args.Handler.String())
 			if tt.args.Handler.String() != tt.fields.String() {
 				t.Errorf("Parse() want: \n%v\nactual:\n%v", tt.args, tt.fields)
@@ -130,5 +243,21 @@ func TestParse(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// 为了覆盖率100%增加的测试 ------------------------------------
+func TestT0x0704Parse(t *testing.T) {
+	msg := "7e0704003f0123456789010000000200001c000004000000080007203b7d0202633df7013800030063241001235959001c000004000000080007203b7d0202633df7013800030063241001235959b67e"
+	data, _ := hex.DecodeString(msg)
+	jtMsg := jt808.NewJTMessage()
+	_ = jtMsg.Decode(data)
+	handler := &T0x0704{}
+	// 强制错误情况
+	jtMsg.Body = jtMsg.Body[:63]
+	jtMsg.Body[4] = 0x00
+	if err := handler.Parse(jtMsg); !errors.Is(err, protocol.ErrBodyLengthInconsistency) {
+		t.Errorf("T0x0704 Parse() err[%v]", err)
+		return
 	}
 }

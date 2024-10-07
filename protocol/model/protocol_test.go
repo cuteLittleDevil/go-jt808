@@ -46,6 +46,24 @@ func TestReplyProtocol(t *testing.T) {
 			wantProtocol:      uint16(consts.T0102RegisterAuth),
 			wantReplyProtocol: consts.P8001GeneralRespond,
 		},
+		{
+			name:              "T0x0100 终端-注册",
+			args:              &T0x0100{},
+			wantProtocol:      uint16(consts.T0100Register),
+			wantReplyProtocol: consts.P8100RegisterRespond,
+		},
+		{
+			name:              "T0x0200 终端-位置上报",
+			args:              &T0x0200{},
+			wantProtocol:      uint16(consts.T0200LocationReport),
+			wantReplyProtocol: consts.P8001GeneralRespond,
+		},
+		{
+			name:              "T0x0704 终端-位置批量上传",
+			args:              &T0x0704{},
+			wantProtocol:      uint16(consts.T0704LocationBatchUpload),
+			wantReplyProtocol: consts.P8001GeneralRespond,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
