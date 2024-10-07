@@ -1,4 +1,4 @@
-module github.com/cuteLittleDevil/jt808/service
+module github.com/cuteLittleDevil/go-jt808/service
 
 go 1.23.2
 
