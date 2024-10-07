@@ -68,3 +68,13 @@ func CreateVerifyCode(data []byte) byte {
 	}
 	return code
 }
+
+func String2FillingBytes(text string, size int) []byte {
+	data := []byte(text)
+	if len(data) < size {
+		data = append(data, make([]byte, size-len(data))...)
+	} else if len(data) > size {
+		data = data[:size]
+	}
+	return data
+}

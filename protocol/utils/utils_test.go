@@ -104,3 +104,39 @@ func BenchmarkTime2BCD(b *testing.B) {
 		Time2BCD("200707192359")
 	}
 }
+
+func TestString2FillingBytes(t *testing.T) {
+	type args struct {
+		text string
+		size int
+	}
+	tests := []struct {
+		name string
+		args args
+		want []byte
+	}{
+		{
+			name: "需要补0的",
+			args: args{
+				text: "1234",
+				size: 5,
+			},
+			want: []byte{'1', '2', '3', '4', 0},
+		},
+		{
+			name: "去掉多余的",
+			args: args{
+				text: "12345",
+				size: 4,
+			},
+			want: []byte{'1', '2', '3', '4'},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := String2FillingBytes(tt.args.text, tt.args.size); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("String2FillingBytes() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

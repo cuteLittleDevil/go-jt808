@@ -12,47 +12,64 @@ import (
 
 type (
 	Header struct {
-		ID       uint16        `json:"ID,omitempty"` // 消息ID
-		Property *BodyProperty `json:"property"`     // 消息属性
-		// 协议版本 1-2011 2-2013 3-2019
+		// ID 消息ID
+		ID uint16 `json:"ID,omitempty"`
+		// Property 消息属性
+		Property *BodyProperty `json:"property"`
+		// ProtocolVersion 协议版本 1-2011 2-2013 3-2019
 		ProtocolVersion consts.ProtocolVersionType `json:"protocolVersion,omitempty"`
-		// 根据安装后终端自身的手机号转换。手机号不足 12 位，则在前补充数字
+		// TerminalPhoneNo 根据安装后终端自身的手机号转换。手机号不足 12 位，则在前补充数字
 		// 大陆手机号补充数字 0，港澳台则根据其区号进行位数补充
 		TerminalPhoneNo string `json:"terminalPhoneNo,omitempty"`
-		// 占用两个字节，为发送信息的序列号，用于接收方检测是否有信息的丢失，
+		// SerialNumber 占用两个字节，为发送信息的序列号，用于接收方检测是否有信息的丢失，
 		// 上级平台和下级平台接自己发送数据包的个数计数，互不影响。
 		// 程序开始运行时等于零，发送第一帧数据时开始计数，到最大数后自动归零
-		SerialNumber  uint16 `json:"serialNumber,omitempty"`
-		SubPackageSum uint16 `json:"subPackageSum,omitempty"` // 消息总包数 不分包的时候为0
-		SubPackageNo  uint16 `json:"subPackageNo,omitempty"`  // 消息包序号
+		SerialNumber uint16 `json:"serialNumber,omitempty"`
+		// SubPackageSum 消息总包数 不分包的时候为0
+		SubPackageSum uint16 `json:"subPackageSum,omitempty"`
+		// SubPackageNo 消息包序号
+		SubPackageNo uint16 `json:"subPackageNo,omitempty"`
 
-		PlatformSerialNumber uint16 `json:"platformSerialNumber,omitempty"` // 平台的流水号
-		ReplyID              uint16 `json:"replyID,omitempty"`              // 平台回复的消息ID
+		// PlatformSerialNumber 平台的流水号
+		PlatformSerialNumber uint16 `json:"platformSerialNumber,omitempty"`
+		// ReplyID 平台回复的消息ID
+		ReplyID uint16 `json:"replyID,omitempty"`
 
-		headEnd            int    // 请求头结束位置
-		bcdTerminalPhoneNo []byte // 设备上传的bcd编码的手机号
+		// headEnd 请求头结束位置
+		headEnd int
+		// bcdTerminalPhoneNo 设备上传的bcd编码的手机号
+		bcdTerminalPhoneNo []byte
 	}
 
 	BodyProperty struct {
-		Version uint8 `json:"version,omitempty"` // 协议版本
-		// 分包标识，1：长消息，有分包；2：无分包
+		// Version 协议版本 jt808协议的
+		Version uint8 `json:"version,omitempty"`
+		// PacketFragmented 分包标识，1：长消息，有分包；2：无分包
 		PacketFragmented uint8 `json:"packetFragmented,omitempty"`
-		// 加密标识，0为不加密
+		// EncryptMethod 加密标识，0为不加密
 		// 当此三位都为 0，表示消息体不加密；
 		// 当第 10 位为 1，表示消息体经过 RSA 算法加密；
-		EncryptMethod uint8  `json:"encryptMethod,omitempty"`
-		BodyDayaLen   uint16 `json:"bodyDayaLen,omitempty"` // 消息体长度
+		EncryptMethod uint8 `json:"encryptMethod,omitempty"`
+		// BodyDayaLen 消息体长度
+		BodyDayaLen uint16 `json:"bodyDayaLen,omitempty"`
 
-		attribute    uint16 // 消息属性的原始数据
-		bit15        byte   // 保留位
-		bit14        byte   // 2013版本的保留 2019版本为1
-		isSubPackage bool   // 是否分包
+		// attribute 消息属性的原始数据
+		attribute uint16
+		// bit15 保留位
+		bit15 byte
+		// bit14 2013版本的保留 2019版本为1
+		bit14 byte
+		// 是否分包
+		isSubPackage bool
 	}
 
 	JTMessage struct {
-		Header     *Header `json:"header"`
-		VerifyCode byte    `json:"-"` // 校验码
-		Body       []byte  `json:"body"`
+		// Header 请求头 固定格式的
+		Header *Header `json:"header"`
+		// VerifyCode 校验码
+		VerifyCode byte `json:"-"`
+		// Body 有效数据
+		Body []byte `json:"body"`
 	}
 )
 
@@ -150,14 +167,8 @@ func (p *BodyProperty) decode(data []byte) {
 	if p.PacketFragmented == 1 {
 		p.isSubPackage = true
 	}
-	switch (attribute & 0x400) >> 10 { // 第10-12位 加密方式
-	case 0:
-		p.EncryptMethod = 0 // 不加密
-	case 1:
-		p.EncryptMethod = 1 // RSA算法
-	default:
-	}
-	p.BodyDayaLen = attribute & 0x3FF // 最低10位 消息体长度 3=011 F=1111
+	p.EncryptMethod = uint8((attribute & 0x400) >> 10) // 第10-12位 加密方式 0-不加密 1-RSA
+	p.BodyDayaLen = attribute & 0x3FF                  // 最低10位 消息体长度 3=011 F=1111
 }
 
 func (p *BodyProperty) encode() uint16 {
