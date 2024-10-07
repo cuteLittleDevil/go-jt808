@@ -24,8 +24,8 @@ type T0x0102 struct {
 	Version consts.ProtocolVersionType `json:"version"`
 }
 
-func (t *T0x0102) Protocol() uint16 {
-	return uint16(consts.T0102RegisterAuth)
+func (t *T0x0102) Protocol() consts.JT808CommandType {
+	return consts.T0102RegisterAuth
 }
 
 func (t *T0x0102) Parse(jtMsg *jt808.JTMessage) error {

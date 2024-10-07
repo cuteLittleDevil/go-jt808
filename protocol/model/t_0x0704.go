@@ -28,8 +28,8 @@ type (
 	}
 )
 
-func (t *T0x0704) Protocol() uint16 {
-	return uint16(consts.T0704LocationBatchUpload)
+func (t *T0x0704) Protocol() consts.JT808CommandType {
+	return consts.T0704LocationBatchUpload
 }
 
 func (t *T0x0704) Parse(jtMsg *jt808.JTMessage) error {

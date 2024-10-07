@@ -16,8 +16,8 @@ type T0x0001 struct {
 	Result       byte   `json:"result"`
 }
 
-func (t *T0x0001) Protocol() uint16 {
-	return uint16(consts.T0001GeneralRespond)
+func (t *T0x0001) Protocol() consts.JT808CommandType {
+	return consts.T0001GeneralRespond
 }
 
 func (t *T0x0001) Parse(jtMsg *jt808.JTMessage) error {

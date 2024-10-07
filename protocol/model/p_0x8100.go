@@ -19,11 +19,11 @@ type P0x8100 struct {
 	AuthCode string
 }
 
-func (p *P0x8100) Protocol() uint16 {
-	return uint16(consts.P8100RegisterRespond)
+func (p *P0x8100) Protocol() consts.JT808CommandType {
+	return consts.P8100RegisterRespond
 }
 
-func (p *P0x8100) ReplyProtocol() uint16 {
+func (p *P0x8100) ReplyProtocol() consts.JT808CommandType {
 	return 0
 }
 

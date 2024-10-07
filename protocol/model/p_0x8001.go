@@ -18,11 +18,11 @@ type P0x8001 struct {
 	Result byte
 }
 
-func (p *P0x8001) Protocol() uint16 {
-	return uint16(consts.P8001GeneralRespond)
+func (p *P0x8001) Protocol() consts.JT808CommandType {
+	return consts.P8001GeneralRespond
 }
 
-func (p *P0x8001) ReplyProtocol() uint16 {
+func (p *P0x8001) ReplyProtocol() consts.JT808CommandType {
 	return 0
 }
 

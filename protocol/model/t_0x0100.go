@@ -49,8 +49,12 @@ type T0x0100 struct {
 	Version consts.ProtocolVersionType `json:"version"`
 }
 
-func (t *T0x0100) Protocol() uint16 {
-	return uint16(consts.T0100Register)
+func (t *T0x0100) Protocol() consts.JT808CommandType {
+	return consts.T0100Register
+}
+
+func (t *T0x0100) ReplyProtocol() consts.JT808CommandType {
+	return consts.P8100RegisterRespond
 }
 
 func (t *T0x0100) Parse(jtMsg *jt808.JTMessage) error {
@@ -119,10 +123,6 @@ func (t *T0x0100) Encode() []byte {
 	gbkData := utils.UTF82GBK([]byte(t.LicensePlateNumber))
 	data = append(data, gbkData...)
 	return data
-}
-
-func (t *T0x0100) ReplyProtocol() uint16 {
-	return uint16(consts.P8100RegisterRespond)
 }
 
 func (t *T0x0100) String() string {

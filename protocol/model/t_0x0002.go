@@ -22,10 +22,10 @@ func (t *T0x0002) String() string {
 	}, "\n")
 }
 
-func (t *T0x0002) Protocol() uint16 {
-	return uint16(consts.T0002HeartBeat)
+func (t *T0x0002) Protocol() consts.JT808CommandType {
+	return consts.T0002HeartBeat
 }
 
-func (t *T0x0002) ReplyProtocol() uint16 {
-	return uint16(consts.P8001GeneralRespond)
+func (t *T0x0002) ReplyProtocol() consts.JT808CommandType {
+	return consts.P8001GeneralRespond
 }

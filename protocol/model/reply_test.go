@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/cuteLittleDevil/go-jt808/protocol"
 	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
+	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 	"reflect"
 	"testing"
 )
@@ -14,7 +15,7 @@ func TestReply(t *testing.T) {
 	type Handler interface {
 		HasReply() bool
 		ReplyBody(*jt808.JTMessage) ([]byte, error)
-		ReplyProtocol() uint16
+		ReplyProtocol() consts.JT808CommandType
 	}
 	type args struct {
 		Handler
@@ -93,7 +94,7 @@ func TestReply(t *testing.T) {
 			t.Errorf("Parse() error = %v", err)
 			return
 		}
-		jtMsg.Header.ReplyID = handler.ReplyProtocol()
+		jtMsg.Header.ReplyID = uint16(handler.ReplyProtocol())
 		if ok := handler.HasReply(); !ok {
 			return
 		}

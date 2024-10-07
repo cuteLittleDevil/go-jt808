@@ -26,6 +26,6 @@ func (b *BaseHandle) ReplyBody(jtMsg *jt808.JTMessage) ([]byte, error) {
 	return p8001.Encode(), nil
 }
 
-func (b *BaseHandle) ReplyProtocol() uint16 {
-	return uint16(consts.P8001GeneralRespond)
+func (b *BaseHandle) ReplyProtocol() consts.JT808CommandType {
+	return consts.P8001GeneralRespond
 }

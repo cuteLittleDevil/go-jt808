@@ -189,7 +189,7 @@ func (h *Header) String() string {
 		str += fmt.Sprintf("[%12x] 终端手机号:[%s]", h.bcdTerminalPhoneNo, h.TerminalPhoneNo)
 	}
 	return strings.Join([]string{
-		fmt.Sprintf("[%04x] 消息ID:[%d] [%s]", h.ID, h.ID, consts.TerminalRequestType(h.ID)),
+		fmt.Sprintf("[%04x] 消息ID:[%d] [%s]", h.ID, h.ID, consts.JT808CommandType(h.ID)),
 		h.Property.String(),
 		str,
 		fmt.Sprintf("[%04x] 消息流水号:[%d]", h.SerialNumber, h.SerialNumber),

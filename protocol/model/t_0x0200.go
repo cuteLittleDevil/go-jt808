@@ -12,8 +12,8 @@ type T0x0200 struct {
 	T0x0200LocationItem
 }
 
-func (t *T0x0200) Protocol() uint16 {
-	return uint16(consts.T0200LocationReport)
+func (t *T0x0200) Protocol() consts.JT808CommandType {
+	return consts.T0200LocationReport
 }
 
 func (t *T0x0200) Parse(jtMsg *jt808.JTMessage) error {
