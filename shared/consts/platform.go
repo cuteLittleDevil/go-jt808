@@ -1,46 +1,46 @@
 package consts
 
-type PlatformReplyRequest uint16
+type PlatformReplyType uint16
 
 const (
-	P8001GeneralRespond                   PlatformReplyRequest = 0x8001 // 平台-通用应答
-	P8003ReissueSubcontractingRequest     PlatformReplyRequest = 0x8003 // 平台-补发分包请求
-	P8004QueryTimeRespond                 PlatformReplyRequest = 0x8004 // 平台-查询时间应答
-	P8100RegisterRespond                  PlatformReplyRequest = 0x8100 // 平台-注册应答
-	P8103SetTerminalParams                PlatformReplyRequest = 0x8103 // 平台-设置终端参数
-	P8104QueryTerminalParams              PlatformReplyRequest = 0x8104 // 平台-查询终端参数
-	P8105TerminalControl                  PlatformReplyRequest = 0x8105 // 平台-终端控制
-	P8106QuerySpecifyParam                PlatformReplyRequest = 0x8106 // 平台-查询指定参数
-	P8107QueryTerminalProperties          PlatformReplyRequest = 0x8107 // 平台-查询终端属性
-	P8108DistributeTerminalUpgradePackage PlatformReplyRequest = 0x8108 // 平台-下发终端升级包
-	P8201QueryLocation                    PlatformReplyRequest = 0x8201 // 平台-查询位置
-	P8202TmpLocationTrack                 PlatformReplyRequest = 0x8202 // 平台-临时位置跟踪
-	P8203ManuallyConfirmAlarmInfo         PlatformReplyRequest = 0x8203 // 平台-人工确认报警信息
-	P8300TextInfoDistribution             PlatformReplyRequest = 0x8300 // 平台-文本信息下发
-	P8301EventSetting                     PlatformReplyRequest = 0x8301 // 平台-事件设置
-	P8302QuestionDistribution             PlatformReplyRequest = 0x8302 // 平台-提问下发
-	P8303InfoPlaySetting                  PlatformReplyRequest = 0x8303 // 平台-信息点播设置
-	P8304InfoService                      PlatformReplyRequest = 0x8304 // 平台-信息服务
-	P8400PhoneCallBack                    PlatformReplyRequest = 0x8400 // 平台-电话回拨
-	P8401SetPhoneBook                     PlatformReplyRequest = 0x8401 // 平台-设置电话本
-	P8500VehicleControl                   PlatformReplyRequest = 0x8500 // 平台-车辆控制
-	P8600SetCircularArea                  PlatformReplyRequest = 0x8600 // 平台-设置圆形区域
-	P8601DeleteArea                       PlatformReplyRequest = 0x8601 // 平台-删除区域
-	P8602SetRectArea                      PlatformReplyRequest = 0x8602 // 平台-设置矩形区域
-	P8604PolygonArea                      PlatformReplyRequest = 0x8604 // 平台-设置多边形区域
-	P8606SetRoute                         PlatformReplyRequest = 0x8606 // 平台-设置路线
-	P8608QueryAreaOrRouteData             PlatformReplyRequest = 0x8608 // 平台-查询区域或路线数据
-	P8701DrivingRecordParamDistribution   PlatformReplyRequest = 0x8701 // 平台-行驶记录仪参数下发
-	P8800MultimediaUploadRespond          PlatformReplyRequest = 0x8800 // 平台-多媒体上传应答
-	P8801CameraShootImmediateCommand      PlatformReplyRequest = 0x8801 // 平台-摄像头立即拍摄命令
-	P8802StorageMultimediaDataRetrieval   PlatformReplyRequest = 0x8802 // 平台-存储多媒体数据检索
-	P8803StorageMultimediaDataUpload      PlatformReplyRequest = 0x8803 // 平台-存储多媒体数据上传
-	P8804SoundRecordStartCommand          PlatformReplyRequest = 0x8804 // 平台-录音开始命令
-	P8805SingleMultimediaDataRetrieval    PlatformReplyRequest = 0x8805 // 平台-单条多媒体数据检索
-	P8900DataDownTransparentTransmission  PlatformReplyRequest = 0x8900 // 平台-数据下行透传
+	P8001GeneralRespond                   PlatformReplyType = 0x8001 // 平台-通用应答
+	P8003ReissueSubcontractingRequest     PlatformReplyType = 0x8003 // 平台-补发分包请求
+	P8004QueryTimeRespond                 PlatformReplyType = 0x8004 // 平台-查询时间应答
+	P8100RegisterRespond                  PlatformReplyType = 0x8100 // 平台-注册应答
+	P8103SetTerminalParams                PlatformReplyType = 0x8103 // 平台-设置终端参数
+	P8104QueryTerminalParams              PlatformReplyType = 0x8104 // 平台-查询终端参数
+	P8105TerminalControl                  PlatformReplyType = 0x8105 // 平台-终端控制
+	P8106QuerySpecifyParam                PlatformReplyType = 0x8106 // 平台-查询指定参数
+	P8107QueryTerminalProperties          PlatformReplyType = 0x8107 // 平台-查询终端属性
+	P8108DistributeTerminalUpgradePackage PlatformReplyType = 0x8108 // 平台-下发终端升级包
+	P8201QueryLocation                    PlatformReplyType = 0x8201 // 平台-查询位置
+	P8202TmpLocationTrack                 PlatformReplyType = 0x8202 // 平台-临时位置跟踪
+	P8203ManuallyConfirmAlarmInfo         PlatformReplyType = 0x8203 // 平台-人工确认报警信息
+	P8300TextInfoDistribution             PlatformReplyType = 0x8300 // 平台-文本信息下发
+	P8301EventSetting                     PlatformReplyType = 0x8301 // 平台-事件设置
+	P8302QuestionDistribution             PlatformReplyType = 0x8302 // 平台-提问下发
+	P8303InfoPlaySetting                  PlatformReplyType = 0x8303 // 平台-信息点播设置
+	P8304InfoService                      PlatformReplyType = 0x8304 // 平台-信息服务
+	P8400PhoneCallBack                    PlatformReplyType = 0x8400 // 平台-电话回拨
+	P8401SetPhoneBook                     PlatformReplyType = 0x8401 // 平台-设置电话本
+	P8500VehicleControl                   PlatformReplyType = 0x8500 // 平台-车辆控制
+	P8600SetCircularArea                  PlatformReplyType = 0x8600 // 平台-设置圆形区域
+	P8601DeleteArea                       PlatformReplyType = 0x8601 // 平台-删除区域
+	P8602SetRectArea                      PlatformReplyType = 0x8602 // 平台-设置矩形区域
+	P8604PolygonArea                      PlatformReplyType = 0x8604 // 平台-设置多边形区域
+	P8606SetRoute                         PlatformReplyType = 0x8606 // 平台-设置路线
+	P8608QueryAreaOrRouteData             PlatformReplyType = 0x8608 // 平台-查询区域或路线数据
+	P8701DrivingRecordParamDistribution   PlatformReplyType = 0x8701 // 平台-行驶记录仪参数下发
+	P8800MultimediaUploadRespond          PlatformReplyType = 0x8800 // 平台-多媒体上传应答
+	P8801CameraShootImmediateCommand      PlatformReplyType = 0x8801 // 平台-摄像头立即拍摄命令
+	P8802StorageMultimediaDataRetrieval   PlatformReplyType = 0x8802 // 平台-存储多媒体数据检索
+	P8803StorageMultimediaDataUpload      PlatformReplyType = 0x8803 // 平台-存储多媒体数据上传
+	P8804SoundRecordStartCommand          PlatformReplyType = 0x8804 // 平台-录音开始命令
+	P8805SingleMultimediaDataRetrieval    PlatformReplyType = 0x8805 // 平台-单条多媒体数据检索
+	P8900DataDownTransparentTransmission  PlatformReplyType = 0x8900 // 平台-数据下行透传
 )
 
-func (s PlatformReplyRequest) String() string {
+func (s PlatformReplyType) String() string {
 	switch s {
 	case P8001GeneralRespond:
 		return "平台-通用应答"
