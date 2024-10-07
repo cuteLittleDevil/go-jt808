@@ -17,27 +17,33 @@ func TestReplyProtocol(t *testing.T) {
 		wantReplyProtocol consts.PlatformReplyRequest
 	}{
 		{
-			name:              "T0X0001 终端-通用应答",
+			name:              "T0x0001 终端-通用应答",
 			args:              &T0x0001{},
 			wantProtocol:      uint16(consts.T0001GeneralRespond),
 			wantReplyProtocol: consts.P8001GeneralRespond,
 		},
 		{
-			name:              "P0X8001 平台-通用应答",
+			name:              "P0x8001 平台-通用应答",
 			args:              &P0x8001{},
 			wantProtocol:      uint16(consts.P8001GeneralRespond),
 			wantReplyProtocol: 0,
 		},
 		{
-			name:              "P0X8100 终端-注册消息应答",
+			name:              "P0x8100 终端-注册消息应答",
 			args:              &P0x8100{},
 			wantProtocol:      uint16(consts.P8100RegisterRespond),
 			wantReplyProtocol: 0,
 		},
 		{
-			name:              "T0X0002 终端-心跳",
+			name:              "T0x0002 终端-心跳",
 			args:              &T0x0002{},
 			wantProtocol:      uint16(consts.T0002HeartBeat),
+			wantReplyProtocol: consts.P8001GeneralRespond,
+		},
+		{
+			name:              "T0x0102 终端-鉴权",
+			args:              &T0x0102{},
+			wantProtocol:      uint16(consts.T0102RegisterAuth),
 			wantReplyProtocol: consts.P8001GeneralRespond,
 		},
 	}
