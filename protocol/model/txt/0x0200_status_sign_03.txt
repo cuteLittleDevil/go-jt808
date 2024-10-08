@@ -1,0 +1,22 @@
+		[bit22]车辆状态 是否运行:[true] 2019版本增加的
+		[bit21]使用Galileo卫星进行定位:[true]
+		[bit20]未使用GLONASS卫星进行定位:[true]
+		[bit19]未使用北斗卫星进行定位:[true]
+		[bit18]未使用GPS卫星进行定位:[true]
+		[bit17]自定义门 门5:[true]
+		[bit16]驾驶席门 门4:[true]
+		[bit15]后门情况 门3:[true]
+		[bit14]中门情况 门2:[true]
+		[bit13]前门情况 门1:[true]
+		[bit12]车门情况 是否解锁:[true]
+		[bit11]电路情况 是否断开:[true]
+		[bit10]油路情况 是否正常:[true]
+		[bit8-bit9]载客情况 0-空车 1-半载 2-保留 3-满载:[11]
+		[bit7]车道偏移预警:[true] 2019版本增加的
+		[bit6]紧急刹车系统的前撞预警:[true] 2019版本增加的
+		[bit5]经纬度是否加密:[true]
+		[bit4]运营状态 是否停运:[true]
+		[bit3]东西经 0-东经 1-西经:[true]
+		[bit2]南北纬 0-北纬 1-南纬:[true]
+		[bit1]定位状态 是否开:[true]
+		[bit0]ACC 是否开:[true]

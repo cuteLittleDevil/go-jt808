@@ -6,6 +6,8 @@ import (
 	"github.com/cuteLittleDevil/go-jt808/protocol"
 	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
+	"math"
+	"os"
 	"testing"
 )
 
@@ -259,5 +261,31 @@ func TestT0x0704Parse(t *testing.T) {
 	if err := handler.Parse(jtMsg); !errors.Is(err, protocol.ErrBodyLengthInconsistency) {
 		t.Errorf("T0x0704 Parse() err[%v]", err)
 		return
+	}
+}
+
+func TestT0x0200LocationItemString(t *testing.T) {
+	var t0x0200Item T0x0200LocationItem
+	t0x0200Item.AlarmSignDetails.parse(math.MaxUint32)
+	alarmSignData, _ := os.ReadFile("./txt/0x0200_alarm_sign.txt")
+	if string(alarmSignData) != t0x0200Item.AlarmSignDetails.String() {
+		t.Errorf("want[%s] actual[%s]", string(alarmSignData), t0x0200Item.AlarmSignDetails.String())
+		return
+	}
+
+	infos := map[uint32]string{
+		1<<23 - 1:             "./txt/0x0200_status_sign_03.txt",
+		1<<23 - 1 - 256 - 512: "./txt/0x0200_status_sign_00.txt",
+		1<<23 - 1 - 256:       "./txt/0x0200_status_sign_01.txt",
+		1<<23 - 1 - 512:       "./txt/0x0200_status_sign_02.txt",
+	}
+	for statusSign, signPath := range infos {
+		var tmp T0x0200LocationItem
+		tmp.StatusSignDetails.parse(statusSign)
+		statusSignData, _ := os.ReadFile(signPath)
+		if string(statusSignData) != tmp.StatusSignDetails.String() {
+			t.Errorf("path[%s]\n%s", signPath, tmp.StatusSignDetails.String())
+			return
+		}
 	}
 }
