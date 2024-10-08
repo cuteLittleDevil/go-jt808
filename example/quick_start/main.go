@@ -1,6 +1,19 @@
 package main
 
-import "github.com/cuteLittleDevil/go-jt808/service"
+import (
+	"github.com/cuteLittleDevil/go-jt808/service"
+	"log/slog"
+	"os"
+)
+
+func init() {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		AddSource:   true,
+		Level:       slog.LevelDebug,
+		ReplaceAttr: nil,
+	}))
+	slog.SetDefault(logger)
+}
 
 func main() {
 	goJt808 := service.New(

@@ -55,6 +55,8 @@ func (c *connection) reader() {
 		default:
 			if n, err := c.conn.Read(curData); err != nil {
 				if errors.Is(err, net.ErrClosed) || errors.Is(err, io.EOF) {
+					slog.Debug("connection close",
+						slog.Any("err", err))
 					return
 				}
 				slog.Error("read data",

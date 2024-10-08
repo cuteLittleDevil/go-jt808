@@ -5,7 +5,7 @@
 ---
 
 - 看飞哥的单机TCP百万并发 好奇有数据情况的表现 因此国庆准备试一试有数据的情况
-- 性能测试 单机支持10w+（目前使用mac笔记本测试的情况)
+- 性能测试 单机并发10w+（目前使用mac笔记本测试的情况)
 - 安全可靠 核心协议交互不基于任何框架完成 测试覆盖率100%
 - 简洁优雅 信令交互不使用任何锁 仅使用channel完成
 - 支持JT808(2011/2013/209)
@@ -15,7 +15,20 @@
 ``` go
 package main
 
-import "github.com/cuteLittleDevil/go-jt808/service"
+import (
+	"github.com/cuteLittleDevil/go-jt808/service"
+	"log/slog"
+	"os"
+)
+
+func init() {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		AddSource:   true,
+		Level:       slog.LevelDebug,
+		ReplaceAttr: nil,
+	}))
+	slog.SetDefault(logger)
+}
 
 func main() {
 	goJt808 := service.New(
@@ -43,14 +56,14 @@ func main() {
 | bcd转dec编码   | https://github.com/deatil/lakego-admin |
 
 ## 性能测试
-- 客户端分为go-模拟器 和 java-模拟器(QQ群下载 373203450)  <br/>
-模拟器请求为1次注册 1次鉴权 循环发送心跳(10秒间隔)
-- 目前mac笔记本无线情况只能模拟2个IP 只能测试到10w+
+- java模拟器(QQ群下载 373203450)
+- go模拟器 [详情点击](./example/simulator/README.md#go模拟器)
+1. 连接数测试
+2. 模拟实际场景测试
 
-| 服务端  |   客户端   | 并发数 |  服务器配置  | 服务器使用资源情况                  |  描述  |
-| :---: | :-----------: | :------: | :--------: | :----------------------------- | :----------: |
-|   go-jt808 | go-模拟器  | 10w+ |  10核32G | 20%cpu 1.4G内存  | 客户端和服务端都运行在本地mac笔记本 |
-
+| 服务端版本  |   场景   | 并发数 |  服务器配置  | 服务器使用资源情况 |  描述  |
+| :---:   | :-------: | :--: | :------: | :-------------- | :----------------------------: |
+|  v0.3.0 | 连接数测试  | 10w+ |  10核32G | 20%cpu 1.4G内存  | 客户端和服务端都运行在本地mac笔记本 |
 
 ## 使用案例
 
