@@ -267,17 +267,17 @@ func TestT0x0704Parse(t *testing.T) {
 func TestT0x0200LocationItemString(t *testing.T) {
 	var t0x0200Item T0x0200LocationItem
 	t0x0200Item.AlarmSignDetails.parse(math.MaxUint32)
-	alarmSignData, _ := os.ReadFile("./txt/0x0200_alarm_sign.txt")
+	alarmSignData, _ := os.ReadFile("./testdata/0x0200_alarm_sign.txt")
 	if string(alarmSignData) != t0x0200Item.AlarmSignDetails.String() {
 		t.Errorf("want[%s] actual[%s]", string(alarmSignData), t0x0200Item.AlarmSignDetails.String())
 		return
 	}
 
 	infos := map[uint32]string{
-		1<<23 - 1:             "./txt/0x0200_status_sign_03.txt",
-		1<<23 - 1 - 256 - 512: "./txt/0x0200_status_sign_00.txt",
-		1<<23 - 1 - 256:       "./txt/0x0200_status_sign_01.txt",
-		1<<23 - 1 - 512:       "./txt/0x0200_status_sign_02.txt",
+		1<<23 - 1:             "./testdata/0x0200_status_sign_03.txt",
+		1<<23 - 1 - 256 - 512: "./testdata/0x0200_status_sign_00.txt",
+		1<<23 - 1 - 256:       "./testdata/0x0200_status_sign_01.txt",
+		1<<23 - 1 - 512:       "./testdata/0x0200_status_sign_02.txt",
 	}
 	for statusSign, signPath := range infos {
 		var tmp T0x0200LocationItem

@@ -121,12 +121,12 @@ func TestString(t *testing.T) {
 		{
 			name: "2013版本",
 			args: "7e0002000001234567890100008a7e",
-			want: "./txt/head_2013.txt",
+			want: "./testdata/head_2013.txt",
 		},
 		{
 			name: "2019版本",
 			args: "7e0002400001000000000172998417380000027e",
-			want: "./txt/head_2019.txt",
+			want: "./testdata/head_2019.txt",
 		},
 	}
 	for _, tt := range tests {
