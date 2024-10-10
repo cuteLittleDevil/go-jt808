@@ -58,6 +58,7 @@ func (p *packageParse) unpack(data []byte) (msgs []*Message, err error) {
 			return []*Message{msg}, nil
 		}
 	}
+	p.historyData = append(p.historyData, data...)
 	for {
 		end := -1
 		if len(p.historyData) > 2 && p.historyData[0] == sign {
@@ -74,7 +75,8 @@ func (p *packageParse) unpack(data []byte) (msgs []*Message, err error) {
 		originalData := p.historyData[:end]
 		msg := NewMessage(originalData)
 		if err := msg.JTMessage.Decode(originalData); err != nil {
-			return nil, fmt.Errorf("%w [%x]", err, originalData)
+			p.historyData = p.historyData[end:]
+			return msgs, fmt.Errorf("%w [%x]", err, originalData)
 		}
 		msgs = append(msgs, msg)
 		if end == len(p.historyData) {

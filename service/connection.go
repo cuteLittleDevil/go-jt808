@@ -31,13 +31,9 @@ func newConnection(conn *net.TCPConn, handles map[consts.JT808CommandType]Handle
 func (c *connection) Start() {
 	go c.reader()
 	go c.write()
-	select {
-	case <-c.stopChan:
-	}
 }
 
 func (c *connection) reader() {
-	var recordData []byte
 	// 消息体长度最大为 10bit 也就是 1023 的字节
 	curData := make([]byte, 1023)
 	pack := newPackageParse()
@@ -67,7 +63,7 @@ func (c *connection) reader() {
 				msgs, err := pack.parse(effectiveData)
 				if err != nil {
 					slog.Error("parse data",
-						slog.String("record data", fmt.Sprintf("%x", recordData)),
+						slog.String("effective data", fmt.Sprintf("%x", effectiveData)),
 						slog.Any("err", err))
 					return
 				}
