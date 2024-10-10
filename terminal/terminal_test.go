@@ -33,6 +33,14 @@ func TestTerminal_CreateDefaultCommandData(t *testing.T) {
 			name: "T0x0704 终端-位置批量上传",
 			args: consts.T0704LocationBatchUpload,
 		},
+		{
+			name: "P0x8001 平台-通用应答",
+			args: consts.P8001GeneralRespond,
+		},
+		{
+			name: "P0x8100 平台-注册应答",
+			args: consts.P8100RegisterRespond,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -47,7 +55,10 @@ func TestTerminal_CreateDefaultCommandData(t *testing.T) {
 					sendData := tmp.CreateDefaultCommandData(tt.args)
 					msg := fmt.Sprintf("%x", sendData)
 					details := tmp.ProtocolDetails(msg)
-					got := fmt.Sprintf("%x\n%s", sendData, details)
+					replyData := tmp.ExpectedReply(1, msg)
+					replyDetails := tmp.ProtocolDetails(fmt.Sprintf("%x", replyData))
+					got := fmt.Sprintf("%x\n%s\n-----------\n%x\n%s",
+						sendData, details, replyData, replyDetails)
 					txt := fmt.Sprintf("./testdata/[%04x]-%s-%s.txt",
 						uint16(tt.args), versionType.String(), tt.args)
 					f, err := os.Open(txt)
@@ -55,7 +66,7 @@ func TestTerminal_CreateDefaultCommandData(t *testing.T) {
 						_ = os.WriteFile(txt, []byte(got), os.ModePerm)
 					}
 					if data, _ := io.ReadAll(f); string(data) != got {
-						t.Errorf("CreateDefaultCommandData() = %s\n want %s", got, string(data))
+						t.Errorf("CreateDefaultCommandData()=%s\n want %s", got, string(data))
 					}
 				})
 			}

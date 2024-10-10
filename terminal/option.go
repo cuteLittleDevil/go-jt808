@@ -48,6 +48,7 @@ func WithHeader(protocolVersion consts.ProtocolVersionType, phone string) Option
 		_ = jtMsg.Decode(data)
 		jtMsg.Header.TerminalPhoneNo = phone // 终端手机号
 		jtMsg.Header.SerialNumber = 0        // 流水号
+		jtMsg.Header.ProtocolVersion = protocolVersion
 		o.Header = jtMsg.Header
 	}}
 }

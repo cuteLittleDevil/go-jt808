@@ -15,6 +15,25 @@ sysctl -w net.inet.ip.portrange.first=5000
 
 ```
 
+linux系统的 永久修改
+``` shell
+vi /etc/sysctl.conf
+# 服务器系统级参数 最大打开文件数
+fs.file-max=1100000
+# 服务器进程级参数 最大打开文件数
+fs.nr_open=1100000
+
+vi /etc/security/limits.conf
+# 限制用户进程最大打开文件数量限制 soft(软限制) hard(硬限制)
+*  soft  nofile  1000000
+*  hard  nofile  1010000
+
+# 生效
+sysctl -p
+# 查看
+sysctl -a
+```
+
 ---
 ## 1. 连接数测试
 - 模拟器请求为1次注册 1次鉴权 循环发送心跳(10秒间隔)

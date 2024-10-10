@@ -26,7 +26,7 @@ func New(opts ...Option) *Terminal {
 	}
 	return &Terminal{
 		header:          header,
-		protocolHandles: defaultProtocolHandles(),
+		protocolHandles: defaultProtocolHandles(options.Header.ProtocolVersion),
 	}
 }
 
@@ -57,7 +57,7 @@ func (t *Terminal) ExpectedReply(seq uint16, msg string) []byte {
 	if v, ok := t.protocolHandles[commandType]; ok {
 		header.ReplyID = uint16(v.ReplyProtocol())
 		header.PlatformSerialNumber = seq
-		body = v.Encode()
+		body, _ = v.ReplyBody(jtMsg)
 	}
 	return header.Encode(body)
 }
@@ -73,7 +73,11 @@ func (t *Terminal) ProtocolDetails(msg string) string {
 	}
 	commandType := consts.JT808CommandType(jtMsg.Header.ID)
 	if v, ok := t.protocolHandles[commandType]; ok {
-		_ = v.Parse(jtMsg)
+		if err := v.Parse(jtMsg); err != nil {
+			slog.Warn("parse fail",
+				slog.String("msg", msg))
+			return ""
+		}
 		return strings.Join([]string{
 			"[7e]开始: 126",
 			jtMsg.Header.String(),
