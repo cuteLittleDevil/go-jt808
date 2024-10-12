@@ -45,9 +45,9 @@ func TestTerminal_CreateDefaultCommandData(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			infos := map[consts.ProtocolVersionType]string{
-				consts.JT808Protocol2011: "123456789098",
-				consts.JT808Protocol2013: "123456789098",
-				consts.JT808Protocol2019: "12345678901234567890",
+				consts.JT808Protocol2011: "123456782011",
+				consts.JT808Protocol2013: "123456782013",
+				consts.JT808Protocol2019: "12345678901234562019",
 			}
 			for versionType, phone := range infos {
 				t.Run(versionType.String(), func(t *testing.T) {

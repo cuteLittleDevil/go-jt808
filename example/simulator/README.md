@@ -22,6 +22,8 @@ vi /etc/sysctl.conf
 fs.file-max=1100000
 # 服务器进程级参数 最大打开文件数
 fs.nr_open=1100000
+# 可用端口范围
+net.ipv4.ip_local_port_range = 5000 65000
 
 vi /etc/security/limits.conf
 # 限制用户进程最大打开文件数量限制 soft(软限制) hard(硬限制)

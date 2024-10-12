@@ -4,7 +4,9 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
+	"github.com/cuteLittleDevil/go-jt808/protocol/utils"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
+	"strings"
 )
 
 type Option struct {
@@ -36,15 +38,22 @@ func WithCustomHeader(header *jt808.Header) Option {
 
 func WithHeader(protocolVersion consts.ProtocolVersionType, phone string) Option {
 	return Option{F: func(o *Options) {
-		msg := "7e0002000001234567890100008a7e"
+		body := "000200000123456789010000"
 		phone = fmt.Sprintf("%012s", phone)
+		body = strings.Replace(body, "012345678901", phone, 1)
 		if protocolVersion == consts.JT808Protocol2019 {
-			msg = "7e0002400001000000000172998417380000027e"
+			body = "000240000112345678901234567890000002"
 			phone = fmt.Sprintf("%020s", phone)
+			body = strings.Replace(body, "12345678901234567890", phone, 1)
 		}
+		bodyData, _ := hex.DecodeString(body)
+		code := utils.CreateVerifyCode(bodyData)
+		data := []byte{0x7e}
+		data = append(data, bodyData...)
+		data = append(data, code)
+		data = append(data, 0x7e)
 		var jtMsg *jt808.JTMessage
 		jtMsg = jt808.NewJTMessage()
-		data, _ := hex.DecodeString(msg)
 		_ = jtMsg.Decode(data)
 		jtMsg.Header.TerminalPhoneNo = phone // 终端手机号
 		jtMsg.Header.SerialNumber = 0        // 流水号
