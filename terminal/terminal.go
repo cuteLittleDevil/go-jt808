@@ -10,21 +10,26 @@ import (
 )
 
 type Terminal struct {
+	TerminalPhoneNo string
 	header          *jt808.Header
 	protocolHandles map[consts.JT808CommandType]Handler
 }
 
 func New(opts ...Option) *Terminal {
-	msg := "7e000100050123456789017fff007b01c803bd7e"
-	jtMsg := jt808.NewJTMessage()
-	data, _ := hex.DecodeString(msg)
-	_ = jtMsg.Decode(data)
-	header := jtMsg.Header
+	var header *jt808.Header
 	options := NewOptions(opts)
 	if options.Header != nil {
 		header = options.Header
 	}
+	if header == nil {
+		msg := "7e000200001234567820130001387e"
+		jtMsg := jt808.NewJTMessage()
+		data, _ := hex.DecodeString(msg)
+		_ = jtMsg.Decode(data)
+		header = jtMsg.Header
+	}
 	return &Terminal{
+		TerminalPhoneNo: header.TerminalPhoneNo,
 		header:          header,
 		protocolHandles: defaultProtocolHandles(options.Header.ProtocolVersion),
 	}

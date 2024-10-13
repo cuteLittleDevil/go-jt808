@@ -53,7 +53,7 @@ func main() {
 | 飞哥的开发内功修炼    | https://github.com/yanfeizhang/coder-kung-fu?tab=readme-ov-file |
 | 协议文档       | https://gitee.com/yezhihao/jt808-server/tree/master/协议文档 |
 | 协议解析网站  | https://jttools.smallchi.cn/jt808 |
-| bcd转dec编码   | https://github.com/deatil/lakego-admin |
+| bcd转dec编码   | https://github.com/deatil/lakego-admin/tree/main/pkg/lakego-pkg/go-encoding/bcd |
 
 ## 性能测试
 - java模拟器(QQ群下载 373203450)

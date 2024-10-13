@@ -6,6 +6,7 @@ import (
 	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
 	"github.com/cuteLittleDevil/go-jt808/protocol/utils"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
+	"log/slog"
 	"strings"
 )
 
@@ -50,11 +51,22 @@ func WithHeader(protocolVersion consts.ProtocolVersionType, phone string) Option
 		code := utils.CreateVerifyCode(bodyData)
 		data := []byte{0x7e}
 		data = append(data, bodyData...)
-		data = append(data, code)
+		switch code {
+		case 0x7e:
+			data = append(data, []byte{0x7d, 0x02}...)
+		case 0x7d:
+			data = append(data, []byte{0x7d, 0x01}...)
+		default:
+			data = append(data, code)
+		}
 		data = append(data, 0x7e)
 		var jtMsg *jt808.JTMessage
 		jtMsg = jt808.NewJTMessage()
-		_ = jtMsg.Decode(data)
+		if err := jtMsg.Decode(data); err != nil {
+			slog.Error("decode",
+				slog.String("phone", phone),
+				slog.Any("err", err))
+		}
 		jtMsg.Header.TerminalPhoneNo = phone // 终端手机号
 		jtMsg.Header.SerialNumber = 0        // 流水号
 		jtMsg.Header.ProtocolVersion = protocolVersion
