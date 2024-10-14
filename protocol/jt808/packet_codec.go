@@ -31,6 +31,11 @@ func unescape(data []byte) ([]byte, error) {
 				buf.Write(data[index : i-1])
 				buf.WriteByte(afterRecover)
 			default:
+				// 兼容一下设备校验码不转义的情况
+				if i == len(data)-1 {
+					buf.Write(data[index : len(data)-1])
+					return buf.Bytes(), nil
+				}
 				return nil, protocol.ErrUnqualifiedData
 			}
 			index = i + 1
