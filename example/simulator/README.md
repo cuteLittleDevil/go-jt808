@@ -38,6 +38,7 @@ sysctl -a
 
 ---
 <h2 id="online"> 1. 连接数测试 </h2>
+
 - 模拟器请求为1次注册 1次鉴权 循环发送心跳(10秒间隔)
 - 目前mac笔记本无线情况只能模拟2个IP 只能测试到10w+
 
@@ -48,8 +49,7 @@ cd ../quick_start && go build
 ./start
 ```
 
-模拟器 设置本机两个ip mac无线情况  <\br>
-网络->添加服务->接口选择Wi-Fi (给这个wi-Fi配置成固定ip即可)
+模拟器
 ``` shell
 cd ./client && go build
 ./client -ip=192.168.1.10 -addr=127.0.0.1:8080 -max=55000
@@ -61,7 +61,8 @@ cd ./client && go build
 | :---:   | :-------: | :--: | :------: | :-------------- | :----------------------------: |
 |  v0.3.0 | 连接数测试  | 10w+ |  10核32G | 20%cpu 1.4G内存  | 客户端和服务端都运行在本地mac笔记本 |
 
-<h2 id="save">2. 模拟经纬度存储测试</h2>
+<h2 id="save"> 2. 模拟经纬度存储测试 </h2>
+
 - 模拟器请求为1次注册 1次鉴权 循环发送心跳、位置上报
 - 默认间隔时间分别为20秒 5秒
 - 消息队列使用nats 数据库使用tdengine测试
@@ -74,20 +75,20 @@ cd ./client && go build
 
 ### 2.2 操作
 
-模拟存储经纬度
+模拟存储经纬度 从nats获取保存到tdengine
 ``` shell
 cd ./save && GOOS=linux GOARCH=amd64 go build
 # 接收数据 每一个终端一张表 表名称为(T+手机号)
 ./save -nats=127.0.0.1:4222 -dsn='root:taosdata@ws(127.0.0.1:6041)/information_schema' >./save.log
 ```
 
-服务端
+服务端 把经纬度相关报文发送到nats
 ``` shell
 cd ./server && GOOS=linux GOARCH=amd64 go build
 ./server -nats=127.0.0.1:4222 >./server.log
 ```
 
-模拟设备连接
+模拟器 模拟设备发生经纬度
 ``` shell
 cd ./client && GOOS=linux GOARCH=amd64 go build
 # 至多打开1w个客户端 每一个客户端发送1w个0x0200经纬度消息 1亿经纬度 (为了方便统计 不发送0x0704)
@@ -136,5 +137,5 @@ select tbname, count(*) from power.meters group by tbname order by count(*) >> /
 |  client | 23% | 196MB | 模拟客户端 |
 |  save |  18% | 68.8MB | 存储数据服务 |
 |  nats-server | 20% | 14.8MB | 消息队列 |
-|  taosadapter | 37% | 124.3MB | tdengine数据库适配HTTP |
+|  taosadapter | 37% | 124.3MB | tdengine数据库适配 |
 |  taosd | 15% | 124.7MB | tdengine数据库 |
