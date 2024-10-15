@@ -1,4 +1,4 @@
-# go模拟器
+# 性能测试
 
 mac系统的参数 临时修改
 ``` shell
@@ -7,7 +7,7 @@ sudo sysctl -w kern.maxfiles=8880000
 # 增大单个进程默认最大连接数限制
 sudo sysctl -w kern.maxfilesperproc=8990000
 # 设置当前shell能打开的最大文件数
-ulimit -n 655350
+ulimit -n 1100000
 # 设置当前shell可以创建的最大用户线程数
 ulimit -u 26600
 # 调整可用端口数量
@@ -22,7 +22,7 @@ vi /etc/sysctl.conf
 fs.file-max=1100000
 # 服务器进程级参数 最大打开文件数
 fs.nr_open=1100000
-# 可用端口范围
+# 增加进程可用端口
 net.ipv4.ip_local_port_range = 5000 65000
 
 vi /etc/security/limits.conf
@@ -41,8 +41,100 @@ sysctl -a
 - 模拟器请求为1次注册 1次鉴权 循环发送心跳(10秒间隔)
 - 目前mac笔记本无线情况只能模拟2个IP 只能测试到10w+
 
-## 2. 模拟实际场景测试
-模拟器请求为1次注册 1次鉴权 循环发送心跳、位置上报、位置批量上报  <br/>
-默认间隔时间分别为20秒 5秒 60秒  <br>
-消息队列使用nats 发送位置上报和位置批量上报的报文  <br/>
-统计发送和接收的数量情况 观察数据丢失情况
+### 1.1 操作
+服务端
+``` shell
+cd ../quick_start && go build
+./start
+```
+
+模拟器 设置本机两个ip mac无线情况  <\br>
+网络->添加服务->接口选择Wi-Fi (给这个wi-Fi配置成固定ip即可)
+``` shell
+cd ./client && go build
+./client -ip=192.168.1.10 -addr=127.0.0.1:8080 -max=55000
+./client -ip=192.168.1.11 -addr=127.0.0.1:8080 -max=55000
+```
+
+### 1.2 测试结果
+| 服务端版本  |   场景   | 并发数 |  服务器配置  | 服务器使用资源情况 |  描述  |
+| :---:   | :-------: | :--: | :------: | :-------------- | :----------------------------: |
+|  v0.3.0 | 连接数测试  | 10w+ |  10核32G | 20%cpu 1.4G内存  | 客户端和服务端都运行在本地mac笔记本 |
+
+## 2. 模拟经纬度存储测试
+- 模拟器请求为1次注册 1次鉴权 循环发送心跳、位置上报
+- 默认间隔时间分别为20秒 5秒
+- 消息队列使用nats 数据库使用tdengine测试
+
+### 2.1 依赖的服务nats和tdengine
+| 描述                | 链接                         |
+|--------------------|------------------------------|
+| nats    | https://github.com/nats-io/nats-server |
+| 使用安装包快速体验 TDengine | https://docs.taosdata.com/get-started/package/ |
+
+### 2.2 操作
+
+模拟存储经纬度
+``` shell
+cd ./save && GOOS=linux GOARCH=amd64 go build
+# 接收数据 每一个终端一张表 表名称为(T+手机号)
+./save -nats=127.0.0.1:4222 -dsn='root:taosdata@ws(127.0.0.1:6041)/information_schema' >./save.log
+```
+
+服务端
+``` shell
+cd ./server && GOOS=linux GOARCH=amd64 go build
+./server -nats=127.0.0.1:4222 >./server.log
+```
+
+模拟设备连接
+``` shell
+cd ./client && GOOS=linux GOARCH=amd64 go build
+# 至多打开1w个客户端 每一个客户端发送1w个0x0200经纬度消息 1亿经纬度 (为了方便统计 不发送0x0704)
+./client -ip=127.0.0.1 -blc=0 -limit=10000 -max=10000 -lc=2 >./client.log
+```
+
+统计资源消耗情况
+``` shell
+# 隔1800秒 保存一次运行情况
+sudo atop -w ./atop.log 1800
+# 观察各服务的资源情况
+# t-前进 T-后退 m-内存 g-cpu c-详情
+atop -r ./atop.log
+```
+
+### 2.3 测试结果
+``` sql
+# 安装tdengine的机器上 输入taos 进入命令行
+select count(*) from power.meters;
+# 查看各个模拟终端保存数据的情况
+select tbname, count(*) from power.meters group by tbname order by count(*) >> /home/test2/td.log;
+```
+![数据保存情况](./testdata/db.png)
+
+1w个客户端 每一个客户端发送100个0x0200
+| 发送数量 | 成功率 | 频率 | 描述 |
+| :---: | :-----: | :------: | :------: |
+| 100w |  98.5%+ | 每秒1w | 测试三次分别为985430 985299 989668 |
+| 100w |  100% | 每秒5000 | 测试三次分别为100w 100w 100w |
+
+| 服务端版本  |   场景   | 客户端 |  服务器配置  | 服务使用资源情况 |  描述  |
+| :---:   | :-------: | :--: | :------: | :-------------- | :----------------------------: |
+|  v0.3.0 | 模拟实际场景  | 1w |  2核4G | 35%cpu 180.4MB内存 | 每秒5000 一共保存经纬度1亿  <br/> 实际保存99999174 成功率99.999% |
+
+- 数据丢失原因 save进程channel队列溢出  <br/>
+![数据丢失情况](./testdata/save.png)
+
+各服务的资源使用情况
+- [atop采样详情](./testdata/atop.log)
+- [atop 使用的cpu](./testdata/atop_cpu.png)
+- [atop 使用的内存](./testdata/atop_cpu.png)
+
+| 服务  |   cpu   | 内存 | 描述 |
+| :---:   | :-------: | :--: | :--: |
+|  server | 35% | 180.4MB | 808服务端 |
+|  client | 23% | 196MB | 模拟客户端 |
+|  save |  18% | 68.8MB | 存储数据服务 |
+|  nats-server | 20% | 14.8MB | 消息队列 |
+|  taosadapter | 37% | 124.3MB | tdengine数据库适配HTTP |
+|  taosd | 15% | 124.7MB | tdengine数据库 |

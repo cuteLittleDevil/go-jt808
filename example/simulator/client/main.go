@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 	"github.com/cuteLittleDevil/go-jt808/terminal"
+	"log/slog"
 	"net"
+	"os"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -21,8 +23,10 @@ func main() {
 		heartBeatCycleSecond     int
 		locationCycleSecond      int
 		batchLocationCycleSecond int
+		singleLimitTotal         int
+		logLevel                 int
 	)
-	flag.IntVar(&maxPortRange, "port", 10000, "本地可用端口数量")
+	flag.IntVar(&maxPortRange, "max", 10000, "本地可用端口数量")
 	flag.StringVar(&localIP, "ip", "192.168.1.10", "本地ip")
 	flag.IntVar(&phoneStart, "start", 1, "手机号开始的数字")
 	flag.IntVar(&version, "version", 2013, "协议版本 默认2013")
@@ -30,7 +34,22 @@ func main() {
 	flag.IntVar(&heartBeatCycleSecond, "hc", 20, "心跳周期 默认20秒 小于等于0则不发送")
 	flag.IntVar(&locationCycleSecond, "lc", 5, "定位上传周期 默认5秒 小于等于0则不发送")
 	flag.IntVar(&batchLocationCycleSecond, "blc", 60, "定位批量上传周期 默认60秒 小于等于0则不发送")
+	flag.IntVar(&singleLimitTotal, "limit", 0, "每一个模拟终端最大发送有效包数量[0x0200 0x0704] 小于等于0无限")
+	flag.IntVar(&logLevel, "lv", -4, "slog 的等级 -4=debug 0=info 4=warn 8=err")
 	flag.Parse()
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		AddSource: false,
+		Level:     slog.Level(logLevel),
+		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			if a.Key == slog.TimeKey {
+				formattedTime := a.Value.Time().Format(time.DateTime)
+				return slog.String(slog.TimeKey, formattedTime)
+			}
+			return a
+		},
+	}))
+	slog.SetDefault(logger)
 
 	ticker := time.NewTicker(1 * time.Millisecond)
 	defer ticker.Stop()
@@ -42,8 +61,11 @@ func main() {
 			defer func() {
 				atomic.AddInt32(&sum, -1)
 			}()
-			fmt.Println(fmt.Sprintf("本地IP[%s] 可用端口数量[%d] 服务端IP[%s] 活跃连接[%d] 创建手机号[%d]",
-				localIP, maxPortRange, address, sum, phoneStart))
+			slog.Debug("start",
+				slog.String("ip", localIP),
+				slog.String("addr", address),
+				slog.Int("conn sum", int(sum)),
+				slog.Int("phone", phoneStart))
 			localAddr, err := net.ResolveTCPAddr("tcp", localIP+":0") // 端口设置为0以让系统分配
 			if err != nil {
 				return
@@ -97,6 +119,7 @@ func main() {
 			cTicker := time.NewTicker(1 * time.Second)
 			defer cTicker.Stop()
 			num := 0
+			total := 0
 			for {
 				select {
 				case <-stopChan:
@@ -109,21 +132,38 @@ func main() {
 					}
 					if locationCycleSecond > 0 && num%locationCycleSecond == 0 {
 						data = append(data, location)
+						total++
 					}
 					if batchLocationCycleSecond > 0 && num%batchLocationCycleSecond == 0 {
 						data = append(data, batchLocation)
+						total++
 					}
+					// 合在一起 更好模拟数据粘包的场景
 					var sendData []byte
 					for _, v := range data {
 						sendData = append(sendData, v...)
 					}
 					if len(sendData) > 0 {
 						if _, err := conn.Write(sendData); err != nil {
+							slog.Warn("write",
+								slog.Int("phone", phoneStart),
+								slog.Any("err", err))
 							once.Do(func() {
 								close(stopChan)
 							})
 							return
 						}
+					}
+					if singleLimitTotal > 0 && total == singleLimitTotal {
+						slog.Debug("complete",
+							slog.Int("phone", phoneStart),
+							slog.Int("total", total))
+						// 等待一下 让数据肯定发送完
+						time.Sleep(3 * time.Second)
+						once.Do(func() {
+							close(stopChan)
+						})
+						return
 					}
 				}
 			}
@@ -132,9 +172,12 @@ func main() {
 		atomic.AddInt32(&sum, 1)
 		count++
 		if count > int32(maxPortRange) {
-			cTicker := time.NewTicker(1 * time.Second)
+			cTicker := time.NewTicker(10 * time.Second)
 			for range cTicker.C {
-				fmt.Println(fmt.Sprintf("本地IP[%s] 可用端口数量[%d] 活跃连接[%d]", localIP, maxPortRange, sum))
+				slog.Info("detection",
+					slog.String("ip", localIP),
+					slog.Int("max", maxPortRange),
+					slog.Int("active sum", int(sum)))
 			}
 		}
 	}
