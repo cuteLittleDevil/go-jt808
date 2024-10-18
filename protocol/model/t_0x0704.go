@@ -25,6 +25,8 @@ type (
 		Len uint16 `json:"len"`
 		// T0x0200LocationItem 位置汇报数据体
 		T0x0200LocationItem
+		// T0x0200AdditionDetails 附加信息
+		T0x0200AdditionDetails
 	}
 )
 
@@ -49,6 +51,11 @@ func (t *T0x0704) Parse(jtMsg *jt808.JTMessage) error {
 		curBody := body[start+2 : start+2+int(item.Len)]
 		if err := item.T0x0200LocationItem.parse(curBody); err != nil {
 			return err
+		}
+		if len(curBody) > 28 {
+			if err := item.T0x0200AdditionDetails.parse(curBody[28:]); err != nil {
+				return err
+			}
 		}
 		t.Items = append(t.Items, item)
 		start += 2 + int(item.Len)
@@ -78,7 +85,7 @@ func (t *T0x0704) String() string {
 	str += fmt.Sprintf("\t位置汇报数据集合: [\n")
 	for i := 0; i < len(t.Items); i++ {
 		str += "\t{\n"
-		itemStr := t.Items[i].String()
+		itemStr := t.Items[i].T0x0200LocationItem.String()
 		str += strings.ReplaceAll(itemStr, "\t", "\t\t")
 		str += "\n\t}\n"
 	}

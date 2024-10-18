@@ -9,7 +9,10 @@ import (
 
 type T0x0200 struct {
 	BaseHandle
+	// T0x0200LocationItem 位置等信息
 	T0x0200LocationItem
+	// T0x0200AdditionDetails 附加信息
+	T0x0200AdditionDetails
 }
 
 func (t *T0x0200) Protocol() consts.JT808CommandType {
@@ -18,7 +21,13 @@ func (t *T0x0200) Protocol() consts.JT808CommandType {
 
 func (t *T0x0200) Parse(jtMsg *jt808.JTMessage) error {
 	body := jtMsg.Body
-	return t.parse(body)
+	if err := t.T0x0200LocationItem.parse(body); err != nil {
+		return err
+	}
+	if len(body) > 28 {
+		return t.T0x0200AdditionDetails.parse(body[28:])
+	}
+	return nil
 }
 
 func (t *T0x0200) Encode() []byte {

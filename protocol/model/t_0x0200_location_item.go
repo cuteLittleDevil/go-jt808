@@ -34,116 +34,116 @@ type (
 
 	AlarmSignDetails struct {
 		// EmergencyAlarm 报警类型-紧急报警,触动报警开关后触发
-		EmergencyAlarm bool `json:"emergencyAlarm"`
+		EmergencyAlarm bool `json:"emergencyAlarm,omitempty,omitempty,omitempty,omitempty"`
 		// OverSpeed 报警类型-超速
-		OverSpeed bool `json:"overSpeed"`
+		OverSpeed bool `json:"overSpeed,omitempty,omitempty,omitempty,omitempty"`
 		// FatigueDriving 报警类型-疲劳驾驶
-		FatigueDriving bool `json:"fatigueDriving"`
+		FatigueDriving bool `json:"fatigueDriving,omitempty,omitempty,omitempty,omitempty"`
 		// DangerousAlarm 报警类型-危险预警
-		DangerousAlarm bool `json:"dangerousAlarm"`
+		DangerousAlarm bool `json:"dangerousAlarm,omitempty,omitempty,omitempty,omitempty"`
 		// GNSSModuleFault 报警类型-GNSS模块发⽣故障
-		GNSSModuleFault bool `json:"GNSSModuleFault"`
+		GNSSModuleFault bool `json:"GNSSModuleFault,omitempty,omitempty,omitempty,omitempty"`
 		// GNSSAntennaFault 报警类型-GNSS天线未接或被剪断
-		GNSSAntennaFault bool `json:"GNSSAntennaFault"`
+		GNSSAntennaFault bool `json:"GNSSAntennaFault,omitempty,omitempty,omitempty,omitempty"`
 		// GNSSAntennaShortCircuit GNSS天线短路
-		GNSSAntennaShortCircuit bool `json:"GNSSAntennaShortCircuit"`
+		GNSSAntennaShortCircuit bool `json:"GNSSAntennaShortCircuit,omitempty,omitempty,omitempty,omitempty"`
 		// TerminalPowerSupply 报警类型-终端主电源⽋压
-		TerminalPowerSupply bool `json:"terminalPowerSupply"`
+		TerminalPowerSupply bool `json:"terminalPowerSupply,omitempty,omitempty,omitempty,omitempty"`
 		// TerminalPowerSupplyShutdown 报警类型-终端主电源掉电
-		TerminalPowerSupplyShutdown bool `json:"terminalPowerSupplyShutdown"`
+		TerminalPowerSupplyShutdown bool `json:"terminalPowerSupplyShutdown,omitempty,omitempty,omitempty,omitempty"`
 		// TerminalLCDFault 报警类型-终端LCD或显示器故障
-		TerminalLCDFault bool `json:"terminalLCDFault"`
+		TerminalLCDFault bool `json:"terminalLCDFault,omitempty,omitempty,omitempty"`
 		// TTSModuleFault 报警类型-TTS模块故障
-		TTSModuleFault bool `json:"TTSModuleFault"`
+		TTSModuleFault bool `json:"TTSModuleFault,omitempty,omitempty,omitempty"`
 		// CameraFault 报警类型-摄像头故障
-		CameraFault bool `json:"cameraFault"`
+		CameraFault bool `json:"cameraFault,omitempty,omitempty,omitempty"`
 		// ICCardModuleFault 报警类型-道路运输证IC卡模块故障
-		ICCardModuleFault bool `json:"ICCardModuleFault"`
+		ICCardModuleFault bool `json:"ICCardModuleFault,omitempty,omitempty,omitempty"`
 		// OverSpeedAlarm 报警类型-超速预警
-		OverSpeedAlarm bool `json:"overSpeedAlarm"`
+		OverSpeedAlarm bool `json:"overSpeedAlarm,omitempty,omitempty,omitempty"`
 		// FatigueDrivingAlarm 报警类型-疲劳驾驶预警
-		FatigueDrivingAlarm bool `json:"fatigueDrivingAlarm"`
+		FatigueDrivingAlarm bool `json:"fatigueDrivingAlarm,omitempty,omitempty,omitempty"`
 		// ViolationDrivingAlarm 报警类型-违规行驶预警
-		ViolationDrivingAlarm bool `json:"violationDrivingAlarm"`
+		ViolationDrivingAlarm bool `json:"violationDrivingAlarm,omitempty,omitempty,omitempty"`
 		// TirePressureAlarm 报警类型-胎压预警
-		TirePressureAlarm bool `json:"tirePressureAlarm"`
+		TirePressureAlarm bool `json:"tirePressureAlarm,omitempty,omitempty"`
 		// RightTurnBlindAreaAlarm 报警类型-右转盲区预警
-		RightTurnBlindAreaAlarm bool `json:"rightTurnBlindAreaAlarm"`
+		RightTurnBlindAreaAlarm bool `json:"rightTurnBlindAreaAlarm,omitempty,omitempty"`
 		// DrivingTimeout 报警类型-当天累计驾驶超时
-		DrivingTimeout bool `json:"drivingTimeout"`
+		DrivingTimeout bool `json:"drivingTimeout,omitempty,omitempty"`
 		// OverTimeStop 报警类型-超时停⻋
-		OverTimeStop bool `json:"overTimeStop"`
+		OverTimeStop bool `json:"overTimeStop,omitempty,omitempty"`
 		// InOutArea 报警类型-进出区域
-		InOutArea bool `json:"inOutArea"`
+		InOutArea bool `json:"inOutArea,omitempty,omitempty"`
 		// InOutLine 报警类型-进出路线
-		InOutLine bool `json:"inOutLine"`
+		InOutLine bool `json:"inOutLine,omitempty,omitempty"`
 		// SectionDrivingTime 报警类型-路段⾏驶时间不⾜/过⻓
-		SectionDrivingTime bool `json:"sectionDrivingTime"`
+		SectionDrivingTime bool `json:"sectionDrivingTime,omitempty"`
 		// LineDeviation 报警类型-路线偏离报警
-		LineDeviation bool `json:"lineDeviation"`
+		LineDeviation bool `json:"lineDeviation,omitempty"`
 		// VSSFault 报警类型-⻋辆VSS故障
-		VSSFault bool `json:"vssFault"`
+		VSSFault bool `json:"vssFault,omitempty"`
 		// OilLevelAbnormality 报警类型-⻋辆油量异常
-		OilLevelAbnormality bool `json:"oilLevelAbnormality"`
+		OilLevelAbnormality bool `json:"oilLevelAbnormality,omitempty"`
 		// StealCar 报警类型-⻋辆被盗(通过⻋辆防盗器)
-		StealCar bool `json:"stealCar"`
+		StealCar bool `json:"stealCar,omitempty"`
 		// LaneDeviation 报警类型-⻋辆⾮法点⽕
-		LaneDeviation bool `json:"laneDeviation"`
+		LaneDeviation bool `json:"laneDeviation,omitempty"`
 		// LaneOffset 报警类型-⻋辆⾮法位移
-		LaneOffset bool `json:"laneOffset"`
+		LaneOffset bool `json:"laneOffset,omitempty"`
 		// CollisionAlarm 报警类型-碰撞预警
-		CollisionAlarm bool `json:"collisionAlarm"`
+		CollisionAlarm bool `json:"collisionAlarm,omitempty"`
 		// SideSlipAlarm 报警类型-侧翻预警
-		SideSlipAlarm bool `json:"sideSlipAlarm"`
+		SideSlipAlarm bool `json:"sideSlipAlarm,omitempty"`
 		// LaneOpeningAlarm 报警类型-⾮法开⻔报警
-		LaneOpeningAlarm bool `json:"laneOpeningAlarm"`
+		LaneOpeningAlarm bool `json:"laneOpeningAlarm,omitempty"`
 	}
 
 	StatusSignDetails struct {
 		// ACC ACC 0-关 1-开
-		ACC bool `json:"acc"`
+		ACC bool `json:"acc,omitempty"`
 		// Location 定位状态 0-未定位 1-定位
-		Location bool `json:"location"`
+		Location bool `json:"location,omitempty"`
 		// South 南北纬 0-北纬 1-南纬
-		South bool `json:"south"`
+		South bool `json:"south,omitempty"`
 		// East 东西经 0-东经 1-西经
-		East bool `json:"east"`
+		East bool `json:"east,omitempty"`
 		// Suspended 运营状态 0-运营 1-停运
-		Suspended bool `json:"suspended"`
+		Suspended bool `json:"suspended,omitempty"`
 		// Encryption 是否加密 0-不加密 1-加密
-		Encryption bool `json:"encryption"`
+		Encryption bool `json:"encryption,omitempty"`
 		// EmergencyBrake 紧急刹车系统的前撞预警
-		EmergencyBrake bool `json:"emergencyBrake"`
+		EmergencyBrake bool `json:"emergencyBrake,omitempty"`
 		// LaneOffset 车道偏移预警
-		LaneOffset bool `json:"laneOffset"`
+		LaneOffset bool `json:"laneOffset,omitempty"`
 		// Cargo 载客情况 00-空车 01-半载 10-保留 11-满载
-		Cargo uint8 `json:"cargo"`
+		Cargo uint8 `json:"cargo,omitempty"`
 		// Oil 油路情况 0-正常 1-断开
-		Oil bool `json:"oil"`
+		Oil bool `json:"oil,omitempty"`
 		// Electricity 电路情况 0-正常 1-断开
-		Electricity bool `json:"electricity"`
+		Electricity bool `json:"electricity,omitempty"`
 		// VehicleDoor 车门情况 0-解锁 1-加锁
-		VehicleDoor bool `json:"vehicleDoor"`
+		VehicleDoor bool `json:"vehicleDoor,omitempty"`
 		// FrontDoor 前门情况 0-门1关 1-门1开
-		FrontDoor bool `json:"frontDoor"`
+		FrontDoor bool `json:"frontDoor,omitempty"`
 		// MiddleDoor 中门情况 0-门2关 1-门2开
-		MiddleDoor bool `json:"middleDoor"`
+		MiddleDoor bool `json:"middleDoor,omitempty"`
 		// BackDoor 后门情况 0-门3关 1-门3开
-		BackDoor bool `json:"backDoor"`
+		BackDoor bool `json:"backDoor,omitempty"`
 		// DriverDoor 驾驶席门 0-门4关 1-门4开
-		DriverDoor bool `json:"driverDoor"`
+		DriverDoor bool `json:"driverDoor,omitempty"`
 		// CustomDoor 自定义门 0-门5关 1-门5开
-		CustomDoor bool `json:"customDoor"`
+		CustomDoor bool `json:"customDoor,omitempty"`
 		// UseGPS 是否使用GPS卫星定位 0-不使用 1-使用
-		UseGPS bool `json:"useGPS"`
+		UseGPS bool `json:"useGPS,omitempty"`
 		// UseBD 是否使用北斗卫星定位 0-不使用 1-使用
-		UseBD bool `json:"useBD"`
+		UseBD bool `json:"useBD,omitempty"`
 		// UseGLONASS 是否使用GLONASS卫星定位 0-不使用 1-使用
-		UseGLONASS bool `json:"useGLONASS"`
+		UseGLONASS bool `json:"useGLONASS,omitempty"`
 		// UseGalileo 是否使用Galileo卫星定位 0-不使用 1-使用
-		UseGalileo bool `json:"useGalileo"`
+		UseGalileo bool `json:"useGalileo,omitempty"`
 		// VehicleRunning 车辆状态 0-停止 1-行驶 2019版本增加的
-		VehicleRunning bool `json:"vehicleRunning"`
+		VehicleRunning bool `json:"vehicleRunning,omitempty"`
 	}
 )
 

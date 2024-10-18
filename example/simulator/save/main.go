@@ -67,7 +67,7 @@ func createTable(dsn string) error {
 		return err
 	}
 	_, _ = db.Exec("drop database if exists power")
-	if _, err := db.Exec("CREATE DATABASE IF NOT EXISTS power PRECISION 'us' buffer 30 duration 1h keep 24h "); err != nil {
+	if _, err := db.Exec("CREATE DATABASE IF NOT EXISTS power PRECISION 'us' buffer 30 duration 1h keep 72h "); err != nil {
 		return err
 	}
 	if _, err := db.Exec("CREATE STABLE IF NOT EXISTS power.meters " +

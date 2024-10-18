@@ -250,17 +250,26 @@ func TestParse(t *testing.T) {
 
 // 为了覆盖率100%增加的测试 ------------------------------------
 func TestT0x0704Parse(t *testing.T) {
-	msg := "7e0704003f0123456789010000000200001c000004000000080007203b7d0202633df7013800030063241001235959001c000004000000080007203b7d0202633df7013800030063241001235959b67e"
+	msg := "7e070400610123456789017fff000301001c000004000000080006eeb6ad02633df7013800030063200707192359001c000004000000080006eeb6ad02633df70138000300632007071923590020000004000000080006eeb6ad02633df701380003006320070719235902010012177e"
 	data, _ := hex.DecodeString(msg)
 	jtMsg := jt808.NewJTMessage()
 	_ = jtMsg.Decode(data)
-	handler := &T0x0704{}
-	// 强制错误情况
-	jtMsg.Body = jtMsg.Body[:63]
-	jtMsg.Body[4] = 0x00
-	if err := handler.Parse(jtMsg); !errors.Is(err, protocol.ErrBodyLengthInconsistency) {
-		t.Errorf("T0x0704 Parse() err[%v]", err)
-		return
+	{
+		var handler T0x0704
+		if err := handler.Parse(jtMsg); !errors.Is(err, protocol.ErrBodyLengthInconsistency) {
+			t.Errorf("T0x0704 Parse() err[%v]", err)
+			return
+		}
+	}
+	{
+		handler := &T0x0704{}
+		// 强制错误情况
+		jtMsg.Body = jtMsg.Body[:63]
+		jtMsg.Body[4] = 0x00
+		if err := handler.Parse(jtMsg); !errors.Is(err, protocol.ErrBodyLengthInconsistency) {
+			t.Errorf("T0x0704 Parse() err[%v]", err)
+			return
+		}
 	}
 }
 
