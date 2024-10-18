@@ -92,7 +92,7 @@ cd ./server && GOOS=linux GOARCH=amd64 go build
 ./server -nats=127.0.0.1:4222 >./server.log
 ```
 
-模拟器 模拟设备发生经纬度
+模拟器 模拟设备发送经纬度
 ``` shell
 cd ./client && GOOS=linux GOARCH=amd64 go build
 # 至多打开1w个客户端 每一个客户端发送1w个0x0200经纬度消息 1亿经纬度 (为了方便统计 不发送0x0704)

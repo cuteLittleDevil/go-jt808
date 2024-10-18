@@ -8,8 +8,12 @@ jt808服务端 模拟器 消息队列 数据库都运行在2核4G腾讯云服务
 ```
 2. 协议解析 [代码参考](./example/protocol/register/main.go)
 ``` txt
-使用自定义模拟器 可以轻松生成测试用的报文
-生成的报文 可解析成详情描述
+使用自定义模拟器 可以轻松生成测试用的报文 有详情描述
+```
+
+3. 自定义协议解析 [代码参考](./example/protocol/custom_parse/main.go)
+``` txt
+自定义附加信息处理 获取想要的扩展内容
 ```
 
 ---
@@ -98,8 +102,9 @@ func main() {
 |  taosd | 15% | 124.7MB | tdengine数据库 |
 ## 使用案例
 
-### 1. 协议解析
+### 1. 协议处理
 
+#### 1.1 协议解析
 ``` go
 func main() {
 	t := terminal.New(terminal.WithHeader(consts.JT808Protocol2013, "1")) // 自定义模拟器 2013版本
@@ -117,6 +122,7 @@ func main() {
 
 ```
 
+部分输出 [输出详情](./example/protocol/README.md#register)
 ``` txt
 模拟器生成的[7e010000300000000000010001001f006e63643132337777772e3830382e636f6d0000000000000000003736353433323101b2e2413132333435363738797e]
 [0100] 消息ID:[256] [终端-注册]
@@ -143,9 +149,48 @@ func main() {
 }
 ```
 
+#### 1.2 自定义附加信息
+
+自定义解析扩展 0x33为例 关键代码如下
+``` go
+func (l *Location) Parse(jtMsg *jt808.JTMessage) error {
+	l.T0x0200AdditionDetails.CustomAdditionContentFunc = func(id uint8, content []byte) (model.AdditionContent, bool) {
+		if id == uint8(consts.A0x01Mile) {
+			l.customMile = 100
+		}
+		if id == 0x33 {
+			value := content[0]
+			l.customValue = value
+			return model.AdditionContent{
+				Data:        content,
+				CustomValue: value,
+			}, true
+		}
+		return model.AdditionContent{}, false
+	}
+	return l.T0x0200.Parse(jtMsg)
+}
+
+func (l *Location) OnReadExecutionEvent(message *service.Message) {
+	if v, ok := tmp.Additions[consts.A0x01Mile]; ok {
+		fmt.Println(fmt.Sprintf("里程[%d] 自定义辅助里程[%d]", v.Content.Mile, tmp.customMile))
+	}
+	id := consts.JT808LocationAdditionType(0x33)
+	if v, ok := tmp.Additions[id]; ok {
+		fmt.Println("自定义未知信息扩展", v.Content.CustomValue, tmp.customValue)
+	}
+}
+```
+
+部分输出 [输出详情](./example/protocol/README.md#custom)
+``` txt
+里程[11] 自定义辅助里程[100]
+自定义未知信息扩展 32 32
+```
+
 ### 2. 自定义保存经纬度
 [详情点击](./example/simulator/server/main.go)
-- 自定义实现0x0200的消息处理 把数据发送到nats
+- 自定义实现0x0200的消息处理 把数据发送到nats 关键代码如下
 ``` go
 type T0x0200 struct {
 	model.T0x0200
