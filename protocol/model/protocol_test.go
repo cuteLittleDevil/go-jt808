@@ -29,7 +29,7 @@ func TestReplyProtocol(t *testing.T) {
 			wantReplyProtocol: 0,
 		},
 		{
-			name:              "P0x8100 终端-注册消息应答",
+			name:              "P0x8100 平台-注册消息应答",
 			args:              &P0x8100{},
 			wantProtocol:      consts.P8100RegisterRespond,
 			wantReplyProtocol: 0,
@@ -63,6 +63,18 @@ func TestReplyProtocol(t *testing.T) {
 			args:              &T0x0704{},
 			wantProtocol:      consts.T0704LocationBatchUpload,
 			wantReplyProtocol: consts.P8001GeneralRespond,
+		},
+		{
+			name:              "P0x8104 平台-查询终端参数",
+			args:              &P0x8104{},
+			wantProtocol:      consts.P8104QueryTerminalParams,
+			wantReplyProtocol: consts.T0104QueryParameter,
+		},
+		{
+			name:              "T0x0104 终端-查询参数回复",
+			args:              &T0x0104{},
+			wantProtocol:      consts.T0104QueryParameter,
+			wantReplyProtocol: 0,
 		},
 	}
 	for _, tt := range tests {

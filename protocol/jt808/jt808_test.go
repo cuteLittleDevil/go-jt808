@@ -33,6 +33,10 @@ func TestJTMessage_Decode(t *testing.T) {
 			args: "7E0801040500123456789002DE001A000221757E", // 模拟生成的 仅标志位=1为RSA
 		},
 		{
+			name: "兼容部分错误情况",
+			args: "7e0002000000000000067900007d7e",
+		},
+		{
 			name:    "不完整的数据",
 			args:    "7e010040530100",
 			wantErr: protocol.ErrUnqualifiedData,

@@ -13,7 +13,7 @@ type (
 	T0x0200AdditionDetails struct {
 		// Additions 附加信息
 		Additions map[consts.JT808LocationAdditionType]Addition `json:"additions"`
-		// 自定义解析信息
+		// CustomAdditionContentFunc 自定义解析信息
 		CustomAdditionContentFunc func(id uint8, content []byte) (AdditionContent, bool) `json:"-"`
 	}
 

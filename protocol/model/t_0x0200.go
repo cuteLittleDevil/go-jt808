@@ -38,7 +38,7 @@ func (t *T0x0200) String() string {
 	body := t.T0x0200LocationItem.encode()
 	return strings.Join([]string{
 		"数据体对象:{",
-		fmt.Sprintf("\t%s:[%x]", consts.T0200LocationReport, body),
+		fmt.Sprintf("\t%s:[%x]", t.Protocol(), body),
 		t.T0x0200LocationItem.String(),
 		"}",
 	}, "\n")

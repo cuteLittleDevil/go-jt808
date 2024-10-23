@@ -92,7 +92,7 @@ func (t *T0x0102) ReplyBody(jtMsg *jt808.JTMessage) ([]byte, error) {
 func (t *T0x0102) String() string {
 	str := "数据体对象:{\n"
 	body := t.Encode()
-	str += fmt.Sprintf("\t%s:[%x]\n", consts.T0102RegisterAuth, body)
+	str += fmt.Sprintf("\t%s:[%x]\n", t.Protocol(), body)
 	if t.Version == consts.JT808Protocol2019 {
 		str += fmt.Sprintf("\t[%02x] 鉴权码长度:[%d]\n", t.AuthCodeLen, t.AuthCodeLen)
 		str += fmt.Sprintf("\t[%x] 鉴权码:[%s]\n", t.AuthCode, t.AuthCode)

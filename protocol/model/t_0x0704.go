@@ -79,7 +79,7 @@ func (t *T0x0704) Encode() []byte {
 
 func (t *T0x0704) String() string {
 	str := "数据体对象:{\n"
-	str += fmt.Sprintf("\t%s:[%x]\n", consts.T0704LocationBatchUpload, t.Encode())
+	str += fmt.Sprintf("\t%s:[%x]\n", t.Protocol(), t.Encode())
 	str += fmt.Sprintf("\t[%04x] 数据项个数:[%d]\n", t.Num, t.Num)
 	str += fmt.Sprintf("\t[%02x] 位置汇报类型:[%d] 0-正常位置批量汇报 1-盲区补报\n", t.LocationType, t.LocationType)
 	str += fmt.Sprintf("\t位置汇报数据集合: [\n")

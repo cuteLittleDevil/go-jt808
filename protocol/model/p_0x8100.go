@@ -52,7 +52,7 @@ func (p *P0x8100) Parse(jtMsg *jt808.JTMessage) error {
 func (p *P0x8100) String() string {
 	str := "数据体对象:{\n"
 	body := p.Encode()
-	str += fmt.Sprintf("\t注册消息应答:[%x]", body)
+	str += fmt.Sprintf("\t%s:[%x]", p.Protocol(), body)
 	return strings.Join([]string{
 		str,
 		fmt.Sprintf("\t[%04x] 应答流水号:[%d]", p.RespondSerialNumber, p.RespondSerialNumber),

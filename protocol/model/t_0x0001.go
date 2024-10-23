@@ -11,9 +11,12 @@ import (
 
 type T0x0001 struct {
 	BaseHandle
+	// SerialNumber 应答流水号 对应的平台消息的流水号
 	SerialNumber uint16 `json:"serialNumber"`
-	ID           uint16 `json:"id"`
-	Result       byte   `json:"result"`
+	// ID 应答ID 对应平台消息的ID
+	ID uint16 `json:"id"`
+	// Result 结果 0-成功/确认 1-失败 2-消息有误 3-不支持
+	Result byte `json:"result"`
 }
 
 func (t *T0x0001) Protocol() consts.JT808CommandType {

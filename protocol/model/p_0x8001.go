@@ -49,7 +49,7 @@ func (p *P0x8001) Encode() []byte {
 
 func (p *P0x8001) String() string {
 	str := "数据体对象:{\n"
-	str += fmt.Sprintf("\t%s:[%10x]", consts.P8001GeneralRespond, p.Encode())
+	str += fmt.Sprintf("\t%s:[%10x]", p.Protocol(), p.Encode())
 	return strings.Join([]string{
 		str,
 		fmt.Sprintf("\t[%04x] 应答消息流水号:[%d]", p.RespondSerialNumber, p.RespondSerialNumber),

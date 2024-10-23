@@ -112,7 +112,7 @@ func TestLocationAddition(t *testing.T) {
 			}
 			if wantData, _ := io.ReadAll(f); string(wantData) != got {
 				_ = os.WriteFile(txt+".tmp", []byte(got), os.ModePerm)
-				t.Errorf("CreateDefaultCommandData()=\n%s\n want %s", got, string(wantData))
+				t.Errorf("LocationAddition =\n%s\n want %s", got, string(wantData))
 				return
 			}
 		})

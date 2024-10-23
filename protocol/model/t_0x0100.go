@@ -128,7 +128,7 @@ func (t *T0x0100) Encode() []byte {
 func (t *T0x0100) String() string {
 	str := "数据体对象:{\n"
 	data := t.Encode()
-	str += fmt.Sprintf("\t%s:[%x]", consts.T0100Register, data)
+	str += fmt.Sprintf("\t%s:[%x]", t.Protocol(), data)
 	mLen, tLen, tIDLen := t.protocolDiff()
 	f := func(arg string, size int, remark string) string {
 		format := "\t[%0" + fmt.Sprintf("%d", mLen) + "x] " + remark + "(%d):[%s]"
