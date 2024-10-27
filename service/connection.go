@@ -86,7 +86,6 @@ func (c *connection) reader() {
 				}
 				for _, msg := range msgs {
 					command := consts.JT808CommandType(msg.JTMessage.Header.ID)
-					fmt.Println(uint16(command), command.String())
 					if handler, ok := c.handles[command]; ok {
 						msg.Handler = handler
 						msg.OnReadExecutionEvent(msg)
