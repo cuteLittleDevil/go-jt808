@@ -6,12 +6,18 @@
 jt808服务端 模拟器 消息队列 数据库都运行在2核4G腾讯云服务器
 测试每秒保存5000条的情况 约5.5小时保存了近1亿的经纬度
 ```
-2. 协议交互详情 [代码参考](./example/protocol/register/main.go)
+
+2. 平台下发指令给终端 [代码参考](./example/protocol/active_reply/main.go)
+``` txt
+主动下发给设备指令 获取应答的情况
+```
+
+3. 协议交互详情 [代码参考](./example/protocol/register/main.go)
 ``` txt
 使用自定义模拟器 可以轻松生成测试用的报文 有详情描述
 ```
 
-3. 自定义协议扩展 [代码参考](./example/protocol/custom_parse/main.go)
+4. 自定义协议扩展 [代码参考](./example/protocol/custom_parse/main.go)
 ``` txt
 自定义附加信息处理 获取想要的扩展内容
 ```
@@ -186,6 +192,45 @@ func (l *Location) OnReadExecutionEvent(message *service.Message) {
 ``` txt
 里程[11] 自定义辅助里程[100]
 自定义未知信息扩展 32 32
+```
+
+#### 1.3 平台下发给终端参数 (8104查询终端参数)
+
+关键代码如下
+``` go
+	replyMsg := goJt808.SendActiveMessage(&service.ActiveMessage{
+		Key:              phone,                           // 默认使用手机号作为唯一key 根据key找到对应终端的TCP链接
+		Command:          consts.P8104QueryTerminalParams, // 下发的指令
+		Body:             nil,                             // 下发的body数据 8104为空
+		OverTimeDuration: 3 * time.Second,                 // 超时时间 设备这段时间没有回复则失败
+	})
+	var t0x0104 model.T0x0104
+	if err := t0x0104.Parse(replyMsg.JTMessage); err != nil {
+		panic(err)
+	}
+	fmt.Println(t0x0104.String())
+```
+
+部分输出 [输出详情](./example/protocol/README.md#active_reply)
+``` txt
+数据体对象:{
+        [0003] 应答消息流水号:[3]
+        [5b] 应答参数个数:[91]
+        终端-查询参数:
+
+        {
+                [0001]终端参数ID:1 终端心跳发送间隔,单位为秒(s)
+                参数长度[4] 是否存在[true]
+                [0000000a]参数值:[10]
+        }
+		...
+        {
+                [0110]终端参数ID:272 CAN总线ID单独采集设置:
+                参数长度[8] 是否存在[true]
+                [0000000000000101]参数值:[[0 0 0 0 0 0 1 1]]
+        }
+        未知终端参数id:[33 117 118 119 121 122 123 124]
+}
 ```
 
 ### 2. 自定义保存经纬度

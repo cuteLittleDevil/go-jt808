@@ -1,7 +1,7 @@
 github.com/cuteLittleDevil/go-jt808/protocol v1.2.0 h1:OdzyjWnLs7TPeMHu0NvtiIDe16OK58c/bUJCgRaWNhM=
 github.com/cuteLittleDevil/go-jt808/protocol v1.2.0/go.mod h1:LEgUyC8x29ITq6H7ycpOpgaHjjdquzYyzUXgbN5kYkI=
-github.com/cuteLittleDevil/go-jt808/service v0.1.3 h1:cpXmYdyjCUts769fIOVS/V/HtxHvBgYMjtUeDFZMbyE=
-github.com/cuteLittleDevil/go-jt808/service v0.1.3/go.mod h1:XOum4zCLCnMScfLUI5fr0acYsv3539gm3O0S5QUDttk=
+github.com/cuteLittleDevil/go-jt808/service v0.2.0 h1:OS/pOeEGk+2ymx6OybbVFj8bF414QQxKtVRWxYHdG7Q=
+github.com/cuteLittleDevil/go-jt808/service v0.2.0/go.mod h1:wEaUgMxVNP3yOo6fMCAuQ3FNemYoxi8ona2JQ+4OBJU=
 github.com/cuteLittleDevil/go-jt808/shared v1.1.0 h1:1YkXZnBmu2i7MzKZEiTh0iB6QczbZx1v+6jd4kP0CQk=
 github.com/cuteLittleDevil/go-jt808/shared v1.1.0/go.mod h1:BMWFmkDRLNjcXcuiPm/yphfWfZ6xNuTAJDkDDNhysOM=
 github.com/cuteLittleDevil/go-jt808/terminal v0.1.3 h1:ixd1gmGfJV9Y3gMpTUfJ7kmWf3z5vuN+sC1rH9XfhF4=
