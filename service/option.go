@@ -17,6 +17,7 @@ type Options struct {
 	CustomHandleFunc func() map[consts.JT808CommandType]Handler
 	Addr             string
 	Network          string
+	KeyFunc          func(message *Message) string
 }
 
 func (o *Options) Apply(opts []Option) {
@@ -49,5 +50,11 @@ func WithNetwork(network string) Option {
 func WithCustomHandleFunc(customHandleFunc func() map[consts.JT808CommandType]Handler) Option {
 	return Option{F: func(o *Options) {
 		o.CustomHandleFunc = customHandleFunc
+	}}
+}
+
+func WithKeyFunc(keyFunc func(message *Message) string) Option {
+	return Option{F: func(o *Options) {
+		o.KeyFunc = keyFunc
 	}}
 }

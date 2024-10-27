@@ -960,7 +960,7 @@ func (t *TerminalParamDetails) String() string {
 
 	if len(t.OtherContent) > 0 {
 		ids := make([]int, 0, len(t.OtherContent))
-		for id, _ := range t.OtherContent {
+		for id := range t.OtherContent {
 			ids = append(ids, int(id))
 		}
 		sort.Ints(ids)

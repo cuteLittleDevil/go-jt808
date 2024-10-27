@@ -18,3 +18,7 @@ func NewMessage(originalData []byte) *Message {
 		OriginalData: originalData,
 	}
 }
+
+func newErrMessage(err error) *Message {
+	return &Message{WriteErr: err}
+}

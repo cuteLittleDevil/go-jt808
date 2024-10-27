@@ -9,13 +9,23 @@ import (
 
 type GoJT808 struct {
 	opts *Options
+	*sessionManager
 }
 
 func New(opts ...Option) *GoJT808 {
 	options := NewOptions(opts)
-	return &GoJT808{
+	g := &GoJT808{
 		opts: options,
 	}
+	keyFunc := func(message *Message) string {
+		return message.Header.TerminalPhoneNo
+	}
+	if g.opts.KeyFunc != nil {
+		keyFunc = g.opts.KeyFunc
+	}
+	g.sessionManager = newSessionManager(keyFunc)
+	go g.sessionManager.run()
+	return g
 }
 
 func (g *GoJT808) Run() {
@@ -49,9 +59,13 @@ func (g *GoJT808) Run() {
 				handles[k] = v
 			}
 		}
-		conn := newConnection(c, handles)
+		conn := newConnection(c, handles, g.sessionManager.join, g.sessionManager.leave)
 		go conn.Start()
 	}
+}
+
+func (g *GoJT808) SendActiveMessage(activeMsg *ActiveMessage) *Message {
+	return g.sessionManager.write(activeMsg)
 }
 
 func (g *GoJT808) createDefaultHandle() map[consts.JT808CommandType]Handler {
@@ -61,5 +75,7 @@ func (g *GoJT808) createDefaultHandle() map[consts.JT808CommandType]Handler {
 		consts.T0002HeartBeat:           newDefaultHandle(&model.T0x0002{}),
 		consts.T0200LocationReport:      newDefaultHandle(&model.T0x0200{}),
 		consts.T0704LocationBatchUpload: newDefaultHandle(&model.T0x0704{}),
+		consts.T0104QueryParameter:      newDefaultHandle(&model.T0x0104{}),
+		consts.P8104QueryTerminalParams: newDefaultHandle(&model.P0x8104{}),
 	}
 }

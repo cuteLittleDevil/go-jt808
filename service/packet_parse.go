@@ -21,13 +21,13 @@ func newPackageParse() *packageParse {
 }
 
 func (p *packageParse) clear() {
-	p.historyData = nil
+	clear(p.historyData)
 	for id, datas := range p.subcontractingRecord {
 		slog.Warn("package no complete",
 			slog.Any("id", id),
 			slog.Int("data sum", len(datas)))
 	}
-	p.subcontractingRecord = nil
+	clear(p.subcontractingRecord)
 }
 
 // parse 返回一个或者多个完成的包
