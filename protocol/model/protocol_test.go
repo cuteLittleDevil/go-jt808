@@ -76,6 +76,18 @@ func TestReplyProtocol(t *testing.T) {
 			wantProtocol:      consts.T0104QueryParameter,
 			wantReplyProtocol: 0,
 		},
+		{
+			name:              "P0x9003 平台-查询终端音视频属性",
+			args:              &P0x9003{},
+			wantProtocol:      consts.P9003QueryTerminalAudioVideoProperties,
+			wantReplyProtocol: consts.T1003UploadAudioVideoAttr,
+		},
+		{
+			name:              "T0x1003 终端-查询参数回复",
+			args:              &T0x1003{},
+			wantProtocol:      consts.T1003UploadAudioVideoAttr,
+			wantReplyProtocol: 0,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

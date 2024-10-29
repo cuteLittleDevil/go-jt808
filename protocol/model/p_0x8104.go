@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 	"strings"
@@ -33,7 +34,7 @@ func (p *P0x8104) ReplyBody(_ *jt808.JTMessage) ([]byte, error) {
 func (p *P0x8104) String() string {
 	return strings.Join([]string{
 		"数据体对象:{",
-		"\t查询终端参数:null",
+		fmt.Sprintf("\t%s:null%x", p.Protocol(), p.Encode()),
 		"}",
 	}, "\n")
 }

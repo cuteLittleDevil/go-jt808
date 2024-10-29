@@ -336,6 +336,34 @@ func TestParse(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "P0x9003 平台-查询终端音视频属性",
+			args: args{
+				msg:      "7e9003400001000000000144199999990003147e",
+				Handler:  &P0x9003{},
+				bodyLens: nil,
+			},
+			fields: &P0x9003{},
+		},
+		{
+			name: "T0x1003 终端-上传音视频属性",
+			args: args{
+				msg:      "7e1003000a12345678901200017f040200944901200808177e",
+				Handler:  &T0x1003{},
+				bodyLens: []int{1},
+			},
+			fields: &T0x1003{
+				EnterAudioEncoding:       127,
+				EnterAudioChannelsNumber: 4,
+				EnterAudioSampleRate:     2,
+				EnterAudioSampleDigits:   0,
+				AudioFrameLength:         37961,
+				HasSupportedAudioOutput:  1,
+				VideoEncoding:            32,
+				TerminalSupportedMaxNumberOfAudioPhysicalChannels: 8,
+				TerminalSupportedMaxNumberOfVideoPhysicalChannels: 8,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

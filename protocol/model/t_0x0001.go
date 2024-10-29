@@ -44,7 +44,7 @@ func (t *T0x0001) Encode() []byte {
 
 func (t *T0x0001) String() string {
 	str := "数据体对象:{\n"
-	str += fmt.Sprintf("\t%s:[%10x]", consts.T0001GeneralRespond, t.Encode())
+	str += fmt.Sprintf("\t%s:[%10x]", t.Protocol(), t.Encode())
 	return strings.Join([]string{
 		str,
 		fmt.Sprintf("\t[%04x] 应答流水号:[%d]", t.SerialNumber, t.SerialNumber),

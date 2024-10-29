@@ -17,7 +17,7 @@ func (t *T0x0002) Encode() []byte {
 func (t *T0x0002) String() string {
 	return strings.Join([]string{
 		"数据体对象:{",
-		fmt.Sprintf("\t%s: nil", t.Protocol()),
+		fmt.Sprintf("\t%s:null%x", t.Protocol(), t.Encode()),
 		"}",
 	}, "\n")
 }

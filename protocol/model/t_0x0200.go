@@ -35,7 +35,7 @@ func (t *T0x0200) Encode() []byte {
 }
 
 func (t *T0x0200) String() string {
-	body := t.T0x0200LocationItem.encode()
+	body := t.Encode()
 	return strings.Join([]string{
 		"数据体对象:{",
 		fmt.Sprintf("\t%s:[%x]", t.Protocol(), body),
