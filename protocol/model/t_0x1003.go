@@ -44,7 +44,6 @@ func (t *T0x1003) Parse(jtMsg *jt808.JTMessage) error {
 	if len(body) != 10 {
 		return protocol.ErrBodyLengthInconsistency
 	}
-	binary.BigEndian.Uint16(body[:2])
 	t.EnterAudioEncoding = body[0]
 	t.EnterAudioChannelsNumber = body[1]
 	t.EnterAudioSampleRate = body[2]

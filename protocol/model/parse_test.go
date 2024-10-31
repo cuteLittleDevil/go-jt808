@@ -364,6 +364,37 @@ func TestParse(t *testing.T) {
 				TerminalSupportedMaxNumberOfVideoPhysicalChannels: 8,
 			},
 		},
+		{
+			name: "P0x9101 平台-实时音视频传输请求",
+			args: args{
+				msg:      "7e9101001712345678901200010f3132332e3132332e3132332e313233030440c60c0100a17e",
+				Handler:  &P0x9101{},
+				bodyLens: []int{0, 2},
+			},
+			fields: &P0x9101{
+				ServerIPLen:  15,
+				ServerIPAddr: "123.123.123.123",
+				TcpPort:      772,
+				UdpPort:      16582,
+				ChannelNo:    12,
+				DataType:     1,
+				StreamType:   0,
+			},
+		},
+		{
+			name: "T0x1005 终端-上传乘客流量",
+			args: args{
+				msg:      "7E100500101234567890120001241001000000241002001001000200138D7E",
+				Handler:  &T0x1005{},
+				bodyLens: []int{15},
+			},
+			fields: &T0x1005{
+				StartTime:    "2024-10-01 00:00:00",
+				EndTime:      "2024-10-02 00:10:01",
+				BoardNumber:  2,
+				AlightNumber: 19,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

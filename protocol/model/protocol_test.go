@@ -88,6 +88,18 @@ func TestReplyProtocol(t *testing.T) {
 			wantProtocol:      consts.T1003UploadAudioVideoAttr,
 			wantReplyProtocol: 0,
 		},
+		{
+			name:              "P0x9101 平台-实时音视频传输请求",
+			args:              &P0x9101{},
+			wantProtocol:      consts.P9101RealTimeAudioVideoRequest,
+			wantReplyProtocol: consts.T0001GeneralRespond,
+		},
+		{
+			name:              "T0x1005 终端-上传乘客流量",
+			args:              &T0x1005{},
+			wantProtocol:      consts.T1005UploadPassengerFlow,
+			wantReplyProtocol: 0,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -173,13 +173,7 @@ func (tl *T0x0200LocationItem) encode() []byte {
 	binary.BigEndian.PutUint16(data[16:18], tl.Altitude)
 	binary.BigEndian.PutUint16(data[18:20], tl.Speed)
 	binary.BigEndian.PutUint16(data[20:22], tl.Direction)
-	bcdTime := strings.ReplaceAll(tl.DateTime, "-", "")
-	bcdTime = strings.ReplaceAll(bcdTime, ":", "")
-	bcdTime = strings.ReplaceAll(bcdTime, " ", "")
-	if len(bcdTime) == 14 {
-		bcdTime = bcdTime[2:]
-	}
-	data = append(data, utils.Time2BCD(bcdTime)...)
+	data = append(data, utils.Time2BCD(tl.DateTime)...)
 	return data
 }
 

@@ -6,6 +6,7 @@ import (
 	"golang.org/x/text/encoding/simplifiedchinese"
 	"golang.org/x/text/transform"
 	"io"
+	"strings"
 )
 
 func Bcd2Dec(data []byte) string {
@@ -19,6 +20,14 @@ func Bcd2Dec(data []byte) string {
 }
 
 func Time2BCD(time string) []byte {
+	if strings.Contains(time, ":") {
+		time = strings.ReplaceAll(time, "-", "")
+		time = strings.ReplaceAll(time, ":", "")
+		time = strings.ReplaceAll(time, " ", "")
+		if len(time) == 14 {
+			time = time[2:]
+		}
+	}
 	if len(time)%2 != 0 {
 		time = "0" + time
 	}

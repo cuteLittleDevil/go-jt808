@@ -134,6 +134,16 @@ func TestReply(t *testing.T) {
 				result2013: "7e0000000012345678901200008a7e",
 			},
 		},
+		{
+			name: "P0x9101 平台-实时音视频传输请求",
+			args: args{
+				Handler: &P0x9101{},
+				msg2013: "7e9101001712345678901200010f3132332e3132332e3132332e313233030440c60c0100a17e",
+			},
+			want: want{
+				result2013: "7e0001000012345678901200008b7e",
+			},
+		},
 	}
 	checkReplyInfo := func(t *testing.T, msg string, handler Handler, expectedResult string) {
 		if msg == "" {
@@ -180,9 +190,28 @@ func TestT0x0102Reply(t *testing.T) {
 	}
 }
 
-func TestP0x8104ReplyBody(t *testing.T) {
-	handler := &P0x8104{}
-	if _, err := handler.ReplyBody(nil); err != nil {
-		t.Errorf("P0x8104 ReplyBody = [%x]", err)
+func TestReplyBody(t *testing.T) {
+	type Handler interface {
+		ReplyBody(_ *jt808.JTMessage) ([]byte, error)
+	}
+	tests := []struct {
+		name string
+		args Handler
+	}{
+		{
+			name: "P0x8104 平台-查询终端参数",
+			args: &P0x8104{},
+		},
+		{
+			name: "T0x1005 终端-上传乘客流量",
+			args: &T0x1005{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got, _ := tt.args.ReplyBody(nil); got != nil {
+				t.Errorf("ReplyBody() got = %s\n want nil", got)
+			}
+		})
 	}
 }
