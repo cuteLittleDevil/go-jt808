@@ -130,6 +130,18 @@ func TestReplyProtocol(t *testing.T) {
 			wantProtocol:      consts.T1205UploadAudioVideoResourceList,
 			wantReplyProtocol: 0,
 		},
+		{
+			name:              "P0x9206 平台-文件上传指令",
+			args:              &P0x9206{},
+			wantProtocol:      consts.P9206FileUploadInstructions,
+			wantReplyProtocol: consts.T1206FileUploadCompleteNotice,
+		},
+		{
+			name:              "T0x1206 终端-文件上传完成通知",
+			args:              &T0x1206{},
+			wantProtocol:      consts.T1206FileUploadCompleteNotice,
+			wantReplyProtocol: 0,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -180,6 +180,20 @@ func TestReply(t *testing.T) {
 				msg2013: "7e92070003123456789012000169fd028b7e",
 			},
 		},
+		{
+			name: "P0x9206 平台-文件上传指令",
+			args: args{
+				Handler: &P0x9206{},
+				msg2013: "7e9206004512345678901200010b3139322e3136382e312e312b2d08757365726e616d650870617373776f72640b2f616c61726d5f66696c6501200726000000200726232359000000000000000000010101227e",
+			},
+		},
+		{
+			name: "T0x1206 终端-文件上传完成通知",
+			args: args{
+				Handler: &T0x1206{},
+				msg2013: "7e120640030112345678901234567890ffff1b8a01c67e",
+			},
+		},
 	}
 	checkReplyInfo := func(t *testing.T, msg string, handler Handler, expectedResult string) {
 		if msg == "" {

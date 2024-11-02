@@ -10,6 +10,14 @@ type T0x0002 struct {
 	BaseHandle
 }
 
+func (t *T0x0002) Protocol() consts.JT808CommandType {
+	return consts.T0002HeartBeat
+}
+
+func (t *T0x0002) ReplyProtocol() consts.JT808CommandType {
+	return consts.P8001GeneralRespond
+}
+
 func (t *T0x0002) Encode() []byte {
 	return nil
 }
@@ -20,12 +28,4 @@ func (t *T0x0002) String() string {
 		fmt.Sprintf("\t%s:null%x", t.Protocol(), t.Encode()),
 		"}",
 	}, "\n")
-}
-
-func (t *T0x0002) Protocol() consts.JT808CommandType {
-	return consts.T0002HeartBeat
-}
-
-func (t *T0x0002) ReplyProtocol() consts.JT808CommandType {
-	return consts.P8001GeneralRespond
 }

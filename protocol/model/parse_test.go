@@ -475,6 +475,45 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
+			name: "P0x9206 平台-文件上传指令",
+			args: args{
+				msg:      "7e9206004512345678901200010b3139322e3136382e312e312b2d08757365726e616d650870617373776f72640b2f616c61726d5f66696c6501200726000000200726232359000000000000000000010101227e",
+				Handler:  &P0x9206{},
+				bodyLens: []int{0, 14, 23, 32, 44},
+			},
+			fields: &P0x9206{
+				FTPAddrLen:           11,
+				FTPAddr:              "192.168.1.1",
+				Port:                 11053,
+				UsernameLen:          8,
+				Username:             "username",
+				PasswordLen:          8,
+				Password:             "password",
+				FileUploadPathLen:    11,
+				FileUploadPath:       "/alarm_file",
+				ChannelNo:            1,
+				StartTime:            "2020-07-26 00:00:00",
+				EndTime:              "2020-07-26 23:23:59",
+				AlarmFlag:            0,
+				MediaType:            0,
+				StreamType:           1,
+				MemoryPosition:       1,
+				TaskExecuteCondition: 1,
+			},
+		},
+		{
+			name: "T0x1206 终端-文件上传完成通知",
+			args: args{
+				msg:      "7e120640030112345678901234567890ffff1b8a01c67e",
+				Handler:  &T0x1206{},
+				bodyLens: []int{1},
+			},
+			fields: &T0x1206{
+				RespondSerialNumber: 7050,
+				Result:              1,
+			},
+		},
+		{
 			name: "P0x9207 平台-文件上传控制",
 			args: args{
 				msg:      "7e92070003123456789012000169fd028b7e",
