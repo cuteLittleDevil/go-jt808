@@ -433,6 +433,48 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
+			name: "P0x9205 平台-查询资源列表",
+			args: args{
+				msg:      "7e920500181234567890120001e720070719235920070719235900000000000000009b6e00167e",
+				Handler:  &P0x9205{},
+				bodyLens: []int{1},
+			},
+			fields: &P0x9205{
+				BaseHandle:  BaseHandle{},
+				ChannelNo:   231,
+				StartTime:   "2020-07-07 19:23:59",
+				EndTime:     "2020-07-07 19:23:59",
+				AlarmFlag:   0,
+				MediaType:   155,
+				StreamType:  110,
+				StorageType: 0,
+			},
+		},
+		{
+			name: "T0x1205 终端-上传音视频资源列表",
+			args: args{
+				msg:      "7e1205002212345678901200000000000000010124110200000024110200010200000000000004000101010000000bb27e",
+				Handler:  &T0x1205{},
+				bodyLens: []int{1, 7},
+			},
+			fields: &T0x1205{
+				SerialNumber:            0,
+				AudioVideoResourceTotal: 1,
+				AudioVideoResourceList: []T0x1205AudioVideoResource{
+					{
+						ChannelNo:              1,
+						StartTime:              "2024-11-02 00:00:00",
+						EndTime:                "2024-11-02 00:01:02",
+						AlarmFlag:              1024,
+						AudioVideoResourceType: 1,
+						StreamType:             1,
+						MemoryType:             1,
+						FileSizeByte:           11,
+					},
+				},
+			},
+		},
+		{
 			name: "P0x9207 平台-文件上传控制",
 			args: args{
 				msg:      "7e92070003123456789012000169fd028b7e",
