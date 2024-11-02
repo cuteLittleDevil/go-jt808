@@ -1,7 +1,6 @@
 package jt808
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"github.com/cuteLittleDevil/go-jt808/protocol"
@@ -141,20 +140,39 @@ func (h *Header) decode(data []byte) error {
 }
 
 func (h *Header) Encode(body []byte) []byte {
-	buf := new(bytes.Buffer)
-	_ = binary.Write(buf, binary.BigEndian, h.ReplyID)           // 写ID 回复消息的ID
-	h.Property.BodyDayaLen = uint16(len(body))                   // 消息的长度改为回复的body长度
-	_ = binary.Write(buf, binary.BigEndian, h.Property.encode()) // 写消息属性
+	data := make([]byte, 4, 30)
+	binary.BigEndian.PutUint16(data[:2], h.ReplyID)
+	h.Property.BodyDayaLen = uint16(len(body)) // 消息的长度改为回复的body长度
+	binary.BigEndian.PutUint16(data[2:4], h.Property.encode())
 	if h.ProtocolVersion == consts.JT808Protocol2019 {
 		// 2019版本的标识
-		buf.WriteByte(0x01)
+		data = append(data, 0x01)
 	}
-	buf.Write(h.bcdTerminalPhoneNo)                                 // 写终端手机号
-	_ = binary.Write(buf, binary.BigEndian, h.PlatformSerialNumber) // 写流水号 平台回复的流水号
-	buf.Write(body)                                                 // 写消息体
-	code := utils.CreateVerifyCode(buf.Bytes())                     // 校验码
-	buf.WriteByte(code)
-	return escape(buf.Bytes()) // 转义
+	data = append(data, h.bcdTerminalPhoneNo...)                                            // 写终端手机号
+	data = append(data, byte(h.PlatformSerialNumber>>8), byte(h.PlatformSerialNumber&0xFF)) // 写流水号 平台回复的流水号
+	data = append(data, body...)                                                            // 写消息体
+	code := utils.CreateVerifyCode(data)                                                    // 校验码
+	data = append(data, code)
+	return escape(data) // 转义
+}
+
+func (h *Header) SubPackageEncode(sum uint16, num uint16) []byte {
+	data := make([]byte, 4, 30)
+	binary.BigEndian.PutUint16(data[:2], h.ID)
+	h.Property.BodyDayaLen = 0
+	h.Property.PacketFragmented = 1
+	binary.BigEndian.PutUint16(data[2:4], h.Property.encode())
+	if h.ProtocolVersion == consts.JT808Protocol2019 {
+		// 2019版本的标识
+		data = append(data, 0x01)
+	}
+	data = append(data, h.bcdTerminalPhoneNo...)                                            // 写终端手机号
+	data = append(data, byte(h.PlatformSerialNumber>>8), byte(h.PlatformSerialNumber&0xFF)) // 写流水号 平台回复的流水号
+	data = append(data, byte(sum>>8), byte(sum&0xFF))                                       // 消息总包数
+	data = append(data, byte(num>>8), byte(num&0xFF))                                       // 序号
+	code := utils.CreateVerifyCode(data)                                                    // 校验码
+	data = append(data, code)
+	return escape(data) // 转义
 }
 
 func (p *BodyProperty) decode(data []byte) {
