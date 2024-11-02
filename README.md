@@ -70,9 +70,10 @@ func main() {
 | 描述                | 链接                         |
 |--------------------|------------------------------|
 | 飞哥的开发内功修炼    | https://github.com/yanfeizhang/coder-kung-fu?tab=readme-ov-file |
-| 协议文档       | https://gitee.com/yezhihao/jt808-server/tree/master/协议文档 |
-| 协议解析网站  | https://jttools.smallchi.cn/jt808 |
-| bcd转dec编码   | https://github.com/deatil/lakego-admin/tree/main/pkg/lakego-pkg/go-encoding/bcd |
+| 协议文档 (PDF整理)   | https://gitee.com/yezhihao/jt808-server/tree/master/协议文档 |
+| 协议文档 (官网) 	 | https://jtst.mot.gov.cn/hb/search/stdHBView?id=a3011cd31e6602ec98f26c35329e88e4 |
+| 协议解析网站  		 | https://jttools.smallchi.cn/jt808 |
+| bcd转dec编码   	 | https://github.com/deatil/lakego-admin/tree/main/pkg/lakego-pkg/go-encoding/bcd |
 
 ## 性能测试
 - java模拟器(QQ群下载 373203450)
@@ -277,6 +278,7 @@ func (t *T0x0200) OnWriteExecutionEvent(_ service.Message) {}
 ### 4. jt1078相关
 
 ## 协议对接完成情况
+### JT808 终端通讯协议消息对照表
 
 | 序号  |    消息 ID    | 完成情况 |  测试情况  | 消息体名称                     |  2019 版本   | 2011 版本 |
 | :---: | :-----------: | :------: | :--------: | :----------------------- | :----------: | :-------: |
@@ -290,3 +292,20 @@ func (t *T0x0200) OnWriteExecutionEvent(_ service.Message) {}
 |  11   |    0x0104     |    ✅    |     ✅     | 查询终端参数应答			|				|           |
 |  18   |    0x0200     |    ✅    |     ✅     | 位置信息汇报				| 增加附加信息 	|  被修改	|
 |  49   |    0x0704     |    ✅    |     ✅     | 定位数据批量上传			|     修改		|  被新增	|
+
+### JT1078 扩展 JT808 议消息对照表
+
+| 序号  |    消息 ID     | 完成情况 	| 测试情况 | 消息体名称 |
+|  13   |    0x1003     |    ✅    |    ✅    | 终端上传音视频属性       |
+|  14   |    0x1005     |    ✅    |    ✅    | 终端上传乘客流量         |
+|  15   |    0x1205     |    ✅    |    ✅    | 终端上传音视频资源列表   |
+|  16   |    0x1206     |    ✅    |    ✅    | 文件上传完成通知         |
+|  17   |    0x9003     |    ✅    |    ✅    | 平台-查询终端音视频属性       |
+|  18   |    0x9101     |    ✅    |    ✅    | 平台-实时音视频传输请求       |
+|  19   |    0x9102     |    ✅    |    ✅    | 平台-音视频实时传输控制       |
+|  20   |    0x9105     |    ✅    |    ✅    | 平台-实时音视频传输状态通知   |
+|  21   |    0x9201     |    ✅    |    ✅    | 平台-下发远程录像回放请求 |
+|  22   |    0x9202     |    ✅    |    ✅    | 平台-下发远程录像回放控制 |
+|  23   |    0x9205     |    ✅    |    ✅    | 平台-查询资源列表             |
+|  24   |    0x9206     |    ✅    |    ✅    | 平台-文件上传指令             |
+|  25   |    0x9207     |    ✅    |    ✅    | 平台-文件上传控制             |
