@@ -120,9 +120,6 @@ func TestReply(t *testing.T) {
 				Handler: &P0x9003{},
 				msg2013: "7e9003400001000000000144199999990003147e",
 			},
-			want: want{
-				result2013: "7e1003400001000000000144199999990000977e",
-			},
 		},
 		{
 			name: "T0x1003 终端-上传音视频属性",
@@ -140,8 +137,19 @@ func TestReply(t *testing.T) {
 				Handler: &P0x9101{},
 				msg2013: "7e9101001712345678901200010f3132332e3132332e3132332e313233030440c60c0100a17e",
 			},
-			want: want{
-				result2013: "7e0001000012345678901200008b7e",
+		},
+		{
+			name: "P0x8104 平台-查询终端参数",
+			args: args{
+				Handler: &P0x8104{},
+				msg2013: "7e8104400001000000000144199999990003027e",
+			},
+		},
+		{
+			name: "P0x9102 平台-音视频实时传输控制",
+			args: args{
+				Handler: &P0x9102{},
+				msg2013: "7e9101001712345678901200010f3132332e3132332e3132332e313233030440c60c0100a17e",
 			},
 		},
 	}
@@ -187,31 +195,5 @@ func TestT0x0102Reply(t *testing.T) {
 	if _, err := handler.ReplyBody(jtMsg); !errors.Is(err, protocol.ErrBodyLengthInconsistency) {
 		t.Errorf("T0x0102 ReplyBody() err[%v]", err)
 		return
-	}
-}
-
-func TestReplyBody(t *testing.T) {
-	type Handler interface {
-		ReplyBody(_ *jt808.JTMessage) ([]byte, error)
-	}
-	tests := []struct {
-		name string
-		args Handler
-	}{
-		{
-			name: "P0x8104 平台-查询终端参数",
-			args: &P0x8104{},
-		},
-		{
-			name: "T0x1005 终端-上传乘客流量",
-			args: &T0x1005{},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got, _ := tt.args.ReplyBody(nil); got != nil {
-				t.Errorf("ReplyBody() got = %s\n want nil", got)
-			}
-		})
 	}
 }

@@ -395,6 +395,20 @@ func TestParse(t *testing.T) {
 				AlightNumber: 19,
 			},
 		},
+		{
+			name: "P0x9102 平台-音视频实时传输控制",
+			args: args{
+				msg:      "7e910240040112345678901234567890ffff08010203de7e",
+				Handler:  &P0x9102{},
+				bodyLens: []int{3},
+			},
+			fields: &P0x9102{
+				ChannelNo:           8,
+				ControlCmd:          1,
+				CloseAudioVideoData: 2,
+				StreamType:          3,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

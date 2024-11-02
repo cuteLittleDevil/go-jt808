@@ -27,8 +27,8 @@ func (p *P0x8104) Encode() []byte {
 	return nil
 }
 
-func (p *P0x8104) ReplyBody(_ *jt808.JTMessage) ([]byte, error) {
-	return nil, nil
+func (p *P0x8104) HasReply() bool {
+	return false
 }
 
 func (p *P0x8104) String() string {
