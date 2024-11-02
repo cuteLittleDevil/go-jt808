@@ -61,19 +61,17 @@ func main() {
 
 ---
 - 目前(2024-10-01)前的go语言版本个人觉得都不好因此都不推荐参考 推荐参考资料如下
-## 参考项目
+## 参考资料
 | 项目名称           | 语言   | 日期       | Star 数 | 链接                                       |
 |--------------------|--------|------------|---------|--------------------------------------------|
 | JT808           | C#     | 2024-10-01 | 534       | [JT808 C#](https://github.com/SmallChi/JT808.git) |
 | jt808-server    | Java   | 2024-10-01 | 1.4k+     | [JT808 Java](https://gitee.com/yezhihao/jt808-server.git) |
 
-| 描述                | 链接                         |
-|--------------------|------------------------------|
-| 飞哥的开发内功修炼    | https://github.com/yanfeizhang/coder-kung-fu?tab=readme-ov-file |
-| 协议文档 (PDF整理)   | https://gitee.com/yezhihao/jt808-server/tree/master/协议文档 |
-| 协议文档 (官网) 	 | https://jtst.mot.gov.cn/hb/search/stdHBView?id=a3011cd31e6602ec98f26c35329e88e4 |
-| 协议解析网站  		 | https://jttools.smallchi.cn/jt808 |
-| bcd转dec编码   	 | https://github.com/deatil/lakego-admin/tree/main/pkg/lakego-pkg/go-encoding/bcd |
+- [飞哥的开发内功修炼](https://github.com/yanfeizhang/coder-kung-fu?tab=readme-ov-file)
+- [协议文档 (PDF整理)](https://gitee.com/yezhihao/jt808-server/tree/master/协议文档 )
+- [协议文档 (官网)](https://jtst.mot.gov.cn/hb/search/stdHBView?id=a3011cd31e6602ec98f26c35329e88e4)
+- [协议解析网站](https://jttools.smallchi.cn/jt808)
+- [bcd转dec编码](https://github.com/deatil/lakego-admin/tree/main/pkg/lakego-pkg/go-encoding/bcd)
 
 ## 性能测试
 - java模拟器(QQ群下载 373203450)
@@ -296,6 +294,7 @@ func (t *T0x0200) OnWriteExecutionEvent(_ service.Message) {}
 ### JT1078 扩展 JT808 议消息对照表
 
 | 序号  |    消息 ID     | 完成情况 	| 测试情况 | 消息体名称 |
+| :---: | :-----------: | :------: | :--------: | :----------------------- |
 |  13   |    0x1003     |    ✅    |    ✅    | 终端上传音视频属性       |
 |  14   |    0x1005     |    ✅    |    ✅    | 终端上传乘客流量         |
 |  15   |    0x1205     |    ✅    |    ✅    | 终端上传音视频资源列表   |

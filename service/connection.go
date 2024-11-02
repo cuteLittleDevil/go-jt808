@@ -195,6 +195,13 @@ func (c *connection) onActiveEvent(activeMsg *ActiveMessage, record map[uint16]*
 	data := header.Encode(activeMsg.Body)
 	activeMsg.Data = data
 	_, err := c.conn.Write(data)
+	if v, ok := c.handles[activeMsg.Command]; ok {
+		msg := NewMessage(data)
+		if err != nil {
+			msg.WriteErr = errors.Join(ErrWriteDataFail, err)
+		}
+		v.OnWriteExecutionEvent(*msg)
+	}
 	if err != nil {
 		slog.Warn("write fail",
 			slog.String("data", fmt.Sprintf("%x", data)),
@@ -219,13 +226,6 @@ func (c *connection) onActiveEvent(activeMsg *ActiveMessage, record map[uint16]*
 		activeMsg.replyChan <- newErrMessage(errors.Join(ErrWriteDataOverTime,
 			fmt.Errorf("overtime is [%.2f]second", duration.Seconds())))
 	}(activeMsg, num)
-	if v, ok := c.handles[activeMsg.Command]; ok {
-		msg := NewMessage(data)
-		if err != nil {
-			msg.WriteErr = errors.Join(ErrWriteDataFail, err)
-		}
-		v.OnWriteExecutionEvent(*msg)
-	}
 }
 
 func (c *connection) onActiveRespondEvent(record map[uint16]*ActiveMessage, msg *Message) bool {
