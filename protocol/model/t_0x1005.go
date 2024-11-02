@@ -53,10 +53,6 @@ func (t *T0x1005) Encode() []byte {
 	return data
 }
 
-func (t *T0x1005) ReplyBody(_ *jt808.JTMessage) ([]byte, error) {
-	return nil, nil
-}
-
 func (t *T0x1005) String() string {
 	return strings.Join([]string{
 		"数据体对象:{",
