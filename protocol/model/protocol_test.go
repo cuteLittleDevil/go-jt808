@@ -106,6 +106,18 @@ func TestReplyProtocol(t *testing.T) {
 			wantProtocol:      consts.P9102AudioVideoControl,
 			wantReplyProtocol: consts.T0001GeneralRespond,
 		},
+		{
+			name:              "P0x9201 平台-下发远程录像回放请求",
+			args:              &P0x9201{},
+			wantProtocol:      consts.P9201SendVideoRecordRequest,
+			wantReplyProtocol: consts.T0001GeneralRespond,
+		},
+		{
+			name:              "P0x9207 平台-文件上传控制",
+			args:              &P0x9207{},
+			wantProtocol:      consts.P9207FileUploadControl,
+			wantReplyProtocol: consts.T0001GeneralRespond,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -409,6 +409,41 @@ func TestParse(t *testing.T) {
 				StreamType:          3,
 			},
 		},
+		{
+			name: "P0x9201 平台-下发远程录像回放请求",
+			args: args{
+				msg:      "7e9201002412345678901200010d31322e31322e3132332e313233a7b93c6c320200000000200707192359200707192359617e",
+				Handler:  &P0x9201{},
+				bodyLens: []int{0, 3},
+			},
+			fields: &P0x9201{
+				BaseHandle:   BaseHandle{},
+				ServerIPLen:  13,
+				ServerIPAddr: "12.12.123.123",
+				TcpPort:      42937,
+				UdpPort:      15468,
+				ChannelNo:    50,
+				MediaType:    2,
+				StreamType:   0,
+				MemoryType:   0,
+				PlaybackWay:  0,
+				PlaySpeed:    0,
+				StartTime:    "2020-07-07 19:23:59",
+				EndTime:      "2020-07-07 19:23:59",
+			},
+		},
+		{
+			name: "P0x9207 平台-文件上传控制",
+			args: args{
+				msg:      "7e92070003123456789012000169fd028b7e",
+				Handler:  &P0x9207{},
+				bodyLens: []int{1},
+			},
+			fields: &P0x9207{
+				RespondSerialNumber: 27133,
+				UploadControl:       2,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

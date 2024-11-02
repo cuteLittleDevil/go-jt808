@@ -152,6 +152,20 @@ func TestReply(t *testing.T) {
 				msg2013: "7e9101001712345678901200010f3132332e3132332e3132332e313233030440c60c0100a17e",
 			},
 		},
+		{
+			name: "P0x9201 平台-下发远程录像回放请求",
+			args: args{
+				Handler: &P0x9201{},
+				msg2013: "7e9201002412345678901200010d31322e31322e3132332e313233a7b93c6c320200000000200707192359200707192359617e",
+			},
+		},
+		{
+			name: "P0x9207 平台-文件上传控制",
+			args: args{
+				Handler: &P0x9207{},
+				msg2013: "7e92070003123456789012000169fd028b7e",
+			},
+		},
 	}
 	checkReplyInfo := func(t *testing.T, msg string, handler Handler, expectedResult string) {
 		if msg == "" {
