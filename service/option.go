@@ -9,14 +9,16 @@ type Option struct {
 }
 
 const (
-	defaultAddr    = ":8888"
-	defaultNetwork = "tcp"
+	defaultAddr             = ":8888"
+	defaultNetwork          = "tcp"
+	defaultHasFilterSubPack = true // 读写事件是否过滤分包的情况
 )
 
 type Options struct {
 	CustomHandleFunc func() map[consts.JT808CommandType]Handler
 	Addr             string
 	Network          string
+	HasFilterSubPack bool
 	KeyFunc          func(message *Message) string
 }
 
@@ -28,8 +30,9 @@ func (o *Options) Apply(opts []Option) {
 
 func NewOptions(opts []Option) *Options {
 	options := &Options{
-		Addr:    defaultAddr,
-		Network: defaultNetwork,
+		Addr:             defaultAddr,
+		Network:          defaultNetwork,
+		HasFilterSubPack: defaultHasFilterSubPack,
 	}
 	options.Apply(opts)
 	return options
@@ -44,6 +47,12 @@ func WithHostPorts(address string) Option {
 func WithNetwork(network string) Option {
 	return Option{F: func(o *Options) {
 		o.Network = network
+	}}
+}
+
+func WithHasFilterSubPack(hasFilter bool) Option {
+	return Option{F: func(o *Options) {
+		o.HasFilterSubPack = hasFilter
 	}}
 }
 

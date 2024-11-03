@@ -10,6 +10,7 @@ type Message struct {
 	OriginalData []byte `json:"-"`
 	ReplyData    []byte `json:"-"`
 	WriteErr     error  `json:"-"`
+	hasComplete  bool
 }
 
 func NewMessage(originalData []byte) *Message {

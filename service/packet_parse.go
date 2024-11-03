@@ -3,19 +3,30 @@ package service
 import (
 	"bytes"
 	"fmt"
+	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
+	"github.com/cuteLittleDevil/go-jt808/protocol/model"
 	"log/slog"
+	"time"
 )
 
-type packageParse struct {
-	historyData []byte
-	// 1. 暂不支持补传分包
-	// 2. 必须全部完成才行 有没有收到的部分话 下一次这个id的包发送时丢弃
-	subcontractingRecord map[uint16][][]byte
-}
+type (
+	packageParse struct {
+		historyData          []byte
+		subcontractingRecord map[uint16][][]byte
+		timeoutRecord        map[uint16]*packageComplete
+	}
+
+	packageComplete struct {
+		createTime time.Time
+		updateTime time.Time
+		initHeader *jt808.Header
+	}
+)
 
 func newPackageParse() *packageParse {
 	return &packageParse{
 		subcontractingRecord: make(map[uint16][][]byte),
+		timeoutRecord:        make(map[uint16]*packageComplete),
 		historyData:          make([]byte, 0),
 	}
 }
@@ -28,15 +39,22 @@ func (p *packageParse) clear() {
 			slog.Int("data sum", len(datas)))
 	}
 	clear(p.subcontractingRecord)
+	clear(p.timeoutRecord)
 }
 
 // parse 返回一个或者多个完成的包
 func (p *packageParse) parse(data []byte) ([]*Message, error) {
 	msgs, err := p.unpack(data)
-	if len(msgs) > 0 {
-		return p.completePack(msgs), err
+	for _, msg := range msgs {
+		if completeMsg, ok := p.completePack(msg); ok {
+			msgs = append(msgs, completeMsg)
+		}
 	}
-	return nil, err
+	p.deleteTimeoutPackage()
+	if v, ok := p.supplementarySubPackage(); ok {
+		msgs = append(msgs, v...)
+	}
+	return msgs, err
 }
 
 func (p *packageParse) unpack(data []byte) (msgs []*Message, err error) {
@@ -89,52 +107,108 @@ func (p *packageParse) unpack(data []byte) (msgs []*Message, err error) {
 	return msgs, nil
 }
 
-func (p *packageParse) completePack(msgs []*Message) []*Message {
-	completeMsgs := make([]*Message, 0, len(msgs))
-	for _, msg := range msgs {
-		header := msg.JTMessage.Header
-		if sum := int(header.SubPackageSum); sum > 0 {
-			id := header.ID
-			seq := int(header.SubPackageNo)
-			if seq == 1 {
-				// 第一个包 如果有老id未完成的 就覆盖了
-				if _, ok := p.subcontractingRecord[id]; ok {
-					slog.Warn("not complete package",
-						slog.String("phone", header.TerminalPhoneNo),
-						slog.Any("id", id))
-				}
-				p.subcontractingRecord[id] = make([][]byte, header.SubPackageSum)
-			}
-
-			if seq > len(p.subcontractingRecord[id]) {
-				slog.Warn("abnormal packet length",
-					slog.Int("seq", seq),
-					slog.Int("record sum", len(p.subcontractingRecord[id])),
+func (p *packageParse) completePack(msg *Message) (*Message, bool) {
+	header := msg.JTMessage.Header
+	if sum := int(header.SubPackageSum); sum > 0 {
+		id := header.ID
+		seq := int(header.SubPackageNo)
+		if seq == 1 {
+			// 第一个包 如果有老id未完成的 就覆盖了
+			if _, ok := p.subcontractingRecord[id]; ok {
+				slog.Warn("not complete package",
 					slog.String("phone", header.TerminalPhoneNo),
+					slog.Int("seq", seq),
 					slog.Any("id", id))
-				continue
 			}
-
-			p.subcontractingRecord[id][seq-1] = msg.JTMessage.Body
-			receivedSum := 0
-			for _, data := range p.subcontractingRecord[id] {
-				if len(data) != 0 {
-					receivedSum++
-				}
-			}
-			// 接收的和记录的一样 说明完成了
-			if receivedSum == sum {
-				data := make([]byte, 0, sum*1023)
-				for i := 0; i < sum; i++ {
-					data = append(data, p.subcontractingRecord[id][i]...)
-				}
-				msg.Body = data
-				completeMsgs = append(completeMsgs, msg)
-				delete(p.subcontractingRecord, id)
-			}
-			continue
+			p.add(id, header)
 		}
-		completeMsgs = append(completeMsgs, msg)
+
+		if seq > len(p.subcontractingRecord[id]) {
+			slog.Warn("abnormal packet length",
+				slog.Int("seq", seq),
+				slog.Int("record sum", len(p.subcontractingRecord[id])),
+				slog.String("phone", header.TerminalPhoneNo),
+				slog.Any("id", id))
+			return nil, false
+		}
+
+		p.subcontractingRecord[id][seq-1] = msg.JTMessage.Body
+		p.timeoutRecord[id].updateTime = time.Now()
+		receivedSum := 0
+		for _, data := range p.subcontractingRecord[id] {
+			if len(data) != 0 {
+				receivedSum++
+			}
+		}
+		// 接收的和记录的一样 说明完成了
+		if receivedSum == sum {
+			data := make([]byte, 0, sum*1023)
+			for i := 0; i < sum; i++ {
+				data = append(data, p.subcontractingRecord[id][i]...)
+			}
+			p.remove(id)
+			completeMsg := NewMessage(msg.OriginalData)
+			_ = completeMsg.Decode(msg.OriginalData)
+			completeMsg.Body = data
+			completeMsg.hasComplete = true
+			return completeMsg, true
+		}
 	}
-	return completeMsgs
+	return nil, false
+}
+
+func (p *packageParse) add(id uint16, header *jt808.Header) {
+	p.subcontractingRecord[id] = make([][]byte, header.SubPackageSum)
+	now := time.Now()
+	p.timeoutRecord[id] = &packageComplete{
+		createTime: now,
+		updateTime: now,
+		initHeader: header,
+	}
+}
+
+func (p *packageParse) remove(id uint16) {
+	delete(p.subcontractingRecord, id)
+	delete(p.timeoutRecord, id)
+}
+
+func (p *packageParse) deleteTimeoutPackage() {
+	now := time.Now().Add(-60 * time.Second)
+	for k, v := range p.timeoutRecord {
+		if now.After(v.createTime) { // x秒内还没有完成的 就删除了
+			p.remove(k)
+			slog.Warn("timeout",
+				slog.Any("id", k),
+				slog.String("remove", v.initHeader.String()))
+		}
+	}
+}
+
+func (p *packageParse) supplementarySubPackage() ([]*Message, bool) {
+	msgs := make([]*Message, 0)
+	now := time.Now().Add(-5 * time.Second)
+	for id, v := range p.timeoutRecord {
+		if now.After(v.updateTime) {
+			seqs := make([]uint16, 0, v.initHeader.SubPackageSum)
+			for k, record := range p.subcontractingRecord[id] {
+				if len(record) == 0 {
+					seqs = append(seqs, uint16(k+1))
+				}
+			}
+			p0x8003 := model.P0x8003{
+				BaseHandle:           model.BaseHandle{},
+				OriginalSerialNumber: v.initHeader.SerialNumber,
+				AgainPackageCount:    byte(len(seqs)),
+				AgainPackageList:     seqs,
+			}
+			v.initHeader.ReplyID = uint16(p0x8003.Protocol())
+			v.initHeader.Property.PacketFragmented = 0
+			data := v.initHeader.Encode(p0x8003.Encode())
+			subMsg := NewMessage(data)
+			_ = subMsg.JTMessage.Decode(data)
+			msgs = append(msgs, subMsg)
+			v.updateTime = time.Now()
+		}
+	}
+	return msgs, len(msgs) != 0
 }

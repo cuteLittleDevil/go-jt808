@@ -13,31 +13,35 @@ import (
 )
 
 type connection struct {
-	conn          *net.TCPConn
-	handles       map[consts.JT808CommandType]Handler
-	stopOnce      sync.Once
-	stopChan      chan struct{}
-	msgBuffChan   chan *Message
-	activeMsgChan chan *ActiveMessage
+	conn           *net.TCPConn
+	handles        map[consts.JT808CommandType]Handler
+	stopOnce       sync.Once
+	stopChan       chan struct{}
+	msgChan        chan *Message
+	activeMsgChan  chan *ActiveMessage
+	subPackMsgChan chan *Message
 	// platformSerialNumber 平台流水号 到了math.MaxUint16后+1重新变成0
 	platformSerialNumber uint16
 	joinFunc             func(message *Message, activeChan chan<- *ActiveMessage) (string, error)
 	leaveFunc            func(key string)
 	key                  string
+	hasFilter            bool
 }
 
-func newConnection(conn *net.TCPConn, handles map[consts.JT808CommandType]Handler,
+func newConnection(conn *net.TCPConn, handles map[consts.JT808CommandType]Handler, hasFilter bool,
 	join func(message *Message, activeChan chan<- *ActiveMessage) (string, error), leave func(key string)) *connection {
 	return &connection{
 		conn:                 conn,
 		handles:              handles,
 		stopOnce:             sync.Once{},
 		stopChan:             make(chan struct{}),
-		msgBuffChan:          make(chan *Message, 10),
+		msgChan:              make(chan *Message, 10),
 		activeMsgChan:        make(chan *ActiveMessage, 3),
+		subPackMsgChan:       make(chan *Message, 3),
 		platformSerialNumber: uint16(0),
 		joinFunc:             join,
 		leaveFunc:            leave,
+		hasFilter:            hasFilter,
 	}
 }
 
@@ -80,6 +84,7 @@ func (c *connection) reader() {
 				msgs, err := pack.parse(effectiveData)
 				if err != nil {
 					slog.Error("parse data",
+						slog.Any("platform num", c.platformSerialNumber),
 						slog.String("effective data", fmt.Sprintf("%x", effectiveData)),
 						slog.Any("err", err))
 					return
@@ -88,10 +93,15 @@ func (c *connection) reader() {
 					command := consts.JT808CommandType(msg.JTMessage.Header.ID)
 					if handler, ok := c.handles[command]; ok {
 						msg.Handler = handler
-						msg.OnReadExecutionEvent(msg)
+						if command == consts.P8003ReissueSubcontractingRequest {
+							c.subPackMsgChan <- msg
+							continue
+						}
+						c.onReadExecutionEvent(msg)
 					} else {
 						slog.Warn("key not found",
 							slog.Int("id", int(msg.JTMessage.Header.ID)),
+							slog.Any("platform num", c.platformSerialNumber),
 							slog.String("remark", command.String()))
 						continue
 					}
@@ -110,12 +120,7 @@ func (c *connection) reader() {
 					if fail {
 						return
 					}
-					select {
-					case c.msgBuffChan <- msg:
-					default:
-						slog.Warn("msg buff full",
-							slog.String("original data", fmt.Sprintf("%x", msg.OriginalData)))
-					}
+					c.msgChan <- msg
 				}
 			}
 		}
@@ -133,7 +138,11 @@ func (c *connection) write() {
 			if ok {
 				c.onActiveEvent(activeMsg, record)
 			}
-		case msg, ok := <-c.msgBuffChan:
+		case subPackMsg, ok := <-c.subPackMsgChan:
+			if ok {
+				c.subPackReplyEvent(subPackMsg)
+			}
+		case msg, ok := <-c.msgChan:
 			if ok {
 				if len(record) > 0 { // 说明现在有主动的请求 等待回复中
 					if c.onActiveRespondEvent(record, msg) {
@@ -142,7 +151,7 @@ func (c *connection) write() {
 				}
 				c.defaultReplyEvent(msg)
 			} else if msg != nil && len(msg.OriginalData) > 0 {
-				slog.Warn("msgBuffChan is close",
+				slog.Warn("msgChan is close",
 					slog.String("original data", fmt.Sprintf("%x", msg.OriginalData)))
 			}
 		}
@@ -153,9 +162,10 @@ func (c *connection) stop() {
 	c.stopOnce.Do(func() {
 		c.leaveFunc(c.key)
 		clear(c.handles)
-		close(c.msgBuffChan)
+		close(c.msgChan)
 		close(c.activeMsgChan)
 		close(c.stopChan)
+		close(c.subPackMsgChan)
 	})
 }
 
@@ -182,7 +192,22 @@ func (c *connection) defaultReplyEvent(msg *Message) {
 		msg.WriteErr = errors.Join(ErrWriteDataFail, err)
 	}
 	msg.ReplyData = data
-	msg.OnWriteExecutionEvent(*msg)
+	c.onWriteExecutionEvent(msg)
+}
+
+func (c *connection) subPackReplyEvent(msg *Message) {
+	header := msg.JTMessage.Header
+	header.PlatformSerialNumber = c.platformSerialNumber
+	header.ReplyID = uint16(consts.P8003ReissueSubcontractingRequest)
+	data := header.Encode(msg.JTMessage.Body)
+	if _, err := c.conn.Write(data); err != nil {
+		slog.Warn("write fail",
+			slog.String("data", fmt.Sprintf("%x", data)),
+			slog.Any("err", err))
+		msg.WriteErr = errors.Join(ErrWriteDataFail, err)
+	}
+	msg.OriginalData = data
+	c.onWriteExecutionEvent(msg)
 }
 
 func (c *connection) onActiveEvent(activeMsg *ActiveMessage, record map[uint16]*ActiveMessage) {
@@ -200,7 +225,8 @@ func (c *connection) onActiveEvent(activeMsg *ActiveMessage, record map[uint16]*
 		if err != nil {
 			msg.WriteErr = errors.Join(ErrWriteDataFail, err)
 		}
-		v.OnWriteExecutionEvent(*msg)
+		msg.Handler = v
+		c.onWriteExecutionEvent(msg)
 	}
 	if err != nil {
 		slog.Warn("write fail",
@@ -271,4 +297,28 @@ func (c *connection) onActiveRespondEvent(record map[uint16]*ActiveMessage, msg 
 	}
 
 	return false
+}
+
+func (c *connection) onReadExecutionEvent(msg *Message) {
+	if c.hasFilter && (msg.Header.SubPackageSum > 0 && !msg.hasComplete) {
+		return
+	}
+	if msg.Handler == nil {
+		slog.Warn("Handler is nil",
+			slog.String("head", msg.Header.String()))
+		return
+	}
+	msg.Handler.OnReadExecutionEvent(msg)
+}
+
+func (c *connection) onWriteExecutionEvent(msg *Message) {
+	if c.hasFilter && (msg.Header.SubPackageSum > 0 && !msg.hasComplete) {
+		return
+	}
+	if msg.Handler == nil {
+		slog.Warn("Handler is nil",
+			slog.String("head", msg.Header.String()))
+		return
+	}
+	msg.Handler.OnWriteExecutionEvent(*msg)
 }
