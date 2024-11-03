@@ -194,6 +194,20 @@ func TestReply(t *testing.T) {
 				msg2013: "7e120640030112345678901234567890ffff1b8a01c67e",
 			},
 		},
+		{
+			name: "T0x0001 终端-通用应答",
+			args: args{
+				Handler: &T0x0001{},
+				msg2013: "7e000100050123456789017fff007b01c803bd7e",
+			},
+		},
+		{
+			name: "P0x8003 平台-补发分包请求",
+			args: args{
+				Handler: &P0x8003{},
+				msg2013: "7e800300150123456789017fff1099090001000200030004000500060007000800091f7e",
+			},
+		},
 	}
 	checkReplyInfo := func(t *testing.T, msg string, handler Handler, expectedResult string) {
 		if msg == "" {

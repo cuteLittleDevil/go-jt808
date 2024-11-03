@@ -142,6 +142,12 @@ func TestReplyProtocol(t *testing.T) {
 			wantProtocol:      consts.T1206FileUploadCompleteNotice,
 			wantReplyProtocol: 0,
 		},
+		{
+			name:              "P0x8003 平台-补发分包请求",
+			args:              &P0x8003{},
+			wantProtocol:      consts.P8003ReissueSubcontractingRequest,
+			wantReplyProtocol: 0,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

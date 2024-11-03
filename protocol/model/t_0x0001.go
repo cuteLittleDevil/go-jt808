@@ -42,6 +42,10 @@ func (t *T0x0001) Encode() []byte {
 	return data
 }
 
+func (t *T0x0001) HasReply() bool {
+	return false
+}
+
 func (t *T0x0001) String() string {
 	str := "数据体对象:{\n"
 	str += fmt.Sprintf("\t%s:[%10x]", t.Protocol(), t.Encode())

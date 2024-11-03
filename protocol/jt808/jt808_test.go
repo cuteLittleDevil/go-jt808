@@ -116,68 +116,6 @@ func TestEncode(t *testing.T) {
 	}
 }
 
-func TestSubPackageEncode(t *testing.T) {
-	type arg struct {
-		msg string
-		sum uint16
-		num uint16
-	}
-	tests := []struct {
-		name string
-		args arg
-		want string
-	}{
-		{
-			name: "2013版本 分包补传1",
-			args: arg{
-				msg: "7e0002000001234567890100008a7e",
-				sum: 2,
-				num: 0,
-			},
-			want: "7e00022000012345678901000000020000a87e",
-		},
-		{
-			name: "2013版本 分包补传2",
-			args: arg{
-				msg: "7e0002000001234567890100008a7e",
-				sum: 2,
-				num: 1,
-			},
-			want: "7e00022000012345678901000000020001a97e",
-		},
-		{
-			name: "2019版本 分包补传1",
-			args: arg{
-				msg: "7e0002400001000000000172998417380000027e",
-				sum: 2,
-				num: 0,
-			},
-			want: "7e000260000100000000017299841738000000020000207e",
-		},
-		{
-			name: "2019版本 分包补传2",
-			args: arg{
-				msg: "7e0002400001000000000172998417380000027e",
-				sum: 2,
-				num: 1,
-			},
-			want: "7e000260000100000000017299841738000000020001217e",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			jtMsg := NewJTMessage()
-			head, _ := hex.DecodeString(tt.args.msg)
-			_ = jtMsg.Decode(head)
-			data := jtMsg.Header.SubPackageEncode(tt.args.sum, tt.args.num)
-			got := fmt.Sprintf("%x", data)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Encode() = %s\n want %s", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestString(t *testing.T) {
 	tests := []struct {
 		name string

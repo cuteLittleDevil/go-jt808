@@ -525,6 +525,19 @@ func TestParse(t *testing.T) {
 				UploadControl:       2,
 			},
 		},
+		{
+			name: "P0x8003 平台-补发分包请求",
+			args: args{
+				msg:      "7e800300150123456789017fff1099090001000200030004000500060007000800091f7e",
+				Handler:  &P0x8003{},
+				bodyLens: []int{2, 4},
+			},
+			fields: &P0x8003{
+				OriginalSerialNumber: 4249,
+				AgainPackageCount:    9,
+				AgainPackageList:     []uint16{1, 2, 3, 4, 5, 6, 7, 8, 9},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
