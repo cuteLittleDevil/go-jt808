@@ -12,12 +12,18 @@ jt808服务端 模拟器 消息队列 数据库都运行在2核4G腾讯云服务
 主动下发给设备指令 获取应答的情况
 ```
 
-3. 协议交互详情 [代码参考](./example/protocol/register/main.go)
+3. jt1078视频 [代码参考](./example/jt1078/lal/main.go)
+``` txt
+开启jt808服务 开启jt1078服务 开启客户端接收到0x9101指令开始发送流
+在线流地址 http://49.234.235.7:8080/live/295696659617_1.flv
+```
+
+4. 协议交互详情 [代码参考](./example/protocol/register/main.go)
 ``` txt
 使用自定义模拟器 可以轻松生成测试用的报文 有详情描述
 ```
 
-4. 自定义协议扩展 [代码参考](./example/protocol/custom_parse/main.go)
+5. 自定义协议扩展 [代码参考](./example/protocol/custom_parse/main.go)
 ``` txt
 自定义附加信息处理 获取想要的扩展内容
 ```
@@ -72,6 +78,7 @@ func main() {
 - [协议文档 (官网)](https://jtst.mot.gov.cn/hb/search/stdHBView?id=a3011cd31e6602ec98f26c35329e88e4)
 - [协议解析网站](https://jttools.smallchi.cn/jt808)
 - [bcd转dec编码](https://github.com/deatil/lakego-admin/tree/main/pkg/lakego-pkg/go-encoding/bcd)
+- [lal流媒体文档](https://pengrl.com/lal/#/streamurllist)
 
 ## 性能测试
 - java模拟器(QQ群下载 373203450)
@@ -274,6 +281,39 @@ func (t *T0x0200) OnWriteExecutionEvent(_ service.Message) {}
 ### 3. jt808附件上传
 
 ### 4. jt1078相关
+
+#### 4.1 流媒体服务使用lal
+
+-  把1078格式流转对应格式 放入lal服务中 核心代码参考
+
+``` go
+func (j *jt1078) createStream(name string) chan<- *Packet {
+	...
+	ch := make(chan *Packet, 100)
+	go func(session logic.ICustomizePubSessionContext, ch <-chan *Packet) {
+		for v := range ch {
+				...
+				switch v.Flag.PT {
+				case PTG711A:
+					tmp.PayloadType = base.AvPacketPtG711A
+				case PTG711U:
+					tmp.PayloadType = base.AvPacketPtG711U
+				case PTH264:
+				case PTH265:
+					tmp.PayloadType = base.AvPacketPtHevc
+				default:
+					slog.Warn("未知类型",
+						slog.Any("pt", v.Flag.PT))
+				}
+				if err := session.FeedAvPacket(tmp); err != nil {
+					slog.Warn("session.FeedAvPacket",
+						slog.Any("err", err))
+				}
+			}
+		}
+	}(session, ch)
+}
+```
 
 ## 协议对接完成情况
 ### JT808 终端通讯协议消息对照表
