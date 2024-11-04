@@ -13,22 +13,22 @@ import (
 )
 
 type connection struct {
-	conn           *net.TCPConn
-	handles        map[consts.JT808CommandType]Handler
-	stopOnce       sync.Once
-	stopChan       chan struct{}
-	msgChan        chan *Message
-	activeMsgChan  chan *ActiveMessage
-	subPackMsgChan chan *Message
+	conn            *net.TCPConn
+	handles         map[consts.JT808CommandType]Handler
+	stopOnce        sync.Once
+	stopChan        chan struct{}
+	msgChan         chan *Message
+	activeMsgChan   chan *ActiveMessage
+	reissuePackChan chan *Message
 	// platformSerialNumber 平台流水号 到了math.MaxUint16后+1重新变成0
 	platformSerialNumber uint16
 	joinFunc             func(message *Message, activeChan chan<- *ActiveMessage) (string, error)
 	leaveFunc            func(key string)
 	key                  string
-	hasFilter            bool
+	filter               bool
 }
 
-func newConnection(conn *net.TCPConn, handles map[consts.JT808CommandType]Handler, hasFilter bool,
+func newConnection(conn *net.TCPConn, handles map[consts.JT808CommandType]Handler, filter bool,
 	join func(message *Message, activeChan chan<- *ActiveMessage) (string, error), leave func(key string)) *connection {
 	return &connection{
 		conn:                 conn,
@@ -37,11 +37,11 @@ func newConnection(conn *net.TCPConn, handles map[consts.JT808CommandType]Handle
 		stopChan:             make(chan struct{}),
 		msgChan:              make(chan *Message, 10),
 		activeMsgChan:        make(chan *ActiveMessage, 3),
-		subPackMsgChan:       make(chan *Message, 3),
+		reissuePackChan:      make(chan *Message, 3),
 		platformSerialNumber: uint16(0),
 		joinFunc:             join,
 		leaveFunc:            leave,
-		hasFilter:            hasFilter,
+		filter:               filter,
 	}
 }
 
@@ -94,7 +94,7 @@ func (c *connection) reader() {
 					if handler, ok := c.handles[command]; ok {
 						msg.Handler = handler
 						if command == consts.P8003ReissueSubcontractingRequest {
-							c.subPackMsgChan <- msg
+							c.reissuePackChan <- msg
 							continue
 						}
 						c.onReadExecutionEvent(msg)
@@ -134,17 +134,17 @@ func (c *connection) write() {
 		case <-c.stopChan:
 			clear(record)
 			return
-		case activeMsg, ok := <-c.activeMsgChan:
+		case activeMsg, ok := <-c.activeMsgChan: // 平台主动下发的
 			if ok {
 				c.onActiveEvent(activeMsg, record)
 			}
-		case subPackMsg, ok := <-c.subPackMsgChan:
+		case subPackMsg, ok := <-c.reissuePackChan: // 分包补传的
 			if ok {
 				c.subPackReplyEvent(subPackMsg)
 			}
-		case msg, ok := <-c.msgChan:
+		case msg, ok := <-c.msgChan: // 终端上传的
 			if ok {
-				if len(record) > 0 { // 说明现在有主动的请求 等待回复中
+				if len(record) > 0 && msg.hasComplete() { // 说明现在有主动的请求 等待回复中
 					if c.onActiveRespondEvent(record, msg) {
 						continue
 					}
@@ -164,8 +164,8 @@ func (c *connection) stop() {
 		clear(c.handles)
 		close(c.msgChan)
 		close(c.activeMsgChan)
+		close(c.reissuePackChan)
 		close(c.stopChan)
-		close(c.subPackMsgChan)
 	})
 }
 
@@ -300,7 +300,7 @@ func (c *connection) onActiveRespondEvent(record map[uint16]*ActiveMessage, msg 
 }
 
 func (c *connection) onReadExecutionEvent(msg *Message) {
-	if c.hasFilter && (msg.Header.SubPackageSum > 0 && !msg.hasComplete) {
+	if c.filter && !msg.hasComplete() {
 		return
 	}
 	if msg.Handler == nil {
@@ -312,7 +312,7 @@ func (c *connection) onReadExecutionEvent(msg *Message) {
 }
 
 func (c *connection) onWriteExecutionEvent(msg *Message) {
-	if c.hasFilter && (msg.Header.SubPackageSum > 0 && !msg.hasComplete) {
+	if c.filter && !msg.hasComplete() {
 		return
 	}
 	if msg.Handler == nil {

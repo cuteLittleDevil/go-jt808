@@ -50,9 +50,11 @@ func (p *packageParse) parse(data []byte) ([]*Message, error) {
 			msgs = append(msgs, completeMsg)
 		}
 	}
-	p.deleteTimeoutPackage()
-	if v, ok := p.supplementarySubPackage(); ok {
-		msgs = append(msgs, v...)
+	if len(p.timeoutRecord) > 0 {
+		p.deleteTimeoutPackage()
+		if v, ok := p.supplementarySubPackage(); ok {
+			msgs = append(msgs, v...)
+		}
 	}
 	return msgs, err
 }
@@ -150,7 +152,7 @@ func (p *packageParse) completePack(msg *Message) (*Message, bool) {
 			completeMsg := NewMessage(msg.OriginalData)
 			_ = completeMsg.Decode(msg.OriginalData)
 			completeMsg.Body = data
-			completeMsg.hasComplete = true
+			completeMsg.complete = true
 			return completeMsg, true
 		}
 	}

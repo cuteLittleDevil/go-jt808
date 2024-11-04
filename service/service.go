@@ -59,7 +59,7 @@ func (g *GoJT808) Run() {
 				handles[k] = v
 			}
 		}
-		conn := newConnection(c, handles, g.opts.HasFilterSubPack,
+		conn := newConnection(c, handles, g.opts.FilterSubPack,
 			g.sessionManager.join, g.sessionManager.leave)
 		go conn.Start()
 	}

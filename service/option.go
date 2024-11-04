@@ -18,7 +18,7 @@ type Options struct {
 	CustomHandleFunc func() map[consts.JT808CommandType]Handler
 	Addr             string
 	Network          string
-	HasFilterSubPack bool
+	FilterSubPack    bool
 	KeyFunc          func(message *Message) string
 }
 
@@ -30,9 +30,9 @@ func (o *Options) Apply(opts []Option) {
 
 func NewOptions(opts []Option) *Options {
 	options := &Options{
-		Addr:             defaultAddr,
-		Network:          defaultNetwork,
-		HasFilterSubPack: defaultHasFilterSubPack,
+		Addr:          defaultAddr,
+		Network:       defaultNetwork,
+		FilterSubPack: defaultHasFilterSubPack,
 	}
 	options.Apply(opts)
 	return options
@@ -52,7 +52,7 @@ func WithNetwork(network string) Option {
 
 func WithHasFilterSubPack(hasFilter bool) Option {
 	return Option{F: func(o *Options) {
-		o.HasFilterSubPack = hasFilter
+		o.FilterSubPack = hasFilter
 	}}
 }
 

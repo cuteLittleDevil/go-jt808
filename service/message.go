@@ -10,7 +10,7 @@ type Message struct {
 	OriginalData []byte `json:"-"`
 	ReplyData    []byte `json:"-"`
 	WriteErr     error  `json:"-"`
-	hasComplete  bool
+	complete     bool
 }
 
 func NewMessage(originalData []byte) *Message {
@@ -22,4 +22,11 @@ func NewMessage(originalData []byte) *Message {
 
 func newErrMessage(err error) *Message {
 	return &Message{WriteErr: err}
+}
+
+func (msg *Message) hasComplete() bool {
+	if msg.Header.SubPackageSum == 0 {
+		return true
+	}
+	return msg.complete
 }
