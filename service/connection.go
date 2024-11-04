@@ -276,6 +276,24 @@ func (c *connection) onActiveRespondEvent(record map[uint16]*ActiveMessage, msg 
 		tmp.HasRespondFunc = func(seq uint16) bool {
 			return seq == t0x0104.RespondSerialNumber
 		}
+	case consts.T1003UploadAudioVideoAttr:
+		t0x1003 := &model.T0x1003{}
+		tmp.JT808Handler = t0x1003
+		tmp.HasRespondFunc = func(seq uint16) bool {
+			return true
+		}
+	case consts.T1205UploadAudioVideoResourceList:
+		t0x1205 := &model.T0x1205{}
+		tmp.JT808Handler = t0x1205
+		tmp.HasRespondFunc = func(seq uint16) bool {
+			return seq == t0x1205.SerialNumber
+		}
+	case consts.T1206FileUploadCompleteNotice:
+		t0x1206 := &model.T0x1206{}
+		tmp.JT808Handler = t0x1206
+		tmp.HasRespondFunc = func(seq uint16) bool {
+			return seq == t0x1206.RespondSerialNumber
+		}
 	}
 	if tmp.HasRespondFunc != nil {
 		if err := tmp.Parse(msg.JTMessage); err != nil {
