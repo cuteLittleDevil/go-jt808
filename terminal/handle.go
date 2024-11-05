@@ -83,6 +83,17 @@ func defaultProtocolHandles(protocolVersion consts.ProtocolVersionType) map[cons
 		},
 		&model.P0x8104{},
 		&model.P0x9003{},
+		&model.T0x1003{
+			EnterAudioEncoding:       1,
+			EnterAudioChannelsNumber: 1,
+			EnterAudioSampleRate:     2,
+			EnterAudioSampleDigits:   2,
+			AudioFrameLength:         3,
+			HasSupportedAudioOutput:  2,
+			VideoEncoding:            1,
+			TerminalSupportedMaxNumberOfAudioPhysicalChannels: 1,
+			TerminalSupportedMaxNumberOfVideoPhysicalChannels: 2,
+		},
 		&model.P0x9101{
 			ServerIPLen:  12,
 			ServerIPAddr: "49.234.235.7",
