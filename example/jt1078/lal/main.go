@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/hex"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
@@ -32,11 +31,11 @@ var (
 )
 
 func main() {
-	flag.StringVar(&_ip, "ip", "127.0.0.1", "jt1078 ip地址")
+	flag.StringVar(&_ip, "ip", "127.0.0.1", "Lal1078 ip地址")
 	flag.StringVar(&_phone, "phone", "295696659617", "手机号")
 	flag.Parse()
 
-	goJt1078 := newJt1078("0.0.0.0:1078", "./conf/lalserver.conf.json")
+	goJt1078 := newLal1078("0.0.0.0:1078", "./conf/lalserver.conf.json")
 	go goJt1078.run()
 
 	goJt808 := service.New(
@@ -60,7 +59,7 @@ func main() {
 			StreamType:   1,
 		}
 		body := p9101.Encode()
-		fmt.Println(fmt.Sprintf("发送 9101指令 key=[%s]", _phone), time.Now().Format(time.DateTime))
+		fmt.Println(fmt.Sprintf(time.Now().Format(time.DateTime), "发送 9101指令 key=[%s]", _phone))
 		activeMsg := service.NewActiveMessage(_phone, p9101.Protocol(), body, 3*time.Second)
 		msg := goJt808.SendActiveMessage(activeMsg)
 		var t0x0001 model.T0x0001
@@ -70,8 +69,7 @@ func main() {
 		if err := t0x0001.Parse(msg.JTMessage); err != nil {
 			panic(err)
 		}
-		b, _ := json.Marshal(t0x0001)
-		fmt.Println("终端的回复", string(b), time.Now().Format(time.DateTime))
+		fmt.Println(time.Now().Format(time.DateTime), "终端的回复", t0x0001.String())
 	}()
 
 	time.Sleep(time.Second)

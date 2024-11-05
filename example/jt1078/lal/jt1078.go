@@ -1,7 +1,10 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"github.com/cuteLittleDevil/go-jt808/protocol"
+	"github.com/cuteLittleDevil/go-jt808/protocol/jt1078"
 	"github.com/q191201771/lal/pkg/base"
 	"github.com/q191201771/lal/pkg/logic"
 	"log/slog"
@@ -9,12 +12,12 @@ import (
 	"sync"
 )
 
-type jt1078 struct {
+type Lal1078 struct {
 	lalServer logic.ILalServer
 	addr      string
 }
 
-func newJt1078(addr string, filePath string) *jt1078 {
+func newLal1078(addr string, filePath string) *Lal1078 {
 	if filePath == "" {
 		filePath = "./conf/lalserver.conf.json"
 	}
@@ -24,13 +27,13 @@ func newJt1078(addr string, filePath string) *jt1078 {
 	lalServer := logic.NewLalServer(func(option *logic.Option) {
 		option.ConfFilename = filePath
 	})
-	return &jt1078{
+	return &Lal1078{
 		lalServer: lalServer,
 		addr:      addr,
 	}
 }
 
-func (j *jt1078) run() {
+func (j *Lal1078) run() {
 	go func() {
 		if err := j.lalServer.RunLoop(); err != nil {
 			panic(err)
@@ -50,12 +53,12 @@ func (j *jt1078) run() {
 	}
 }
 
-func (j *jt1078) handle(conn net.Conn) {
+func (j *Lal1078) handle(conn net.Conn) {
 	historyData := make([]byte, 0, 10*1024)
 	data := make([]byte, 1024)
 	var (
 		once sync.Once
-		ch   chan<- *Packet
+		ch   chan<- *jt1078.Packet
 	)
 	defer func() {
 		_ = conn.Close()
@@ -71,13 +74,16 @@ func (j *jt1078) handle(conn net.Conn) {
 		} else {
 			historyData = append(historyData, data[:n]...)
 		}
-		packs := make([]*Packet, 0)
+		packs := make([]*jt1078.Packet, 0)
 		for {
-			tmp := NewPacket()
-			if remainingData, err := tmp.Parse(historyData); err != nil {
+			tmp := jt1078.NewPacket()
+			if remainData, err := tmp.Decode(historyData); err != nil {
+				if errors.Is(err, protocol.ErrUnqualifiedData) {
+					return
+				}
 				break
 			} else {
-				historyData = remainingData
+				historyData = remainData
 				packs = append(packs, tmp)
 				once.Do(func() {
 					name := fmt.Sprintf("%s_%d", tmp.Sim, tmp.LogicChannel)
@@ -87,6 +93,9 @@ func (j *jt1078) handle(conn net.Conn) {
 					streamCh := j.createStream(name)
 					ch = streamCh
 				})
+				if len(remainData) == 0 {
+					break
+				}
 			}
 		}
 		for _, v := range packs {
@@ -94,13 +103,13 @@ func (j *jt1078) handle(conn net.Conn) {
 			case ch <- v:
 			default:
 				slog.Warn("channel is full",
-					slog.String("data", fmt.Sprintf("%x", v.Data)))
+					slog.String("body", fmt.Sprintf("%x", v.Body)))
 			}
 		}
 	}
 }
 
-func (j *jt1078) createStream(name string) chan<- *Packet {
+func (j *Lal1078) createStream(name string) chan<- *jt1078.Packet {
 	session, err := j.lalServer.AddCustomizePubSession(name)
 	if err != nil {
 		panic(err)
@@ -108,8 +117,8 @@ func (j *jt1078) createStream(name string) chan<- *Packet {
 	session.WithOption(func(option *base.AvPacketStreamOption) {
 		option.VideoFormat = base.AvPacketStreamVideoFormatAnnexb
 	})
-	ch := make(chan *Packet, 100)
-	go func(session logic.ICustomizePubSessionContext, ch <-chan *Packet) {
+	ch := make(chan *jt1078.Packet, 100)
+	go func(session logic.ICustomizePubSessionContext, ch <-chan *jt1078.Packet) {
 		defer func() {
 			j.lalServer.DelCustomizePubSession(session)
 		}()
@@ -117,46 +126,46 @@ func (j *jt1078) createStream(name string) chan<- *Packet {
 			once    sync.Once
 			startTs int64
 		)
-		record := make(map[DataType][]byte)
+		record := make(map[jt1078.DataType][]byte)
 		sum := int64(1) // 测试是循环播放的 所以手动增加
 		for v := range ch {
 			isComplete := false
 			switch v.SubcontractType {
-			case SubcontractTypeAtomic:
-				record[v.DataType] = v.Data
+			case jt1078.SubcontractTypeAtomic:
+				record[v.DataType] = v.Body
 				isComplete = true
-			case SubcontractTypeFirst:
+			case jt1078.SubcontractTypeFirst:
 				record[v.DataType] = nil
-				record[v.DataType] = v.Data
-			case SubcontractTypeLast:
-				record[v.DataType] = append(record[v.DataType], v.Data...)
+				record[v.DataType] = v.Body
+			case jt1078.SubcontractTypeLast:
+				record[v.DataType] = append(record[v.DataType], v.Body...)
 				isComplete = true
-			case SubcontractTypeMiddle:
-				record[v.DataType] = append(record[v.DataType], v.Data...)
+			case jt1078.SubcontractTypeMiddle:
+				record[v.DataType] = append(record[v.DataType], v.Body...)
 			default:
 				panic("unknown SubcontractType")
 			}
 			if isComplete {
 				data := record[v.DataType]
 				once.Do(func() {
-					startTs = v.Timestamp
+					startTs = int64(v.Timestamp)
 				})
 				tmp := base.AvPacket{
 					PayloadType: base.AvPacketPtAvc,
-					Timestamp:   v.Timestamp - startTs,
-					Pts:         v.Timestamp - startTs,
+					Timestamp:   int64(v.Timestamp) - startTs,
+					Pts:         int64(v.Timestamp) - startTs,
 					Payload:     data,
 				}
 				tmp.Timestamp = sum
 				tmp.Pts = sum
 				sum += 50
 				switch v.Flag.PT {
-				case PTG711A:
+				case jt1078.PTG711A:
 					tmp.PayloadType = base.AvPacketPtG711A
-				case PTG711U:
+				case jt1078.PTG711U:
 					tmp.PayloadType = base.AvPacketPtG711U
-				case PTH264:
-				case PTH265:
+				case jt1078.PTH264:
+				case jt1078.PTH265:
 					tmp.PayloadType = base.AvPacketPtHevc
 				default:
 					slog.Warn("未知类型",
