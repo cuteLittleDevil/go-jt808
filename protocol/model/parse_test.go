@@ -550,6 +550,20 @@ func TestParse(t *testing.T) {
 				PackageLossRate: 3,
 			},
 		},
+		{
+			name: "P0x9202 平台-下发远程录像回放控制",
+			args: args{
+				msg:      "7e920200091234567890120001110103200707192359427e",
+				Handler:  &P0x9202{},
+				bodyLens: []int{1},
+			},
+			fields: &P0x9202{
+				ChannelNo:   17,
+				PlayControl: 1,
+				PlaySpeed:   3,
+				DateTime:    "2020-07-07 19:23:59",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
