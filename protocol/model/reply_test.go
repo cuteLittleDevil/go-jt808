@@ -208,6 +208,16 @@ func TestReply(t *testing.T) {
 				msg2013: "7e800300150123456789017fff1099090001000200030004000500060007000800091f7e",
 			},
 		},
+		{
+			name: "P0x9105 平台-音视频实时传输状态通知",
+			args: args{
+				Handler: &P0x9105{},
+				msg2013: "7e91050002123456789012000102031c7e",
+			},
+			want: want{
+				result2013: "7e0001000012345678901200008b7e",
+			},
+		},
 	}
 	checkReplyInfo := func(t *testing.T, msg string, handler Handler, expectedResult string) {
 		if msg == "" {

@@ -538,6 +538,18 @@ func TestParse(t *testing.T) {
 				AgainPackageList:     []uint16{1, 2, 3, 4, 5, 6, 7, 8, 9},
 			},
 		},
+		{
+			name: "P0x9105 平台-音视频实时传输状态通知",
+			args: args{
+				msg:      "7e91050002123456789012000102031c7e",
+				Handler:  &P0x9105{},
+				bodyLens: []int{1},
+			},
+			fields: &P0x9105{
+				ChannelNo:       2,
+				PackageLossRate: 3,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

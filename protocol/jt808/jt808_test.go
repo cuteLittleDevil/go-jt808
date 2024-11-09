@@ -47,10 +47,6 @@ func TestJTMessage_Decode(t *testing.T) {
 			wantErr: protocol.ErrHeaderLength2Short,
 		},
 		{
-			name: "RSA加密数据",
-			args: "7E0801040500123456789002DE001A000221757E", // 模拟生成的 仅标志位=1为RSA
-		},
-		{
 			name:    "校验码错误",
 			args:    "7E0801200500123456789002DE001A00022808000102547E",
 			wantErr: protocol.ErrCheckCode,

@@ -148,6 +148,12 @@ func TestReplyProtocol(t *testing.T) {
 			wantProtocol:      consts.P8003ReissueSubcontractingRequest,
 			wantReplyProtocol: 0,
 		},
+		{
+			name:              "P0x9105 平台-音视频实时传输状态通知",
+			args:              &P0x9105{},
+			wantProtocol:      consts.P9105AudioVideoControlStatusNotice,
+			wantReplyProtocol: consts.T0001GeneralRespond,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
