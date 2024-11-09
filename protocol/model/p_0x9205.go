@@ -53,14 +53,14 @@ func (p *P0x9205) Parse(jtMsg *jt808.JTMessage) error {
 }
 
 func (p *P0x9205) Encode() []byte {
-	data := make([]byte, 24)
+	data := make([]byte, 1, 24)
 	data[0] = p.ChannelNo
-	copy(data[1:7], utils.Time2BCD(p.StartTime))
-	copy(data[7:13], utils.Time2BCD(p.EndTime))
-	binary.BigEndian.PutUint16(data[13:21], uint16(p.AlarmFlag))
-	data[21] = p.MediaType
-	data[22] = p.StreamType
-	data[23] = p.StorageType
+	data = append(data, utils.Time2BCD(p.StartTime)...)
+	data = append(data, utils.Time2BCD(p.EndTime)...)
+	binary.BigEndian.AppendUint64(data, p.AlarmFlag)
+	data = append(data, p.MediaType)
+	data = append(data, p.StreamType)
+	data = append(data, p.StorageType)
 	return data
 }
 

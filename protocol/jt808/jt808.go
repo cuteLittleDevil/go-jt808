@@ -141,7 +141,11 @@ func (h *Header) decode(data []byte) error {
 
 func (h *Header) Encode(body []byte) []byte {
 	data := make([]byte, 4, 30)
-	binary.BigEndian.PutUint16(data[:2], h.ReplyID)
+	id := h.ReplyID
+	if id == 0 {
+		id = h.ID
+	}
+	binary.BigEndian.PutUint16(data[:2], id)
 	h.Property.BodyDayaLen = uint16(len(body)) // 消息的长度改为回复的body长度
 	binary.BigEndian.PutUint16(data[2:4], h.Property.encode())
 	if h.ProtocolVersion == consts.JT808Protocol2019 {

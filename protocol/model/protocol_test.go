@@ -160,6 +160,12 @@ func TestReplyProtocol(t *testing.T) {
 			wantProtocol:      consts.P9202SendVideoRecordControl,
 			wantReplyProtocol: consts.T0001GeneralRespond,
 		},
+		{
+			name:              "P0x8103 平台-设置终端参数",
+			args:              &P0x8103{},
+			wantProtocol:      consts.P8103SetTerminalParams,
+			wantReplyProtocol: consts.T0001GeneralRespond,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

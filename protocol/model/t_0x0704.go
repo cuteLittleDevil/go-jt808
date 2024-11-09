@@ -69,9 +69,7 @@ func (t *T0x0704) Encode() []byte {
 	data[2] = t.LocationType
 	for i := 0; i < len(t.Items); i++ {
 		body := t.Items[i].encode()
-		bodyLen := make([]byte, 2)
-		binary.BigEndian.PutUint16(bodyLen, uint16(len(body)))
-		data = append(data, bodyLen...)
+		binary.BigEndian.AppendUint16(data, uint16(len(body)))
 		data = append(data, body...)
 	}
 	return data
