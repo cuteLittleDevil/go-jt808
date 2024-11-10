@@ -1,21 +1,25 @@
 # go-jt808
 
 - 本项目已更好支持二次开发为目标 可通过各种自定义事件去完成相应功能 常见案例如下
-1. 存储经纬度 [代码参考](./example/simulator/server/main.go)
+3. jt1078视频 [详情](./example/jt1078/README.md)
+
+``` txt
+jt808服务端 jt1078服务端 模拟器在本机 平台下发0x9101指令 模拟器开始发送流
+```
+| 流媒体服务 | 语言 | 在线播放地址       | 说明 |
+|----------|-----|-------------------|-----|
+| LAL | go  | http://49.234.235.7:8080/live/295696659617_1.flv | [详情点击](./example/jt1078/README.md#lal)  |
+| sky-java | java  | http://222.244.144.181:7777/video/1001-1-0-0.live.mp4  <br/>  (参考格式 需要部署后 HTTP请求 10秒内拉流) | [详情点击](./example/jt1078/README.md#sky-java)  |
+
+2. 存储经纬度 [代码参考](./example/simulator/server/main.go)
 ``` txt
 jt808服务端 模拟器 消息队列 数据库都运行在2核4G腾讯云服务器
 测试每秒保存5000条的情况 约5.5小时保存了近1亿的经纬度
 ```
 
-2. 平台下发指令给终端 [代码参考](./example/protocol/active_reply/main.go)
+3. 平台下发指令给终端 [代码参考](./example/protocol/active_reply/main.go)
 ``` txt
 主动下发给设备指令 获取应答的情况
-```
-
-3. jt1078视频 [代码参考](./example/jt1078/lal/main.go)
-``` txt
-jt808服务端 jt1078服务端 模拟器在本机 等待3秒平台下发0x9101指令 模拟器开始发送流
-在线流地址 http://49.234.235.7:8080/live/295696659617_1.flv
 ```
 
 4. 协议交互详情 [代码参考](./example/protocol/register/main.go)
