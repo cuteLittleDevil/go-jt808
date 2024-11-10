@@ -9,15 +9,15 @@ type Option struct {
 }
 
 const (
-	defaultAddr          = "0.0.0.0:808" // 服务默认地址
-	defaultNetwork       = "tcp"         // 服务默认网络协议
-	defaultFilterSubPack = true          // 读写事件是否过滤分包的情况
+	defaultAddr              = "0.0.0.0:808" // 服务默认地址
+	defaultNetwork           = "tcp"         // 服务默认网络协议
+	defaultFilterSubcontract = true          // 读写事件是否过滤分包的情况
 )
 
 type Options struct {
 	Addr                      string
 	Network                   string
-	FilterSubPack             bool
+	FilterSubcontract         bool
 	KeyFunc                   func(message *Message) (string, bool)
 	CustomTerminalEventerFunc func() TerminalEventer
 	CustomHandleFunc          func() map[consts.JT808CommandType]Handler
@@ -25,9 +25,9 @@ type Options struct {
 
 func NewOptions(opts []Option) *Options {
 	options := &Options{
-		Addr:          defaultAddr,
-		Network:       defaultNetwork,
-		FilterSubPack: defaultFilterSubPack,
+		Addr:              defaultAddr,
+		Network:           defaultNetwork,
+		FilterSubcontract: defaultFilterSubcontract,
 		KeyFunc: func(message *Message) (string, bool) {
 			return message.JTMessage.Header.TerminalPhoneNo, true
 		},
@@ -44,36 +44,42 @@ func NewOptions(opts []Option) *Options {
 	return options
 }
 
+// WithHostPorts 修改运行地址 默认0.0.0.0:808
 func WithHostPorts(address string) Option {
 	return Option{F: func(o *Options) {
 		o.Addr = address
 	}}
 }
 
+// WithNetwork 修改启动协议 默认TCP
 func WithNetwork(network string) Option {
 	return Option{F: func(o *Options) {
 		o.Network = network
 	}}
 }
 
-func WithHasFilterSubPack(hasFilter bool) Option {
+// WithHasSubcontract 是否过滤分包的报文 默认过滤
+func WithHasSubcontract(filter bool) Option {
 	return Option{F: func(o *Options) {
-		o.FilterSubPack = hasFilter
+		o.FilterSubcontract = filter
 	}}
 }
 
+// WithCustomHandleFunc 自定义报文处理方式
 func WithCustomHandleFunc(customHandleFunc func() map[consts.JT808CommandType]Handler) Option {
 	return Option{F: func(o *Options) {
 		o.CustomHandleFunc = customHandleFunc
 	}}
 }
 
+// WithKeyFunc 自定义Key方式 key必须唯一 默认是手机号
 func WithKeyFunc(keyFunc func(message *Message) (string, bool)) Option {
 	return Option{F: func(o *Options) {
 		o.KeyFunc = keyFunc
 	}}
 }
 
+// WithCustomTerminalEventer 自定义终端事件 包括加入 退出 读取数据等事件
 func WithCustomTerminalEventer(customTerminalEventerFunc func() TerminalEventer) Option {
 	return Option{F: func(o *Options) {
 		o.CustomTerminalEventerFunc = customTerminalEventerFunc

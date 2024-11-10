@@ -53,7 +53,7 @@ func (g *GoJT808) Run() {
 			handles[k] = v
 		}
 		terminalEvent := g.opts.CustomTerminalEventerFunc()
-		conn := newConnection(c, handles, terminalEvent, g.opts.FilterSubPack,
+		conn := newConnection(c, handles, terminalEvent, g.opts.FilterSubcontract,
 			g.sessionManager.join, g.sessionManager.leave)
 		go conn.Start()
 	}
@@ -65,13 +65,19 @@ func (g *GoJT808) SendActiveMessage(activeMsg *ActiveMessage) *Message {
 
 func (g *GoJT808) createDefaultHandle() map[consts.JT808CommandType]Handler {
 	return map[consts.JT808CommandType]Handler{
-		consts.T0100Register:                          newDefaultHandle(&model.T0x0100{}),
-		consts.T0102RegisterAuth:                      newDefaultHandle(&model.T0x0102{}),
-		consts.T0002HeartBeat:                         newDefaultHandle(&model.T0x0002{}),
-		consts.T0200LocationReport:                    newDefaultHandle(&model.T0x0200{}),
-		consts.T0704LocationBatchUpload:               newDefaultHandle(&model.T0x0704{}),
-		consts.T0104QueryParameter:                    newDefaultHandle(&model.T0x0104{}),
-		consts.P8104QueryTerminalParams:               newDefaultHandle(&model.P0x8104{}),
+		// 终端自动上传的
+		consts.T0001GeneralRespond:      newDefaultHandle(&model.T0x0001{}),
+		consts.T0100Register:            newDefaultHandle(&model.T0x0100{}),
+		consts.T0102RegisterAuth:        newDefaultHandle(&model.T0x0102{}),
+		consts.T0002HeartBeat:           newDefaultHandle(&model.T0x0002{}),
+		consts.T0200LocationReport:      newDefaultHandle(&model.T0x0200{}),
+		consts.T0704LocationBatchUpload: newDefaultHandle(&model.T0x0704{}),
+		consts.T0104QueryParameter:      newDefaultHandle(&model.T0x0104{}),
+		// 平台下发的
+		consts.P8003ReissueSubcontractingRequest: newDefaultHandle(&model.P0x8003{}),
+		consts.P8103SetTerminalParams:            newDefaultHandle(&model.P0x8103{}),
+		consts.P8104QueryTerminalParams:          newDefaultHandle(&model.P0x8104{}),
+		// JT1078相关的
 		consts.P9003QueryTerminalAudioVideoProperties: newDefaultHandle(&model.P0x9003{}),
 		consts.T1003UploadAudioVideoAttr:              newDefaultHandle(&model.T0x1003{}),
 		consts.T1005UploadPassengerFlow:               newDefaultHandle(&model.T0x1005{}),
@@ -82,8 +88,5 @@ func (g *GoJT808) createDefaultHandle() map[consts.JT808CommandType]Handler {
 		consts.P9206FileUploadInstructions:            newDefaultHandle(&model.P0x9206{}),
 		consts.T1206FileUploadCompleteNotice:          newDefaultHandle(&model.T0x1206{}),
 		consts.P9207FileUploadControl:                 newDefaultHandle(&model.P0x9207{}),
-		consts.T0001GeneralRespond:                    newDefaultHandle(&model.T0x0001{}),
-		consts.P8003ReissueSubcontractingRequest:      newDefaultHandle(&model.P0x8003{}),
-		consts.P8103SetTerminalParams:                 newDefaultHandle(&model.P0x8103{}),
 	}
 }

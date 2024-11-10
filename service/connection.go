@@ -227,7 +227,7 @@ func (c *connection) onActiveEvent(activeMsg *ActiveMessage, record map[uint16]*
 	}
 	_, err := c.conn.Write(data)
 	if v, ok := c.handles[activeMsg.Command]; ok {
-		msg := newActiveMessage(seq, data, err)
+		msg := newActiveMessage(seq, activeMsg.Command, data, err)
 		msg.Handler = v
 		c.onWriteExecutionEvent(msg)
 	}

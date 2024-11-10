@@ -47,12 +47,12 @@ func newTerminalMessage(jtMsg *jt808.JTMessage, terminalData []byte) *Message {
 	}
 }
 
-func newActiveMessage(seq uint16, platformData []byte, err error) *Message {
+func newActiveMessage(seq uint16, command consts.JT808CommandType, platformData []byte, err error) *Message {
 	jtMsg := jt808.NewJTMessage()
 	_ = jtMsg.Decode(platformData)
 	return &Message{
 		JTMessage: jtMsg,
-		Command:   consts.JT808CommandType(jtMsg.Header.ReplyID),
+		Command:   command,
 		ExtensionFields: struct {
 			TerminalSeq         uint16 `json:"terminalSeq,omitempty"`
 			PlatformSeq         uint16 `json:"platformSeq,omitempty"`

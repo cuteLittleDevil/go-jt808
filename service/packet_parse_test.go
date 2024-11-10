@@ -102,7 +102,7 @@ func Test_packageParse_unpack(t *testing.T) {
 				return
 			}
 			for k, v := range gotMsgs {
-				str := fmt.Sprintf("%x", v.OriginalData)
+				str := fmt.Sprintf("%x", v.ExtensionFields.TerminalData)
 				if !reflect.DeepEqual(str, tt.want.msgs[k]) {
 					t.Errorf("unpack() gotMsgs = %s\n want %s", str, tt.want.msgs)
 					return
