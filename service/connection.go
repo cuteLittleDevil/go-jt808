@@ -52,10 +52,10 @@ func (c *connection) Start() {
 
 func (c *connection) reader() {
 	var (
-		once sync.Once
 		// 消息体长度最大为 10bit 也就是 1023 的字节
 		curData = make([]byte, 1023)
 		pack    = newPackageParse()
+		join    = false
 	)
 	defer func() {
 		c.stop()
@@ -71,11 +71,13 @@ func (c *connection) reader() {
 			if n, err := c.conn.Read(curData); err != nil {
 				if errors.Is(err, net.ErrClosed) || errors.Is(err, io.EOF) {
 					slog.Debug("connection close",
+						slog.Bool("join", join),
 						slog.Any("platform num", c.platformSerialNumber),
 						slog.Any("err", err))
 					return
 				}
 				slog.Error("read data",
+					slog.Bool("join", join),
 					slog.Any("platform num", c.platformSerialNumber),
 					slog.Any("err", err))
 				return
@@ -84,6 +86,7 @@ func (c *connection) reader() {
 				msgs, err := pack.parse(effectiveData)
 				if err != nil {
 					slog.Error("parse data",
+						slog.Bool("join", join),
 						slog.Any("platform num", c.platformSerialNumber),
 						slog.String("effective data", fmt.Sprintf("%x", effectiveData)),
 						slog.Any("err", err))
@@ -105,20 +108,16 @@ func (c *connection) reader() {
 							slog.String("remark", command.String()))
 						continue
 					}
-					fail := false
-					once.Do(func() {
-						if key, err := c.joinFunc(msg, c.activeMsgChan); err != nil {
-							fail = true
-							slog.Warn("key exist",
+					if !join {
+						if key, err := c.joinFunc(msg, c.activeMsgChan); err == nil {
+							join = true
+							c.key = key
+						} else if errors.Is(err, _errKeyExist) {
+							slog.Warn("key",
 								slog.String("effective data", fmt.Sprintf("%x", effectiveData)),
 								slog.Any("err", err))
 							return
-						} else {
-							c.key = key
 						}
-					})
-					if fail {
-						return
 					}
 					c.msgChan <- msg
 				}

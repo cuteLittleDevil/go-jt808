@@ -19,7 +19,7 @@ type Options struct {
 	Addr             string
 	Network          string
 	FilterSubPack    bool
-	KeyFunc          func(message *Message) string
+	KeyFunc          func(message *Message) (string, bool)
 }
 
 func (o *Options) Apply(opts []Option) {
@@ -62,7 +62,7 @@ func WithCustomHandleFunc(customHandleFunc func() map[consts.JT808CommandType]Ha
 	}}
 }
 
-func WithKeyFunc(keyFunc func(message *Message) string) Option {
+func WithKeyFunc(keyFunc func(message *Message) (string, bool)) Option {
 	return Option{F: func(o *Options) {
 		o.KeyFunc = keyFunc
 	}}

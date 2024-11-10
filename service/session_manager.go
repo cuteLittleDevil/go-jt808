@@ -12,7 +12,7 @@ type sessionOperationFunc func(record map[string]*session)
 type (
 	sessionManager struct {
 		operationFuncChan chan sessionOperationFunc
-		keyFunc           func(message *Message) string
+		keyFunc           func(message *Message) (string, bool)
 	}
 
 	session struct {
@@ -24,7 +24,7 @@ type (
 	}
 )
 
-func newSessionManager(keyFunc func(message *Message) string) *sessionManager {
+func newSessionManager(keyFunc func(message *Message) (string, bool)) *sessionManager {
 	return &sessionManager{
 		operationFuncChan: make(chan sessionOperationFunc, 10),
 		keyFunc:           keyFunc,
@@ -42,12 +42,16 @@ func (s *sessionManager) run() {
 }
 
 func (s *sessionManager) join(message *Message, activeChan chan<- *ActiveMessage) (string, error) {
+	key, ok := s.keyFunc(message)
+	if !ok {
+		return "", _errKeyInvalid
+	}
 	ch := make(chan error)
 	defer close(ch)
-	key := s.keyFunc(message)
 	s.operationFuncChan <- func(record map[string]*session) {
 		if v, ok := record[key]; ok {
-			ch <- fmt.Errorf("exist key join time[%s]", v.joinTime.Format(time.RFC3339))
+			ch <- errors.Join(fmt.Errorf("exist key join time[%s]",
+				v.joinTime.Format(time.RFC3339)), _errKeyExist)
 			return
 		}
 		record[key] = &session{

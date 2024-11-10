@@ -17,8 +17,8 @@ func New(opts ...Option) *GoJT808 {
 	g := &GoJT808{
 		opts: options,
 	}
-	keyFunc := func(message *Message) string {
-		return message.Header.TerminalPhoneNo
+	keyFunc := func(message *Message) (string, bool) {
+		return message.Header.TerminalPhoneNo, true
 	}
 	if g.opts.KeyFunc != nil {
 		keyFunc = g.opts.KeyFunc
