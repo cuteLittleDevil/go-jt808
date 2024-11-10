@@ -26,9 +26,10 @@ type connection struct {
 	leaveFunc            func(key string)
 	key                  string
 	filter               bool
+	terminalEvent        TerminalEventer
 }
 
-func newConnection(conn *net.TCPConn, handles map[consts.JT808CommandType]Handler, filter bool,
+func newConnection(conn *net.TCPConn, handles map[consts.JT808CommandType]Handler, terminalEvent TerminalEventer, filter bool,
 	join func(message *Message, activeChan chan<- *ActiveMessage) (string, error), leave func(key string)) *connection {
 	return &connection{
 		conn:                 conn,
@@ -42,6 +43,7 @@ func newConnection(conn *net.TCPConn, handles map[consts.JT808CommandType]Handle
 		joinFunc:             join,
 		leaveFunc:            leave,
 		filter:               filter,
+		terminalEvent:        terminalEvent,
 	}
 }
 
@@ -93,26 +95,25 @@ func (c *connection) reader() {
 					return
 				}
 				for _, msg := range msgs {
-					command := consts.JT808CommandType(msg.JTMessage.Header.ID)
-					if handler, ok := c.handles[command]; ok {
+					if handler, ok := c.handles[msg.Command]; ok {
 						msg.Handler = handler
-						if command == consts.P8003ReissueSubcontractingRequest {
+						if msg.Command == consts.P8003ReissueSubcontractingRequest {
 							c.reissuePackChan <- msg
 							continue
 						}
 						c.onReadExecutionEvent(msg)
 					} else {
-						slog.Warn("key not found",
-							slog.Int("id", int(msg.JTMessage.Header.ID)),
-							slog.Any("platform num", c.platformSerialNumber),
-							slog.String("remark", command.String()))
+						c.terminalEvent.OnNotSupportedEvent(msg)
 						continue
 					}
 					if !join {
-						if key, err := c.joinFunc(msg, c.activeMsgChan); err == nil {
+						key, err := c.joinFunc(msg, c.activeMsgChan)
+						if err == nil {
 							join = true
 							c.key = key
-						} else if errors.Is(err, _errKeyExist) {
+						}
+						c.terminalEvent.OnJoinEvent(msg, key, err)
+						if errors.Is(err, _errKeyExist) {
 							slog.Warn("key",
 								slog.String("effective data", fmt.Sprintf("%x", effectiveData)),
 								slog.Any("err", err))
@@ -157,6 +158,7 @@ func (c *connection) write() {
 func (c *connection) stop() {
 	c.stopOnce.Do(func() {
 		c.leaveFunc(c.key)
+		c.terminalEvent.OnLeaveEvent(c.key)
 		clear(c.handles)
 		close(c.msgChan)
 		close(c.activeMsgChan)
@@ -264,7 +266,7 @@ func (c *connection) onActiveRespondEvent(record map[uint16]*ActiveMessage, msg 
 		JT808Handler:   nil,
 		HasRespondFunc: nil,
 	}
-	switch consts.JT808CommandType(msg.JTMessage.Header.ID) {
+	switch msg.Command {
 	case consts.T0001GeneralRespond:
 		t0x0001 := &model.T0x0001{}
 		tmp.JT808Handler = t0x0001
@@ -284,7 +286,6 @@ func (c *connection) onActiveRespondEvent(record map[uint16]*ActiveMessage, msg 
 			return true
 		}
 	case consts.T1205UploadAudioVideoResourceList:
-		fmt.Println("11111111")
 		t0x1205 := &model.T0x1205{}
 		tmp.JT808Handler = t0x1205
 		tmp.HasRespondFunc = func(seq uint16) bool {
@@ -331,6 +332,7 @@ func (c *connection) onReadExecutionEvent(msg *Message) {
 		return
 	}
 	msg.Handler.OnReadExecutionEvent(msg)
+	c.terminalEvent.OnReadExecutionEvent(msg)
 }
 
 func (c *connection) onWriteExecutionEvent(msg *Message) {
@@ -343,6 +345,7 @@ func (c *connection) onWriteExecutionEvent(msg *Message) {
 		return
 	}
 	msg.Handler.OnWriteExecutionEvent(*msg)
+	c.terminalEvent.OnWriteExecutionEvent(*msg)
 }
 
 func (c *connection) curSeq() uint16 {

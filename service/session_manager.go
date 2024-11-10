@@ -50,8 +50,8 @@ func (s *sessionManager) join(message *Message, activeChan chan<- *ActiveMessage
 	defer close(ch)
 	s.operationFuncChan <- func(record map[string]*session) {
 		if v, ok := record[key]; ok {
-			ch <- errors.Join(fmt.Errorf("exist key join time[%s]",
-				v.joinTime.Format(time.RFC3339)), _errKeyExist)
+			ch <- errors.Join(fmt.Errorf("key[%s] join time[%s]",
+				key, v.joinTime.Format(time.RFC3339)), _errKeyExist)
 			return
 		}
 		record[key] = &session{

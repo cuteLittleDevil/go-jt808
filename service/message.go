@@ -21,8 +21,8 @@ type Message struct {
 		PlatformData []byte `json:"-"`
 		// ActiveSend 是否是平台主动下发的
 		ActiveSend bool `json:"activeSend,omitempty"`
-		// Complete 分包情况是否最终完成了
-		Complete bool `json:"complete,omitempty"`
+		// SubcontractComplete 分包情况是否最终完成了
+		SubcontractComplete bool `json:"subcontractComplete,omitempty"`
 		// Err 异常情况
 		Err error `json:"err,omitempty"`
 	}
@@ -33,13 +33,13 @@ func newTerminalMessage(jtMsg *jt808.JTMessage, terminalData []byte) *Message {
 		JTMessage: jtMsg,
 		Command:   consts.JT808CommandType(jtMsg.Header.ID),
 		ExtensionFields: struct {
-			TerminalSeq  uint16 `json:"terminalSeq,omitempty"`
-			PlatformSeq  uint16 `json:"platformSeq,omitempty"`
-			TerminalData []byte `json:"-"`
-			PlatformData []byte `json:"-"`
-			ActiveSend   bool   `json:"activeSend,omitempty"`
-			Complete     bool   `json:"complete,omitempty"`
-			Err          error  `json:"err,omitempty"`
+			TerminalSeq         uint16 `json:"terminalSeq,omitempty"`
+			PlatformSeq         uint16 `json:"platformSeq,omitempty"`
+			TerminalData        []byte `json:"-"`
+			PlatformData        []byte `json:"-"`
+			ActiveSend          bool   `json:"activeSend,omitempty"`
+			SubcontractComplete bool   `json:"subcontractComplete,omitempty"`
+			Err                 error  `json:"err,omitempty"`
 		}{
 			TerminalData: terminalData,
 			TerminalSeq:  jtMsg.Header.SerialNumber,
@@ -54,13 +54,13 @@ func newActiveMessage(seq uint16, platformData []byte, err error) *Message {
 		JTMessage: jtMsg,
 		Command:   consts.JT808CommandType(jtMsg.Header.ReplyID),
 		ExtensionFields: struct {
-			TerminalSeq  uint16 `json:"terminalSeq,omitempty"`
-			PlatformSeq  uint16 `json:"platformSeq,omitempty"`
-			TerminalData []byte `json:"-"`
-			PlatformData []byte `json:"-"`
-			ActiveSend   bool   `json:"activeSend,omitempty"`
-			Complete     bool   `json:"complete,omitempty"`
-			Err          error  `json:"err,omitempty"`
+			TerminalSeq         uint16 `json:"terminalSeq,omitempty"`
+			PlatformSeq         uint16 `json:"platformSeq,omitempty"`
+			TerminalData        []byte `json:"-"`
+			PlatformData        []byte `json:"-"`
+			ActiveSend          bool   `json:"activeSend,omitempty"`
+			SubcontractComplete bool   `json:"subcontractComplete,omitempty"`
+			Err                 error  `json:"err,omitempty"`
 		}{
 			PlatformSeq:  seq,
 			PlatformData: platformData,
@@ -72,13 +72,13 @@ func newActiveMessage(seq uint16, platformData []byte, err error) *Message {
 
 func newErrMessage(err error) *Message {
 	return &Message{ExtensionFields: struct {
-		TerminalSeq  uint16 `json:"terminalSeq,omitempty"`
-		PlatformSeq  uint16 `json:"platformSeq,omitempty"`
-		TerminalData []byte `json:"-"`
-		PlatformData []byte `json:"-"`
-		ActiveSend   bool   `json:"activeSend,omitempty"`
-		Complete     bool   `json:"complete,omitempty"`
-		Err          error  `json:"err,omitempty"`
+		TerminalSeq         uint16 `json:"terminalSeq,omitempty"`
+		PlatformSeq         uint16 `json:"platformSeq,omitempty"`
+		TerminalData        []byte `json:"-"`
+		PlatformData        []byte `json:"-"`
+		ActiveSend          bool   `json:"activeSend,omitempty"`
+		SubcontractComplete bool   `json:"subcontractComplete,omitempty"`
+		Err                 error  `json:"err,omitempty"`
 	}{
 		Err: err,
 	}}
@@ -88,5 +88,5 @@ func (msg *Message) hasComplete() bool {
 	if msg.JTMessage.Header.SubPackageSum == 0 {
 		return true
 	}
-	return msg.ExtensionFields.Complete
+	return msg.ExtensionFields.SubcontractComplete
 }

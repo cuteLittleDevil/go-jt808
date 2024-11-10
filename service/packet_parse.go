@@ -153,7 +153,7 @@ func (p *packageParse) completePack(msg *Message) (*Message, bool) {
 			p.remove(id)
 			completeMsg := newTerminalMessage(msg.JTMessage, data)
 			completeMsg.Body = data
-			completeMsg.ExtensionFields.Complete = true
+			completeMsg.ExtensionFields.SubcontractComplete = true
 			return completeMsg, true
 		}
 	}

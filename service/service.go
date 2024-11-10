@@ -17,12 +17,7 @@ func New(opts ...Option) *GoJT808 {
 	g := &GoJT808{
 		opts: options,
 	}
-	keyFunc := func(message *Message) (string, bool) {
-		return message.Header.TerminalPhoneNo, true
-	}
-	if g.opts.KeyFunc != nil {
-		keyFunc = g.opts.KeyFunc
-	}
+	keyFunc := g.opts.KeyFunc
 	g.sessionManager = newSessionManager(keyFunc)
 	go g.sessionManager.run()
 	return g
@@ -53,13 +48,12 @@ func (g *GoJT808) Run() {
 			continue
 		}
 		handles := g.createDefaultHandle()
-		if g.opts.CustomHandleFunc != nil {
-			customHandles := g.opts.CustomHandleFunc()
-			for k, v := range customHandles {
-				handles[k] = v
-			}
+		customHandles := g.opts.CustomHandleFunc()
+		for k, v := range customHandles {
+			handles[k] = v
 		}
-		conn := newConnection(c, handles, g.opts.FilterSubPack,
+		terminalEvent := g.opts.CustomTerminalEventerFunc()
+		conn := newConnection(c, handles, terminalEvent, g.opts.FilterSubPack,
 			g.sessionManager.join, g.sessionManager.leave)
 		go conn.Start()
 	}
@@ -90,5 +84,6 @@ func (g *GoJT808) createDefaultHandle() map[consts.JT808CommandType]Handler {
 		consts.P9207FileUploadControl:                 newDefaultHandle(&model.P0x9207{}),
 		consts.T0001GeneralRespond:                    newDefaultHandle(&model.T0x0001{}),
 		consts.P8003ReissueSubcontractingRequest:      newDefaultHandle(&model.P0x8003{}),
+		consts.P8103SetTerminalParams:                 newDefaultHandle(&model.P0x8103{}),
 	}
 }

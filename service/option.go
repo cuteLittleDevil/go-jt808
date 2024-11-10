@@ -9,32 +9,38 @@ type Option struct {
 }
 
 const (
-	defaultAddr             = ":8888"
-	defaultNetwork          = "tcp"
-	defaultHasFilterSubPack = true // 读写事件是否过滤分包的情况
+	defaultAddr          = "0.0.0.0:808" // 服务默认地址
+	defaultNetwork       = "tcp"         // 服务默认网络协议
+	defaultFilterSubPack = true          // 读写事件是否过滤分包的情况
 )
 
 type Options struct {
-	CustomHandleFunc func() map[consts.JT808CommandType]Handler
-	Addr             string
-	Network          string
-	FilterSubPack    bool
-	KeyFunc          func(message *Message) (string, bool)
-}
-
-func (o *Options) Apply(opts []Option) {
-	for _, op := range opts {
-		op.F(o)
-	}
+	Addr                      string
+	Network                   string
+	FilterSubPack             bool
+	KeyFunc                   func(message *Message) (string, bool)
+	CustomTerminalEventerFunc func() TerminalEventer
+	CustomHandleFunc          func() map[consts.JT808CommandType]Handler
 }
 
 func NewOptions(opts []Option) *Options {
 	options := &Options{
 		Addr:          defaultAddr,
 		Network:       defaultNetwork,
-		FilterSubPack: defaultHasFilterSubPack,
+		FilterSubPack: defaultFilterSubPack,
+		KeyFunc: func(message *Message) (string, bool) {
+			return message.JTMessage.Header.TerminalPhoneNo, true
+		},
+		CustomTerminalEventerFunc: func() TerminalEventer {
+			return &defaultTerminalEvent{}
+		},
+		CustomHandleFunc: func() map[consts.JT808CommandType]Handler {
+			return map[consts.JT808CommandType]Handler{}
+		},
 	}
-	options.Apply(opts)
+	for _, op := range opts {
+		op.F(options)
+	}
 	return options
 }
 
@@ -65,5 +71,11 @@ func WithCustomHandleFunc(customHandleFunc func() map[consts.JT808CommandType]Ha
 func WithKeyFunc(keyFunc func(message *Message) (string, bool)) Option {
 	return Option{F: func(o *Options) {
 		o.KeyFunc = keyFunc
+	}}
+}
+
+func WithCustomTerminalEventer(customTerminalEventerFunc func() TerminalEventer) Option {
+	return Option{F: func(o *Options) {
+		o.CustomTerminalEventerFunc = customTerminalEventerFunc
 	}}
 }
