@@ -150,9 +150,6 @@ func (c *connection) write() {
 					}
 				}
 				c.defaultReplyEvent(msg)
-			} else if msg != nil && len(msg.OriginalData) > 0 {
-				slog.Warn("msgChan is close",
-					slog.String("original data", fmt.Sprintf("%x", msg.OriginalData)))
 			}
 		}
 	}
@@ -172,59 +169,64 @@ func (c *connection) stop() {
 func (c *connection) defaultReplyEvent(msg *Message) {
 	header := msg.JTMessage.Header
 	header.ReplyID = uint16(msg.ReplyProtocol())
-	header.PlatformSerialNumber = c.platformSerialNumber
+	seq := c.curSeq()
+	header.PlatformSerialNumber = seq
 	if has := msg.HasReply(); !has {
 		return
 	}
 	body, err := msg.ReplyBody(msg.JTMessage)
 	if err != nil {
 		slog.Warn("reply body fail",
-			slog.String("original data", fmt.Sprintf("%x", msg.OriginalData)),
+			slog.String("terminal data", fmt.Sprintf("%x", msg.ExtensionFields.TerminalData)),
 			slog.Any("err", err))
 		return
 	}
-	c.platformSerialNumber++
 	data := header.Encode(body)
 	if _, err = c.conn.Write(data); err != nil {
 		slog.Warn("write fail",
 			slog.String("data", fmt.Sprintf("%x", data)),
 			slog.Any("err", err))
-		msg.WriteErr = errors.Join(ErrWriteDataFail, err)
+		msg.ExtensionFields.Err = errors.Join(ErrWriteDataFail, err)
 	}
-	msg.ReplyData = data
+	msg.ExtensionFields.PlatformSeq = seq
+	msg.ExtensionFields.PlatformData = data
 	c.onWriteExecutionEvent(msg)
 }
 
 func (c *connection) subPackReplyEvent(msg *Message) {
 	header := msg.JTMessage.Header
-	header.PlatformSerialNumber = c.platformSerialNumber
+	seq := c.curSeq()
+	header.PlatformSerialNumber = seq
 	header.ReplyID = uint16(consts.P8003ReissueSubcontractingRequest)
 	data := header.Encode(msg.JTMessage.Body)
 	if _, err := c.conn.Write(data); err != nil {
 		slog.Warn("write fail",
 			slog.String("data", fmt.Sprintf("%x", data)),
 			slog.Any("err", err))
-		msg.WriteErr = errors.Join(ErrWriteDataFail, err)
+		msg.ExtensionFields.Err = errors.Join(ErrWriteDataFail, err)
 	}
-	msg.OriginalData = data
+	msg.ExtensionFields.PlatformSeq = seq
+	msg.ExtensionFields.PlatformData = data
 	c.onWriteExecutionEvent(msg)
 }
 
 func (c *connection) onActiveEvent(activeMsg *ActiveMessage, record map[uint16]*ActiveMessage) {
 	header := activeMsg.header
+	seq := c.curSeq()
+	header.PlatformSerialNumber = seq
 	header.ReplyID = uint16(activeMsg.Command)
-	header.PlatformSerialNumber = c.platformSerialNumber
-	num := c.platformSerialNumber
-	record[num] = activeMsg
-	c.platformSerialNumber++
+	record[seq] = activeMsg
 	data := header.Encode(activeMsg.Body)
-	activeMsg.Data = data
+	activeMsg.ExtensionFields = struct {
+		PlatformSeq uint16 `json:"platformSeq,omitempty"`
+		Data        []byte `json:"data,omitempty"`
+	}{
+		PlatformSeq: seq,
+		Data:        data,
+	}
 	_, err := c.conn.Write(data)
 	if v, ok := c.handles[activeMsg.Command]; ok {
-		msg := NewMessage(data)
-		if err != nil {
-			msg.WriteErr = errors.Join(ErrWriteDataFail, err)
-		}
+		msg := newActiveMessage(seq, data, err)
 		msg.Handler = v
 		c.onWriteExecutionEvent(msg)
 	}
@@ -235,7 +237,7 @@ func (c *connection) onActiveEvent(activeMsg *ActiveMessage, record map[uint16]*
 		if activeMsg.hasComplete() {
 			return
 		}
-		delete(record, num)
+		delete(record, seq)
 		activeMsg.replyChan <- newErrMessage(errors.Join(ErrWriteDataFail, err))
 		return
 	}
@@ -251,7 +253,7 @@ func (c *connection) onActiveEvent(activeMsg *ActiveMessage, record map[uint16]*
 		delete(record, seq)
 		activeMsg.replyChan <- newErrMessage(errors.Join(ErrWriteDataOverTime,
 			fmt.Errorf("overtime is [%.2f]second", duration.Seconds())))
-	}(activeMsg, num)
+	}(activeMsg, seq)
 }
 
 func (c *connection) onActiveRespondEvent(record map[uint16]*ActiveMessage, msg *Message) bool {
@@ -283,6 +285,7 @@ func (c *connection) onActiveRespondEvent(record map[uint16]*ActiveMessage, msg 
 			return true
 		}
 	case consts.T1205UploadAudioVideoResourceList:
+		fmt.Println("11111111")
 		t0x1205 := &model.T0x1205{}
 		tmp.JT808Handler = t0x1205
 		tmp.HasRespondFunc = func(seq uint16) bool {
@@ -298,7 +301,7 @@ func (c *connection) onActiveRespondEvent(record map[uint16]*ActiveMessage, msg 
 	if tmp.HasRespondFunc != nil {
 		if err := tmp.Parse(msg.JTMessage); err != nil {
 			slog.Warn("parse fail",
-				slog.String("original data", fmt.Sprintf("%x", msg.OriginalData)),
+				slog.String("terminal data", fmt.Sprintf("%x", msg.ExtensionFields.TerminalData)),
 				slog.Any("err", err))
 			return true
 		}
@@ -307,6 +310,8 @@ func (c *connection) onActiveRespondEvent(record map[uint16]*ActiveMessage, msg 
 				if v.hasComplete() {
 					return true
 				}
+				msg.ExtensionFields.PlatformSeq = k
+				msg.ExtensionFields.PlatformData = record[k].ExtensionFields.Data
 				delete(record, k)
 				v.replyChan <- msg
 				return true
@@ -339,4 +344,11 @@ func (c *connection) onWriteExecutionEvent(msg *Message) {
 		return
 	}
 	msg.Handler.OnWriteExecutionEvent(*msg)
+}
+
+func (c *connection) curSeq() uint16 {
+	defer func() {
+		c.platformSerialNumber++
+	}()
+	return c.platformSerialNumber
 }

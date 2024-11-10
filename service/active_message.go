@@ -24,10 +24,14 @@ type ActiveMessage struct {
 	Command consts.JT808CommandType `json:"command"`
 	// Body 平台下发的数据
 	Body []byte `json:"body"`
-	// Data 平台最终下发的数据
-	Data []byte `json:"data"`
 	// OverTimeDuration  超时时间 默认5秒
 	OverTimeDuration time.Duration `json:"overTimeDuration"`
+	ExtensionFields  struct {
+		// PlatformSeq 平台下发的流水号
+		PlatformSeq uint16 `json:"platformSeq,omitempty"`
+		// Data 平台最终下发的数据
+		Data []byte `json:"data,omitempty"`
+	}
 }
 
 func NewActiveMessage(key string, command consts.JT808CommandType, body []byte, overTimeDuration time.Duration) *ActiveMessage {

@@ -4,12 +4,13 @@
 3. jt1078视频 [详情](./example/jt1078/README.md)
 
 ``` txt
-jt808服务端 jt1078服务端 模拟器在本机 平台下发0x9101指令 模拟器开始发送流
+jt808服务端 jt1078服务端 模拟器在本机
+平台下发0x9101指令 模拟器开始发送流
 ```
 | 流媒体服务 | 语言 | 在线播放地址       | 说明 |
 |----------|-----|-------------------|-----|
 | LAL | go  | http://49.234.235.7:8080/live/295696659617_1.flv | [详情点击](./example/jt1078/README.md#lal)  |
-| sky-java | java  | http://222.244.144.181:7777/video/1001-1-0-0.live.mp4  <br/>  (参考格式 需要部署后 HTTP请求 10秒内拉流) | [详情点击](./example/jt1078/README.md#sky-java)  |
+| sky-java | java  | 需要部署后 HTTP请求 10秒内拉流 参考格式如下 <br/> http://222.244.144.181:7777/video/1001-1-0-0.live.mp4 | [详情点击](./example/jt1078/README.md#sky-java)  |
 
 2. 存储经纬度 [代码参考](./example/simulator/server/main.go)
 ``` txt

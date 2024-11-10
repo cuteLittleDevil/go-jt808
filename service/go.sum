@@ -1,5 +1,5 @@
-github.com/cuteLittleDevil/go-jt808/protocol v1.6.0 h1:lpLgE/kw/nrJ0K1hOslNgsA2EbNYyNlCPV1jPmtEdJI=
-github.com/cuteLittleDevil/go-jt808/protocol v1.6.0/go.mod h1:5HLrrmIyIymWr6mi08u7S7ZLPbXxVSU3lWq6MqdxcUM=
+github.com/cuteLittleDevil/go-jt808/protocol v1.8.0 h1:ydJSIybOou8hrV8KWGek+eSH6VVTbv0HNDPhX51Mm0o=
+github.com/cuteLittleDevil/go-jt808/protocol v1.8.0/go.mod h1:5HLrrmIyIymWr6mi08u7S7ZLPbXxVSU3lWq6MqdxcUM=
 github.com/cuteLittleDevil/go-jt808/shared v1.2.0 h1:cXrt8FoGG18G4scAyZND3rbdwUWQ1n4FLlozehXJml4=
 github.com/cuteLittleDevil/go-jt808/shared v1.2.0/go.mod h1:BMWFmkDRLNjcXcuiPm/yphfWfZ6xNuTAJDkDDNhysOM=
 golang.org/x/text v0.19.0 h1:kTxAhCbGbxhK0IwgSKiMO5awPoDQ0RpfiVYBfK860YM=

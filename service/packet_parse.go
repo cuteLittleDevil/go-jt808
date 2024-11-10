@@ -71,10 +71,11 @@ func (p *packageParse) unpack(data []byte) (msgs []*Message, err error) {
 			return count == 2
 		})
 		if index == len(data)-1 {
-			msg := NewMessage(data)
-			if err := msg.JTMessage.Decode(data); err != nil {
+			jtMsg := jt808.NewJTMessage()
+			if err := jtMsg.Decode(data); err != nil {
 				return nil, fmt.Errorf("%w [%x]", err, data)
 			}
+			msg := newTerminalMessage(jtMsg, data)
 			return []*Message{msg}, nil
 		}
 	}
@@ -93,11 +94,12 @@ func (p *packageParse) unpack(data []byte) (msgs []*Message, err error) {
 			break
 		}
 		originalData := p.historyData[:end]
-		msg := NewMessage(originalData)
-		if err := msg.JTMessage.Decode(originalData); err != nil {
+		jtMsg := jt808.NewJTMessage()
+		if err := jtMsg.Decode(originalData); err != nil {
 			p.historyData = p.historyData[end:]
 			return msgs, fmt.Errorf("%w [%x]", err, originalData)
 		}
+		msg := newTerminalMessage(jtMsg, originalData)
 		msgs = append(msgs, msg)
 		if end == len(p.historyData) {
 			// 没有遗留的数据
@@ -149,10 +151,9 @@ func (p *packageParse) completePack(msg *Message) (*Message, bool) {
 				data = append(data, p.subcontractingRecord[id][i]...)
 			}
 			p.remove(id)
-			completeMsg := NewMessage(msg.OriginalData)
-			_ = completeMsg.Decode(msg.OriginalData)
+			completeMsg := newTerminalMessage(msg.JTMessage, data)
 			completeMsg.Body = data
-			completeMsg.complete = true
+			completeMsg.ExtensionFields.Complete = true
 			return completeMsg, true
 		}
 	}
@@ -206,8 +207,9 @@ func (p *packageParse) supplementarySubPackage() ([]*Message, bool) {
 			v.initHeader.ReplyID = uint16(p0x8003.Protocol())
 			v.initHeader.Property.PacketFragmented = 0
 			data := v.initHeader.Encode(p0x8003.Encode())
-			subMsg := NewMessage(data)
-			_ = subMsg.JTMessage.Decode(data)
+			jtMsg := jt808.NewJTMessage()
+			_ = jtMsg.Decode(data)
+			subMsg := newTerminalMessage(jtMsg, data)
 			msgs = append(msgs, subMsg)
 			v.updateTime = time.Now()
 		}

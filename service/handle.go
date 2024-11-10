@@ -13,10 +13,10 @@ type (
 
 	JT808Handler interface {
 		Parse(jtMsg *jt808.JTMessage) error               // 解析终端上传的body数据
-		HasReply() bool                                   // 回复的消息 是否需要回复
 		Protocol() consts.JT808CommandType                // 协议类型
-		ReplyBody(jtMsg *jt808.JTMessage) ([]byte, error) // 平台回复给终端的body部分数据
-		ReplyProtocol() consts.JT808CommandType           // 回复的协议类型
+		HasReply() bool                                   // 终端主动上传的情况 自动回复的消息 是否需要回复
+		ReplyBody(jtMsg *jt808.JTMessage) ([]byte, error) // 终端主动上传的情况 平台回复给终端的body部分数据
+		ReplyProtocol() consts.JT808CommandType           // 终端主动上传的情况 回复的协议类型
 	}
 
 	Eventer interface {

@@ -12,8 +12,8 @@ docker run --restart always -p 5288:80 -d vanjoge/rtvsdevice
 
 <h2 id="lal"> LAL流媒体服务 </h2>
 
-使用模拟器默认的数据 持续推送到LAL服务
-- [在线播放地址 FLV](http://49.234.235.7:8080/live/295696659617_1.flv)
+1. 使用模拟器默认的数据 持续推送到LAL服务
+2. 在线播放地址 http://49.234.235.7:8080/live/295696659617_1.flv
 - [LAL官方文档](https://pengrl.com/lal/#/streamurllist)
 - [代码参考](./lal/main.go)
 
