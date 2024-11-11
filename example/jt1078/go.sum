@@ -33,8 +33,8 @@ github.com/cloudwego/netpoll v0.6.4 h1:z/dA4sOTUQof6zZIO4QNnLBXsDFFFEos9OOGloR6k
 github.com/cloudwego/netpoll v0.6.4/go.mod h1:BtM+GjKTdwKoC8IOzD08/+8eEn2gYoiNLipFca6BVXQ=
 github.com/cuteLittleDevil/go-jt808/protocol v1.8.0 h1:ydJSIybOou8hrV8KWGek+eSH6VVTbv0HNDPhX51Mm0o=
 github.com/cuteLittleDevil/go-jt808/protocol v1.8.0/go.mod h1:5HLrrmIyIymWr6mi08u7S7ZLPbXxVSU3lWq6MqdxcUM=
-github.com/cuteLittleDevil/go-jt808/service v0.4.0 h1:S9PGzHHQciLfdM7+gsQPCT5hoAwa38ruYXRteh13eLo=
-github.com/cuteLittleDevil/go-jt808/service v0.4.0/go.mod h1:cXDAUVgMlz6p+pmpV4Mb57lSyz5u0i4I+liAs5sWBio=
+github.com/cuteLittleDevil/go-jt808/service v1.0.0 h1:TcUhXyrtPNmqIpMt99q7tzukAVccnaWKM1O2Zt0NEis=
+github.com/cuteLittleDevil/go-jt808/service v1.0.0/go.mod h1:1k/PYAsNf5a0O4mbFUqk2zD6rZBg9++AyyR/VBwyxTI=
 github.com/cuteLittleDevil/go-jt808/shared v1.2.0 h1:cXrt8FoGG18G4scAyZND3rbdwUWQ1n4FLlozehXJml4=
 github.com/cuteLittleDevil/go-jt808/shared v1.2.0/go.mod h1:BMWFmkDRLNjcXcuiPm/yphfWfZ6xNuTAJDkDDNhysOM=
 github.com/cuteLittleDevil/go-jt808/terminal v0.2.0 h1:1zp27ZZ3mplK4nNQEiCLXx6CxJJ+MWqryzofMUJqkbc=

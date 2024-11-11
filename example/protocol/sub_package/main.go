@@ -131,5 +131,5 @@ type p8003 struct {
 func (p *p8003) OnReadExecutionEvent(_ *service.Message) {}
 
 func (p *p8003) OnWriteExecutionEvent(message service.Message) {
-	fmt.Println("补包请求", fmt.Sprintf("%x", message.OriginalData), time.Now().Format(time.DateTime))
+	fmt.Println("补包请求", fmt.Sprintf("%x", message.ExtensionFields.PlatformData), time.Now().Format(time.DateTime))
 }

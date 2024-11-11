@@ -9,6 +9,7 @@ import (
 	"github.com/cuteLittleDevil/go-jt808/service"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 	"github.com/cuteLittleDevil/go-jt808/terminal"
+	"jt1078/help"
 	"log/slog"
 	"net"
 	"os"
@@ -41,6 +42,9 @@ func main() {
 	goJt808 := service.New(
 		service.WithHostPorts("0.0.0.0:808"),
 		service.WithNetwork("tcp"),
+		service.WithCustomTerminalEventer(func() service.TerminalEventer {
+			return &help.LogTerminal{}
+		}),
 	)
 	go goJt808.Run()
 
@@ -63,8 +67,8 @@ func main() {
 		activeMsg := service.NewActiveMessage(_phone, p9101.Protocol(), body, 3*time.Second)
 		msg := goJt808.SendActiveMessage(activeMsg)
 		var t0x0001 model.T0x0001
-		if msg.WriteErr != nil {
-			panic(msg.WriteErr)
+		if msg.ExtensionFields.Err != nil {
+			panic(msg.ExtensionFields.Err)
 		}
 		if err := t0x0001.Parse(msg.JTMessage); err != nil {
 			panic(err)

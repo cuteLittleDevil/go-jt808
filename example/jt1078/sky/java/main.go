@@ -7,8 +7,8 @@ import (
 	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/cuteLittleDevil/go-jt808/protocol/model"
 	"github.com/cuteLittleDevil/go-jt808/service"
-	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 	"github.com/hertz-contrib/cors"
+	"jt1078/help"
 	"log/slog"
 	"net/http"
 	"os"
@@ -16,16 +16,6 @@ import (
 )
 
 var goJt808 *service.GoJT808
-
-type Me9101 struct {
-	model.P0x9101
-}
-
-func (m Me9101) OnReadExecutionEvent(_ *service.Message) {}
-
-func (m Me9101) OnWriteExecutionEvent(message service.Message) {
-	fmt.Println(fmt.Sprintf("9101 %x", message.OriginalData))
-}
 
 func init() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
@@ -38,10 +28,8 @@ func init() {
 	goJt808 = service.New(
 		service.WithHostPorts("0.0.0.0:8081"),
 		service.WithNetwork("tcp"),
-		service.WithCustomHandleFunc(func() map[consts.JT808CommandType]service.Handler {
-			return map[consts.JT808CommandType]service.Handler{
-				consts.P9101RealTimeAudioVideoRequest: &Me9101{},
-			}
+		service.WithCustomTerminalEventer(func() service.TerminalEventer {
+			return &help.LogTerminal{}
 		}),
 	)
 	go goJt808.Run()
@@ -110,7 +98,9 @@ func jt9101(_ context.Context, c *app.RequestContext) {
 		Body:             p9101.Encode(),
 		OverTimeDuration: 3 * time.Second,
 	})
-	fmt.Println(replyMsg.WriteErr)
+	extension := replyMsg.ExtensionFields
+	fmt.Println(fmt.Sprintf("主动发送的9101 发送[%x] 应答[%x]",
+		extension.TerminalSeq, extension.PlatformSeq))
 	c.JSON(http.StatusOK, 1)
 	return
 }
@@ -155,12 +145,15 @@ func jt9201(_ context.Context, c *app.RequestContext) {
 		StartTime:    req.StartTime,
 		EndTime:      req.EndTime,
 	}
-	_ = goJt808.SendActiveMessage(&service.ActiveMessage{
+	replyMsg := goJt808.SendActiveMessage(&service.ActiveMessage{
 		Key:              req.ClientId,
 		Command:          p9201.Protocol(),
 		Body:             p9201.Encode(),
 		OverTimeDuration: 3 * time.Second,
 	})
+	extension := replyMsg.ExtensionFields
+	fmt.Println(fmt.Sprintf("主动发送的9102 发送[%x] 应答[%x]",
+		extension.TerminalSeq, extension.PlatformSeq))
 	c.JSON(http.StatusOK, 1)
 	return
 }
