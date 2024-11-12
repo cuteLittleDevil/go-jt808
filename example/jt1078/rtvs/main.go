@@ -70,11 +70,11 @@ func main() {
 func customRoute(h *server.Hertz) {
 	apiRtvsV1 := h.Group("/api/")
 	apiRtvsV1.GET("/VideoControl", videoControl)
-	apiRtvsV1.GET("/WCF0x9105", wcf0x9105)
+	apiRtvsV1.POST("/WCF0x9105", wcf0x9105)
 }
 
 func wcf0x9105(_ context.Context, c *app.RequestContext) {
-	content := c.PostForm("Content")
+	content := c.DefaultPostForm("Content", "")
 	type RtvsResponse []struct {
 		Sim        string `json:"Sim"`
 		NotifyList []struct {
@@ -101,7 +101,7 @@ func wcf0x9105(_ context.Context, c *app.RequestContext) {
 					PackageLossRate: packetLossRate,
 				}
 				replyMsg := goJt808.SendActiveMessage(&service.ActiveMessage{
-					Key:              sim,
+					Key:              strings.TrimLeft(sim, "0"), //注意去掉前面的0
 					Command:          consts.P9105AudioVideoControlStatusNotice,
 					Body:             tmp.Encode(),
 					OverTimeDuration: 3 * time.Second,
@@ -112,13 +112,14 @@ func wcf0x9105(_ context.Context, c *app.RequestContext) {
 					})
 					return
 				}
-				// 9105 需要应答吗
 			}(sim, notify.Channel, notify.PacketLossRate)
 		}
 	}
 	wg.Wait()
 	select {
-	case <-complete:
+	case err := <-complete:
+		slog.Warn("9105",
+			slog.Any("err", err))
 		c.String(http.StatusInternalServerError, "-1")
 		return
 	default:
@@ -205,18 +206,8 @@ func rtvs2jt1078Pack(content string) (*service.ActiveMessage, error) {
 	if len(content) < 24 {
 		return nil, errors.New("content too short")
 	}
-
+	data := rtvsContent2Data(content)
 	jtMsg := jt808.NewJTMessage()
-	content = strings.ReplaceAll(content, "7d", "7d01")
-	content = strings.ReplaceAll(content, "7e", "7d02")
-	body, _ := hex.DecodeString(content)
-	code := utils.CreateVerifyCode(body)
-	data := make([]byte, 0, 20)
-	data = append(data, 0x7e)
-	data = append(data, body...)
-	data = append(data, code)
-	data = append(data, 0x7e)
-	fmt.Println("收到的数据", fmt.Sprintf("%x", data))
 	if err := jtMsg.Decode(data); err != nil {
 		return nil, err
 	}
@@ -259,4 +250,17 @@ func rtvs2jt1078Pack(content string) (*service.ActiveMessage, error) {
 		Body:             handler.Encode(),
 		OverTimeDuration: overTime,
 	}, nil
+}
+
+func rtvsContent2Data(content string) []byte {
+	content = strings.ReplaceAll(content, "7d", "7d01")
+	content = strings.ReplaceAll(content, "7e", "7d02")
+	body, _ := hex.DecodeString(content)
+	code := utils.CreateVerifyCode(body)
+	data := make([]byte, 0, 20)
+	data = append(data, 0x7e)
+	data = append(data, body...)
+	data = append(data, code)
+	data = append(data, 0x7e)
+	return data
 }

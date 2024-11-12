@@ -39,4 +39,6 @@ docker run --restart always -p 5288:80 -d vanjoge/rtvsdevice
 
 测试模拟器的手机号为 013777883241
 
-![9101实时视频测试](./testdata/rtvs9101.png)
+![9101实时视频测试](./data/rtvs9101.png)
+
+需要对讲的话 则在本地打开tsrtvs.html测试
