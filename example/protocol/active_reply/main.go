@@ -34,6 +34,7 @@ func main() {
 		}),
 	)
 	go goJt808.Run()
+	time.Sleep(time.Second) // 等待启动完成
 
 	phone := "14419999999"
 	go client(phone)

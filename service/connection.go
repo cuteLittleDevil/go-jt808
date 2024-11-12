@@ -13,13 +13,14 @@ import (
 )
 
 type connection struct {
-	conn            *net.TCPConn
-	handles         map[consts.JT808CommandType]Handler
-	stopOnce        sync.Once
-	stopChan        chan struct{}
-	msgChan         chan *Message
-	activeMsgChan   chan *ActiveMessage
-	reissuePackChan chan *Message
+	conn                  *net.TCPConn
+	handles               map[consts.JT808CommandType]Handler
+	stopOnce              sync.Once
+	stopChan              chan struct{}
+	msgChan               chan *Message
+	activeMsgChan         chan *ActiveMessage
+	activeMsgCompleteChan chan *Message
+	reissuePackChan       chan *Message
 	// platformSerialNumber 平台流水号 到了math.MaxUint16后+1重新变成0
 	platformSerialNumber uint16
 	joinFunc             func(message *Message, activeChan chan<- *ActiveMessage) (string, error)
@@ -32,18 +33,19 @@ type connection struct {
 func newConnection(conn *net.TCPConn, handles map[consts.JT808CommandType]Handler, terminalEvent TerminalEventer, filter bool,
 	join func(message *Message, activeChan chan<- *ActiveMessage) (string, error), leave func(key string)) *connection {
 	return &connection{
-		conn:                 conn,
-		handles:              handles,
-		stopOnce:             sync.Once{},
-		stopChan:             make(chan struct{}),
-		msgChan:              make(chan *Message, 10),
-		activeMsgChan:        make(chan *ActiveMessage, 3),
-		reissuePackChan:      make(chan *Message, 3),
-		platformSerialNumber: uint16(0),
-		joinFunc:             join,
-		leaveFunc:            leave,
-		filter:               filter,
-		terminalEvent:        terminalEvent,
+		conn:                  conn,
+		handles:               handles,
+		stopOnce:              sync.Once{},
+		stopChan:              make(chan struct{}),
+		msgChan:               make(chan *Message, 10),
+		activeMsgChan:         make(chan *ActiveMessage, 3),
+		activeMsgCompleteChan: make(chan *Message, 3),
+		reissuePackChan:       make(chan *Message, 3),
+		platformSerialNumber:  uint16(0),
+		joinFunc:              join,
+		leaveFunc:             leave,
+		filter:                filter,
+		terminalEvent:         terminalEvent,
 	}
 }
 
@@ -138,6 +140,14 @@ func (c *connection) write() {
 			if ok {
 				c.onActiveEvent(activeMsg, record)
 			}
+		case msg, ok := <-c.activeMsgCompleteChan: // 平台主动下发的完成情况
+			if ok {
+				seq := msg.ExtensionFields.PlatformSeq
+				if v, ok := record[seq]; ok {
+					v.replyChan <- msg
+					delete(record, seq)
+				}
+			}
 		case subPackMsg, ok := <-c.reissuePackChan: // 分包补传的
 			if ok {
 				c.subPackReplyEvent(subPackMsg)
@@ -162,6 +172,7 @@ func (c *connection) stop() {
 		clear(c.handles)
 		close(c.msgChan)
 		close(c.activeMsgChan)
+		close(c.activeMsgCompleteChan)
 		close(c.reissuePackChan)
 		close(c.stopChan)
 	})
@@ -216,7 +227,6 @@ func (c *connection) onActiveEvent(activeMsg *ActiveMessage, record map[uint16]*
 	seq := c.curSeq()
 	header.PlatformSerialNumber = seq
 	header.ReplyID = uint16(activeMsg.Command)
-	record[seq] = activeMsg
 	data := header.Encode(activeMsg.Body)
 	activeMsg.ExtensionFields = struct {
 		PlatformSeq uint16 `json:"platformSeq,omitempty"`
@@ -225,6 +235,7 @@ func (c *connection) onActiveEvent(activeMsg *ActiveMessage, record map[uint16]*
 		PlatformSeq: seq,
 		Data:        data,
 	}
+	record[seq] = activeMsg
 	_, err := c.conn.Write(data)
 	if v, ok := c.handles[activeMsg.Command]; ok {
 		msg := newActiveMessage(seq, activeMsg.Command, data, err)
@@ -235,11 +246,7 @@ func (c *connection) onActiveEvent(activeMsg *ActiveMessage, record map[uint16]*
 		slog.Warn("write fail",
 			slog.String("data", fmt.Sprintf("%x", data)),
 			slog.Any("err", err))
-		if activeMsg.hasComplete() {
-			return
-		}
-		delete(record, seq)
-		activeMsg.replyChan <- newErrMessage(errors.Join(ErrWriteDataFail, err))
+		c.activeMsgCompleteChan <- newErrMessage(seq, errors.Join(ErrWriteDataFail, err))
 		return
 	}
 	go func(msg *ActiveMessage, seq uint16) {
@@ -248,11 +255,7 @@ func (c *connection) onActiveEvent(activeMsg *ActiveMessage, record map[uint16]*
 			duration = msg.OverTimeDuration
 		}
 		time.Sleep(duration)
-		if activeMsg.hasComplete() {
-			return
-		}
-		delete(record, seq)
-		activeMsg.replyChan <- newErrMessage(errors.Join(ErrWriteDataOverTime,
+		c.activeMsgCompleteChan <- newErrMessage(seq, errors.Join(ErrWriteDataOverTime,
 			fmt.Errorf("overtime is [%.2f]second", duration.Seconds())))
 	}(activeMsg, seq)
 }
@@ -282,7 +285,7 @@ func (c *connection) onActiveRespondEvent(record map[uint16]*ActiveMessage, msg 
 	case consts.T1003UploadAudioVideoAttr:
 		t0x1003 := &model.T0x1003{}
 		tmp.JT808Handler = t0x1003
-		tmp.HasRespondFunc = func(seq uint16) bool {
+		tmp.HasRespondFunc = func(_ uint16) bool {
 			return true
 		}
 	case consts.T1205UploadAudioVideoResourceList:
@@ -305,15 +308,11 @@ func (c *connection) onActiveRespondEvent(record map[uint16]*ActiveMessage, msg 
 				slog.Any("err", err))
 			return true
 		}
-		for k, v := range record {
+		for k := range record {
 			if tmp.HasRespondFunc(k) {
-				if v.hasComplete() {
-					return true
-				}
 				msg.ExtensionFields.PlatformSeq = k
 				msg.ExtensionFields.PlatformData = record[k].ExtensionFields.Data
-				delete(record, k)
-				v.replyChan <- msg
+				c.activeMsgCompleteChan <- msg
 				return true
 			}
 		}
@@ -328,7 +327,7 @@ func (c *connection) onReadExecutionEvent(msg *Message) {
 	}
 	if msg.Handler == nil {
 		slog.Warn("Handler is nil",
-			slog.String("head", msg.Header.String()))
+			slog.String("read", msg.Header.String()))
 		return
 	}
 	msg.Handler.OnReadExecutionEvent(msg)
@@ -341,7 +340,7 @@ func (c *connection) onWriteExecutionEvent(msg *Message) {
 	}
 	if msg.Handler == nil {
 		slog.Warn("Handler is nil",
-			slog.String("head", msg.Header.String()))
+			slog.String("write", msg.Header.String()))
 		return
 	}
 	msg.Handler.OnWriteExecutionEvent(*msg)

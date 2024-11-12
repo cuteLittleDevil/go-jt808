@@ -16,8 +16,6 @@ type ActiveMessage struct {
 	header *jt808.Header
 	// replyChan 用于获取终端应答情况
 	replyChan chan *Message
-	// completeChan 用于判断完成情况
-	completeChan chan struct{}
 	// Key 唯一标识符 默认手机号
 	Key string `json:"key"`
 	// Command 平台下发的指令
@@ -36,20 +34,6 @@ type ActiveMessage struct {
 
 func NewActiveMessage(key string, command consts.JT808CommandType, body []byte, overTimeDuration time.Duration) *ActiveMessage {
 	return &ActiveMessage{Key: key, Command: command, Body: body, OverTimeDuration: overTimeDuration}
-}
-
-func (a *ActiveMessage) hasComplete() bool {
-	select {
-	case <-a.completeChan:
-		return true
-	default:
-	}
-	ok := true
-	a.once.Do(func() {
-		close(a.completeChan)
-		ok = false
-	})
-	return ok
 }
 
 func (a *ActiveMessage) String() string {

@@ -83,12 +83,11 @@ func (s *sessionManager) write(activeMsg *ActiveMessage) *Message {
 		key := activeMsg.Key
 		if v, ok := record[key]; ok {
 			activeMsg.header = v.header
-			activeMsg.completeChan = make(chan struct{})
 			activeMsg.replyChan = replyChan
 			v.activeMsgChan <- activeMsg
 			return
 		}
-		replyChan <- newErrMessage(errors.Join(ErrNotExistKey,
+		replyChan <- newErrMessage(0, errors.Join(ErrNotExistKey,
 			fmt.Errorf("key=[%s] sum=[%d] ", key, len(record))))
 	}
 	return <-replyChan
