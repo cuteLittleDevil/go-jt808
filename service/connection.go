@@ -175,6 +175,7 @@ func (c *connection) stop() {
 		close(c.activeMsgCompleteChan)
 		close(c.reissuePackChan)
 		close(c.stopChan)
+		_ = c.conn.Close()
 	})
 }
 
