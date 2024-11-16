@@ -86,11 +86,11 @@ func (t *T0x1205) Encode() []byte {
 		data = append(data, v.ChannelNo)
 		data = append(data, utils.Time2BCD(v.StartTime)...)
 		data = append(data, utils.Time2BCD(v.EndTime)...)
-		binary.BigEndian.AppendUint64(data, v.AlarmFlag)
+		data = binary.BigEndian.AppendUint64(data, v.AlarmFlag)
 		data = append(data, v.AudioVideoResourceType)
 		data = append(data, v.StreamType)
 		data = append(data, v.MemoryType)
-		binary.BigEndian.AppendUint32(data, v.FileSizeByte)
+		data = binary.BigEndian.AppendUint32(data, v.FileSizeByte)
 	}
 	return data
 }

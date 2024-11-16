@@ -114,7 +114,7 @@ func (p *P0x9206) Encode() []byte {
 	data := make([]byte, 0, 100)
 	data = append(data, byte(len(p.FTPAddr)))
 	data = append(data, p.FTPAddr...)
-	data = append(data, byte(p.Port>>8), byte(p.Port&0xFF))
+	data = binary.BigEndian.AppendUint16(data, p.Port)
 	data = append(data, p.UsernameLen)
 	data = append(data, p.Username...)
 	data = append(data, p.PasswordLen)

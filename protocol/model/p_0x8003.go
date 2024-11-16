@@ -49,7 +49,7 @@ func (p *P0x8003) Encode() []byte {
 	binary.BigEndian.PutUint16(data[:2], p.OriginalSerialNumber)
 	data[2] = p.AgainPackageCount
 	for _, v := range p.AgainPackageList {
-		data = append(data, byte(v>>8), byte(v&0xFF))
+		data = binary.BigEndian.AppendUint16(data, v)
 	}
 	return data
 }

@@ -36,11 +36,10 @@ func (p *P0x9207) Parse(jtMsg *jt808.JTMessage) error {
 }
 
 func (p *P0x9207) Encode() []byte {
-	return []byte{
-		byte(p.RespondSerialNumber >> 8),
-		byte(p.RespondSerialNumber & 0xFF),
-		p.UploadControl,
-	}
+	data := make([]byte, 3)
+	binary.BigEndian.PutUint16(data, p.RespondSerialNumber)
+	data[2] = p.UploadControl
+	return data
 }
 
 func (p *P0x9207) HasReply() bool {

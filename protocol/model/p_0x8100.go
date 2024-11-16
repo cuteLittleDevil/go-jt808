@@ -29,13 +29,11 @@ func (p *P0x8100) ReplyProtocol() consts.JT808CommandType {
 
 func (p *P0x8100) Encode() []byte {
 	code := utils.String2FillingBytes(p.AuthCode, len(p.AuthCode))
-	tmp := []byte{
-		byte(p.RespondSerialNumber >> 8),
-		byte(p.RespondSerialNumber & 0xFF),
-		p.Result,
-	}
-	tmp = append(tmp, code...)
-	return tmp
+	data := make([]byte, 3, 10)
+	binary.BigEndian.PutUint16(data[0:2], p.RespondSerialNumber)
+	data[2] = p.Result
+	data = append(data, code...)
+	return data
 }
 
 func (p *P0x8100) Parse(jtMsg *jt808.JTMessage) error {

@@ -38,13 +38,11 @@ func (p *P0x8001) Parse(jtMsg *jt808.JTMessage) error {
 }
 
 func (p *P0x8001) Encode() []byte {
-	return []byte{
-		byte(p.RespondSerialNumber >> 8),
-		byte(p.RespondSerialNumber & 0xFF),
-		byte(p.RespondID >> 8),
-		byte(p.RespondID & 0xFF),
-		p.Result,
-	}
+	data := make([]byte, 5)
+	binary.BigEndian.PutUint16(data[0:2], p.RespondSerialNumber)
+	binary.BigEndian.PutUint16(data[2:4], p.RespondID)
+	data[4] = p.Result
+	return data
 }
 
 func (p *P0x8001) String() string {
