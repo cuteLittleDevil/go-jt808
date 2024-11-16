@@ -19,6 +19,10 @@ type T0x0104 struct {
 	TerminalParamDetails
 }
 
+func (t *T0x0104) Encode() []byte {
+	return nil
+}
+
 func (t *T0x0104) Protocol() consts.JT808CommandType {
 	return consts.T0104QueryParameter
 }

@@ -3,6 +3,7 @@ package model
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"github.com/cuteLittleDevil/go-jt808/protocol"
 	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
@@ -15,6 +16,7 @@ func TestParse(t *testing.T) {
 	type Handler interface {
 		Parse(*jt808.JTMessage) error
 		String() string
+		Encode() []byte
 	}
 	type args struct {
 		msg string
@@ -797,6 +799,13 @@ func TestParse(t *testing.T) {
 				t.Errorf("Parse() want: \n%v\nactual:\n%v", tt.args, tt.fields)
 				return
 			}
+			if gotBody := tt.args.Handler.Encode(); gotBody == nil && len(jtMsg.Body) > 0 {
+				t.Log("暂未实现的Encode()")
+			} else if fmt.Sprintf("%x", jtMsg.Body) != fmt.Sprintf("%x", gotBody) {
+				t.Errorf("Encode() want: \n%x\nactual:\n%x", jtMsg.Body, gotBody)
+				return
+			}
+
 			body := jtMsg.Body
 			for _, bodyLen := range tt.args.bodyLens {
 				jtMsg.Body = body[:bodyLen]

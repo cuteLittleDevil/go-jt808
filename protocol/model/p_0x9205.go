@@ -57,7 +57,7 @@ func (p *P0x9205) Encode() []byte {
 	data[0] = p.ChannelNo
 	data = append(data, utils.Time2BCD(p.StartTime)...)
 	data = append(data, utils.Time2BCD(p.EndTime)...)
-	binary.BigEndian.AppendUint64(data, p.AlarmFlag)
+	data = binary.BigEndian.AppendUint64(data, p.AlarmFlag)
 	data = append(data, p.MediaType)
 	data = append(data, p.StreamType)
 	data = append(data, p.StorageType)

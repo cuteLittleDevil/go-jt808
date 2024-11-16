@@ -43,7 +43,7 @@ func (t *T0x1005) Parse(jtMsg *jt808.JTMessage) error {
 }
 
 func (t *T0x1005) Encode() []byte {
-	data := make([]byte, 20)
+	data := make([]byte, 16)
 	startBcdTime := utils.Time2BCD(t.StartTime)
 	copy(data[0:6], startBcdTime)
 	endBcdTime := utils.Time2BCD(t.EndTime)
