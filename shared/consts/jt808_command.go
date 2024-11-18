@@ -267,16 +267,12 @@ func (j JT808CommandType) String() string {
 		return "终端-文件信息上传"
 	case T1212FileUploadComplete:
 		return "终端-文件上传完成消息"
-	case P0x9208AlarmAttachUpload:
+	case P9208AlarmAttachUpload:
 		return "平台-报警附件上传指令"
-	case P0x9212FileUploadCompleteRespond:
+	case P9212FileUploadCompleteRespond:
 		return "平台-文件上传完成消息应答"
-	case T0x1FC4TerminalUpgradeProgressReport:
+	case T1FC4TerminalUpgradeProgressReport:
 		return "终端-升级进度上报"
-	case T0x0900UploadBasicInfo:
-		return "终端-上传基本信息"
-	case T0x8900QueryBasicInfo:
-		return "平台-查询基本信息"
 	}
 
 	return "平台-暂未实现的命令"
