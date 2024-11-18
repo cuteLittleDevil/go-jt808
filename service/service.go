@@ -83,7 +83,7 @@ func (g *GoJT808) createDefaultHandle() map[consts.JT808CommandType]Handler {
 		consts.T1005UploadPassengerFlow:               newDefaultHandle(&model.T0x1005{}),
 		consts.P9101RealTimeAudioVideoRequest:         newDefaultHandle(&model.P0x9101{}),
 		consts.P9102AudioVideoControl:                 newDefaultHandle(&model.P0x9102{}),
-		consts.P9105AudioVideoControlStatusNotice:     newDefaultHandle(&model.P0x9205{}),
+		consts.P9205QueryResourceList:                 newDefaultHandle(&model.P0x9205{}),
 		consts.T1205UploadAudioVideoResourceList:      newDefaultHandle(&model.T0x1205{}),
 		consts.P9206FileUploadInstructions:            newDefaultHandle(&model.P0x9206{}),
 		consts.T1206FileUploadCompleteNotice:          newDefaultHandle(&model.T0x1206{}),

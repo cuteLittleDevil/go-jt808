@@ -87,7 +87,7 @@ func (s *sessionManager) write(activeMsg *ActiveMessage) *Message {
 			v.activeMsgChan <- activeMsg
 			return
 		}
-		replyChan <- newErrMessage(0, errors.Join(ErrNotExistKey,
+		replyChan <- newErrMessage(errors.Join(ErrNotExistKey,
 			fmt.Errorf("key=[%s] sum=[%d] ", key, len(record))))
 	}
 	return <-replyChan

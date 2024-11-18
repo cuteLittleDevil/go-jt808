@@ -146,6 +146,10 @@ func (c *connection) write() {
 				if v, ok := record[seq]; ok {
 					v.replyChan <- msg
 					delete(record, seq)
+					msg.ExtensionFields.PlatformSeq = seq
+					msg.ExtensionFields.PlatformData = v.ExtensionFields.Data
+					msg.ExtensionFields.ActiveSend = true
+					c.onWriteExecutionEvent(msg)
 				}
 			}
 		case subPackMsg, ok := <-c.reissuePackChan: // 分包补传的
@@ -169,21 +173,17 @@ func (c *connection) stop() {
 	c.stopOnce.Do(func() {
 		c.leaveFunc(c.key)
 		c.terminalEvent.OnLeaveEvent(c.key)
+		close(c.stopChan)
+		_ = c.conn.Close()
 		clear(c.handles)
 		close(c.msgChan)
 		close(c.activeMsgChan)
 		close(c.activeMsgCompleteChan)
 		close(c.reissuePackChan)
-		close(c.stopChan)
-		_ = c.conn.Close()
 	})
 }
 
 func (c *connection) defaultReplyEvent(msg *Message) {
-	header := msg.JTMessage.Header
-	header.ReplyID = uint16(msg.ReplyProtocol())
-	seq := c.curSeq()
-	header.PlatformSerialNumber = seq
 	if has := msg.HasReply(); !has {
 		return
 	}
@@ -194,6 +194,10 @@ func (c *connection) defaultReplyEvent(msg *Message) {
 			slog.Any("err", err))
 		return
 	}
+	header := msg.JTMessage.Header
+	header.ReplyID = uint16(msg.ReplyProtocol())
+	seq := c.curSeq()
+	header.PlatformSerialNumber = seq
 	data := header.Encode(body)
 	if _, err = c.conn.Write(data); err != nil {
 		slog.Warn("write fail",
@@ -238,27 +242,30 @@ func (c *connection) onActiveEvent(activeMsg *ActiveMessage, record map[uint16]*
 	}
 	record[seq] = activeMsg
 	_, err := c.conn.Write(data)
+	replyMsg := newActiveMessage(seq, activeMsg.Command, data, err)
 	if v, ok := c.handles[activeMsg.Command]; ok {
-		msg := newActiveMessage(seq, activeMsg.Command, data, err)
-		msg.Handler = v
-		c.onWriteExecutionEvent(msg)
+		replyMsg.Handler = v
 	}
 	if err != nil {
-		slog.Warn("write fail",
-			slog.String("data", fmt.Sprintf("%x", data)),
-			slog.Any("err", err))
-		c.activeMsgCompleteChan <- newErrMessage(seq, errors.Join(ErrWriteDataFail, err))
-		return
+		replyMsg.ExtensionFields.Err = errors.Join(ErrWriteDataFail, err)
+	} else {
+		go func(msg *ActiveMessage) {
+			duration := 5 * time.Second
+			if msg.OverTimeDuration > 0 {
+				duration = msg.OverTimeDuration
+			}
+			time.Sleep(duration)
+			select {
+			case <-c.stopChan:
+				return
+			default:
+			}
+			c.activeMsgCompleteChan <- newErrMessage(errors.Join(ErrWriteDataOverTime,
+				fmt.Errorf("overtime is [%.2f]second", duration.Seconds())))
+		}(activeMsg)
 	}
-	go func(msg *ActiveMessage, seq uint16) {
-		duration := 5 * time.Second
-		if msg.OverTimeDuration > 0 {
-			duration = msg.OverTimeDuration
-		}
-		time.Sleep(duration)
-		c.activeMsgCompleteChan <- newErrMessage(seq, errors.Join(ErrWriteDataOverTime,
-			fmt.Errorf("overtime is [%.2f]second", duration.Seconds())))
-	}(activeMsg, seq)
+
+	c.activeMsgCompleteChan <- replyMsg
 }
 
 func (c *connection) onActiveRespondEvent(record map[uint16]*ActiveMessage, msg *Message) bool {
@@ -311,8 +318,6 @@ func (c *connection) onActiveRespondEvent(record map[uint16]*ActiveMessage, msg 
 		}
 		for k := range record {
 			if tmp.HasRespondFunc(k) {
-				msg.ExtensionFields.PlatformSeq = k
-				msg.ExtensionFields.PlatformData = record[k].ExtensionFields.Data
 				c.activeMsgCompleteChan <- msg
 				return true
 			}

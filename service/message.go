@@ -70,7 +70,7 @@ func newActiveMessage(seq uint16, command consts.JT808CommandType, platformData 
 	}
 }
 
-func newErrMessage(seq uint16, err error) *Message {
+func newErrMessage(err error) *Message {
 	return &Message{ExtensionFields: struct {
 		TerminalSeq         uint16 `json:"terminalSeq,omitempty"`
 		PlatformSeq         uint16 `json:"platformSeq,omitempty"`
@@ -80,8 +80,7 @@ func newErrMessage(seq uint16, err error) *Message {
 		SubcontractComplete bool   `json:"subcontractComplete,omitempty"`
 		Err                 error  `json:"err,omitempty"`
 	}{
-		PlatformSeq: seq,
-		Err:         err,
+		Err: err,
 	}}
 }
 
