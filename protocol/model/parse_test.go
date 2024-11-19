@@ -804,6 +804,40 @@ func TestParse(t *testing.T) {
 				Reserve: make([]byte, 16),
 			},
 		},
+		{
+			name: "P0x8801 平台-摄像头立即拍摄命令",
+			args: args{
+				msg:      "7e8801400c0100000000017299841738ffff0100020003010405ff7f7fff857e",
+				Handler:  &P0x8801{},
+				bodyLens: []int{1},
+			},
+			fields: &P0x8801{
+				ChannelID:                1,
+				ShootCommand:             2,
+				PhotoIntervalOrVideoTime: 3,
+				SaveFlag:                 1,
+				Resolution:               4,
+				VideoQuality:             5,
+				Intensity:                255,
+				Contrast:                 127,
+				Saturation:               127,
+				Chroma:                   255,
+			},
+		},
+		{
+			name: "T0x0805 终端-摄像头立即拍照",
+			args: args{
+				msg:      "7e080500290123456789017ffff4c0000009000000010000000200000003000000040000000500000006000000070000000800000009107e",
+				Handler:  &T0x0805{},
+				bodyLens: []int{4, 6, 10},
+			},
+			fields: &T0x0805{
+				RespondSerialNumber: 62656,
+				Result:              0,
+				MultimediaIDNumber:  9,
+				MultimediaIDList:    []uint32{1, 2, 3, 4, 5, 6, 7, 8, 9},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
