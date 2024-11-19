@@ -781,6 +781,29 @@ func TestParse(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "P0x9208 平台-报警附件上传指令",
+			args: args{
+				msg:      "7e9208005212345678901200010d34372e3130342e39372e313639200a200b37363534333231200707192359010101616437323133313537396535346265306230663733376366633732633564623800000000000000000000000000000000427e",
+				Handler:  &P0x9208{},
+				bodyLens: []int{1, 54},
+			},
+			fields: &P0x9208{
+				ServerIPLen: 13,
+				ServerAddr:  "47.104.97.169",
+				TcpPort:     8202,
+				UdpPort:     8203,
+				P9208AlarmSign: P9208AlarmSign{
+					TerminalID:   "7654321",
+					Time:         "2020-07-07 19:23:59",
+					SerialNumber: 1,
+					AttachNumber: 1,
+					AlarmReserve: 1,
+				},
+				AlarmID: "ad72131579e54be0b0f737cfc72c5db8",
+				Reserve: make([]byte, 16),
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

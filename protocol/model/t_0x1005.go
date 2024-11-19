@@ -26,10 +26,6 @@ func (t *T0x1005) Protocol() consts.JT808CommandType {
 	return consts.T1005UploadPassengerFlow
 }
 
-func (t *T0x1005) ReplyProtocol() consts.JT808CommandType {
-	return 0
-}
-
 func (t *T0x1005) Parse(jtMsg *jt808.JTMessage) error {
 	body := jtMsg.Body
 	if len(body) != 16 {

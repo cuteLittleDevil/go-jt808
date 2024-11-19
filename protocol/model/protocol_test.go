@@ -86,7 +86,7 @@ func TestReplyProtocol(t *testing.T) {
 			name:              "T0x1003 终端-查询参数回复",
 			args:              &T0x1003{},
 			wantProtocol:      consts.T1003UploadAudioVideoAttr,
-			wantReplyProtocol: 0,
+			wantReplyProtocol: consts.P8001GeneralRespond,
 		},
 		{
 			name:              "P0x9101 平台-实时音视频传输请求",
@@ -98,7 +98,7 @@ func TestReplyProtocol(t *testing.T) {
 			name:              "T0x1005 终端-上传乘客流量",
 			args:              &T0x1005{},
 			wantProtocol:      consts.T1005UploadPassengerFlow,
-			wantReplyProtocol: 0,
+			wantReplyProtocol: consts.P8001GeneralRespond,
 		},
 		{
 			name:              "P0x9102 平台-音视频实时传输控制",
@@ -128,7 +128,7 @@ func TestReplyProtocol(t *testing.T) {
 			name:              "T0x1205 终端-上传音视频资源列表",
 			args:              &T0x1205{},
 			wantProtocol:      consts.T1205UploadAudioVideoResourceList,
-			wantReplyProtocol: 0,
+			wantReplyProtocol: consts.P8001GeneralRespond,
 		},
 		{
 			name:              "P0x9206 平台-文件上传指令",
@@ -140,7 +140,7 @@ func TestReplyProtocol(t *testing.T) {
 			name:              "T0x1206 终端-文件上传完成通知",
 			args:              &T0x1206{},
 			wantProtocol:      consts.T1206FileUploadCompleteNotice,
-			wantReplyProtocol: 0,
+			wantReplyProtocol: consts.P8001GeneralRespond,
 		},
 		{
 			name:              "P0x8003 平台-补发分包请求",
@@ -164,6 +164,12 @@ func TestReplyProtocol(t *testing.T) {
 			name:              "P0x8103 平台-设置终端参数",
 			args:              &P0x8103{},
 			wantProtocol:      consts.P8103SetTerminalParams,
+			wantReplyProtocol: consts.T0001GeneralRespond,
+		},
+		{
+			name:              "P0x9208 平台-报警附件上传指令",
+			args:              &P0x9208{},
+			wantProtocol:      consts.P9208AlarmAttachUpload,
 			wantReplyProtocol: consts.T0001GeneralRespond,
 		},
 	}

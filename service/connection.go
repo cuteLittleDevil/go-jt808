@@ -248,7 +248,7 @@ func (c *connection) onActiveEvent(activeMsg *ActiveMessage, record map[uint16]*
 	}
 	if err != nil {
 		replyMsg.ExtensionFields.Err = errors.Join(ErrWriteDataFail, err)
-	} else {
+	} else if activeMsg.OverTimeDuration >= 0 {
 		go func(msg *ActiveMessage) {
 			duration := 5 * time.Second
 			if msg.OverTimeDuration > 0 {

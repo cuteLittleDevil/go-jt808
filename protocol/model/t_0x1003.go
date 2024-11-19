@@ -35,10 +35,6 @@ func (t *T0x1003) Protocol() consts.JT808CommandType {
 	return consts.T1003UploadAudioVideoAttr
 }
 
-func (t *T0x1003) ReplyProtocol() consts.JT808CommandType {
-	return 0
-}
-
 func (t *T0x1003) Parse(jtMsg *jt808.JTMessage) error {
 	body := jtMsg.Body
 	if len(body) != 10 {

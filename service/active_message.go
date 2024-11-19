@@ -5,13 +5,10 @@ import (
 	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 	"strings"
-	"sync"
 	"time"
 )
 
 type ActiveMessage struct {
-	// once 保证完成情况只能被触发一次
-	once sync.Once
 	// header 设备消息固体头 使用的是第一次报文的固定头
 	header *jt808.Header
 	// replyChan 用于获取终端应答情况
