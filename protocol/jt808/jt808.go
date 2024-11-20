@@ -43,7 +43,7 @@ type (
 	BodyProperty struct {
 		// Version 协议版本 jt808协议的
 		Version uint8 `json:"version,omitempty"`
-		// PacketFragmented 分包标识，1：长消息，有分包；2：无分包
+		// PacketFragmented 分包标识 0-无分包 1-有分包
 		PacketFragmented uint8 `json:"packetFragmented,omitempty"`
 		// EncryptMethod 加密标识，0为不加密
 		// 当此三位都为 0，表示消息体不加密；
@@ -147,6 +147,11 @@ func (h *Header) Encode(body []byte) []byte {
 	}
 	binary.BigEndian.PutUint16(data[:2], id)
 	h.Property.BodyDayaLen = uint16(len(body)) // 消息的长度改为回复的body长度
+	if len(body) < 1000 {
+		h.Property.PacketFragmented = 0 // 不分包
+	} else {
+		//  需要把这个内容分多个包 ???目前感觉没必要 暂时不实现 因为下发的包都比较小
+	}
 	binary.BigEndian.PutUint16(data[2:4], h.Property.encode())
 	if h.ProtocolVersion == consts.JT808Protocol2019 {
 		// 2019版本的标识
