@@ -30,6 +30,10 @@ func (t *T0x0801) Protocol() consts.JT808CommandType {
 	return consts.T0801MultimediaDataUpload
 }
 
+func (t *T0x0801) ReplyProtocol() consts.JT808CommandType {
+	return consts.P8800MultimediaUploadRespond
+}
+
 func (t *T0x0801) Parse(jtMsg *jt808.JTMessage) error {
 	body := jtMsg.Body
 	if len(body) < 36 {
@@ -57,8 +61,14 @@ func (t *T0x0801) Encode() []byte {
 	return data
 }
 
-func (t *T0x0801) ReplyBody(_ *jt808.JTMessage) ([]byte, error) {
-	return nil, nil
+func (t *T0x0801) ReplyBody(jtMsg *jt808.JTMessage) ([]byte, error) {
+	_ = t.Parse(jtMsg)
+	p8800 := P0x8800{
+		MultimediaID:      t.MultimediaID,
+		AgainPackageCount: 0,
+		AgainPackageList:  nil,
+	}
+	return p8800.Encode(), nil
 }
 
 func (t *T0x0801) String() string {
@@ -71,7 +81,7 @@ func (t *T0x0801) String() string {
 		fmt.Sprintf("\t[%02x] 事件项编码:[%d] 0-平台下发指令 1-定时动作 2-抢劫报警触发 3-碰撞侧翻报警触发", t.EventItemEncode, t.EventItemEncode),
 		fmt.Sprintf("\t[%02x] 通道ID:[%d]", t.ChannelID, t.ChannelID),
 		t.T0x0200LocationItem.String(),
-		fmt.Sprintf("\t多媒体包大小:[%d]", t.MultimediaPackage),
+		fmt.Sprintf("\t多媒体包大小:[%d]", len(t.MultimediaPackage)),
 		"}",
 	}, "\n")
 }

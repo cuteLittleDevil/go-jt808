@@ -881,6 +881,19 @@ func TestParse(t *testing.T) {
 				MultimediaPackage: []byte{13, 123, 13, 123, 123},
 			},
 		},
+		{
+			name: "P0x8800 平台-多媒体上传应答",
+			args: args{
+				msg:      "7e880000170123456789017fff0000c15f09000100020003000400050006000700080009017e",
+				Handler:  &P0x8800{},
+				bodyLens: []int{1, 10},
+			},
+			fields: &P0x8800{
+				MultimediaID:      49503,
+				AgainPackageCount: 9,
+				AgainPackageList:  []uint16{1, 2, 3, 4, 5, 6, 7, 8, 9},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -194,7 +194,13 @@ func TestReplyProtocol(t *testing.T) {
 			name:              "T0x0801 终端-多媒体数据上传",
 			args:              &T0x0801{},
 			wantProtocol:      consts.T0801MultimediaDataUpload,
-			wantReplyProtocol: consts.P8001GeneralRespond,
+			wantReplyProtocol: consts.P8800MultimediaUploadRespond,
+		},
+		{
+			name:              "P0x8800 平台-多媒体上传应答",
+			args:              &P0x8800{},
+			wantProtocol:      consts.P8800MultimediaUploadRespond,
+			wantReplyProtocol: consts.T0001GeneralRespond,
 		},
 	}
 	for _, tt := range tests {
