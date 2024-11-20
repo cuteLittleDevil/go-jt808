@@ -66,17 +66,23 @@ func (g *GoJT808) SendActiveMessage(activeMsg *ActiveMessage) *Message {
 func (g *GoJT808) createDefaultHandle() map[consts.JT808CommandType]Handler {
 	return map[consts.JT808CommandType]Handler{
 		// 终端自动上传的
-		consts.T0001GeneralRespond:      newDefaultHandle(&model.T0x0001{}),
-		consts.T0100Register:            newDefaultHandle(&model.T0x0100{}),
-		consts.T0102RegisterAuth:        newDefaultHandle(&model.T0x0102{}),
-		consts.T0002HeartBeat:           newDefaultHandle(&model.T0x0002{}),
-		consts.T0200LocationReport:      newDefaultHandle(&model.T0x0200{}),
-		consts.T0704LocationBatchUpload: newDefaultHandle(&model.T0x0704{}),
-		consts.T0104QueryParameter:      newDefaultHandle(&model.T0x0104{}),
+		consts.T0001GeneralRespond:            newDefaultHandle(&model.T0x0001{}),
+		consts.T0100Register:                  newDefaultHandle(&model.T0x0100{}),
+		consts.T0102RegisterAuth:              newDefaultHandle(&model.T0x0102{}),
+		consts.T0002HeartBeat:                 newDefaultHandle(&model.T0x0002{}),
+		consts.T0200LocationReport:            newDefaultHandle(&model.T0x0200{}),
+		consts.T0704LocationBatchUpload:       newDefaultHandle(&model.T0x0704{}),
+		consts.T0104QueryParameter:            newDefaultHandle(&model.T0x0104{}),
+		consts.T0805CameraShootImmediately:    newDefaultHandle(&model.T0x0805{}),
+		consts.T0800MultimediaEventInfoUpload: newDefaultHandle(&model.T0x0800{}),
+		consts.T0801MultimediaDataUpload:      newDefaultHandle(&model.T0x0801{}),
+
 		// 平台下发的
 		consts.P8003ReissueSubcontractingRequest: newDefaultHandle(&model.P0x8003{}),
 		consts.P8103SetTerminalParams:            newDefaultHandle(&model.P0x8103{}),
 		consts.P8104QueryTerminalParams:          newDefaultHandle(&model.P0x8104{}),
+		consts.P8801CameraShootImmediateCommand:  newDefaultHandle(&model.P0x8801{}),
+
 		// JT1078相关的
 		consts.P9003QueryTerminalAudioVideoProperties: newDefaultHandle(&model.P0x9003{}),
 		consts.T1003UploadAudioVideoAttr:              newDefaultHandle(&model.T0x1003{}),

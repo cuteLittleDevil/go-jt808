@@ -307,6 +307,12 @@ func (c *connection) onActiveRespondEvent(record map[uint16]*ActiveMessage, msg 
 		tmp.HasRespondFunc = func(seq uint16) bool {
 			return seq == t0x1206.RespondSerialNumber
 		}
+	case consts.T0805CameraShootImmediately:
+		t0x0805 := &model.T0x0805{}
+		tmp.JT808Handler = t0x0805
+		tmp.HasRespondFunc = func(seq uint16) bool {
+			return seq == t0x0805.RespondSerialNumber
+		}
 	}
 	if tmp.HasRespondFunc != nil {
 		if err := tmp.Parse(msg.JTMessage); err != nil {
