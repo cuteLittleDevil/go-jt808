@@ -36,7 +36,7 @@ func NewActiveMessage(key string, command consts.JT808CommandType, body []byte, 
 func (a *ActiveMessage) String() string {
 	return strings.Join([]string{
 		fmt.Sprintf("key[%s]", a.Key),
-		fmt.Sprintf("指令[%x] [%s]", a.Command, a.Command),
+		fmt.Sprintf("指令[%s]", a.Command),
 		fmt.Sprintf("body[%x]", a.Body),
 	}, "\n")
 }

@@ -144,12 +144,11 @@ func (c *connection) write() {
 			if ok {
 				seq := msg.ExtensionFields.PlatformSeq
 				if v, ok := record[seq]; ok {
-					v.replyChan <- msg
-					delete(record, seq)
-					msg.ExtensionFields.PlatformSeq = seq
 					msg.ExtensionFields.PlatformData = v.ExtensionFields.Data
 					msg.ExtensionFields.ActiveSend = true
 					c.onWriteExecutionEvent(msg)
+					v.replyChan <- msg
+					delete(record, seq)
 				}
 			}
 		case subPackMsg, ok := <-c.reissuePackChan: // 分包补传的
@@ -248,24 +247,24 @@ func (c *connection) onActiveEvent(activeMsg *ActiveMessage, record map[uint16]*
 	}
 	if err != nil {
 		replyMsg.ExtensionFields.Err = errors.Join(ErrWriteDataFail, err)
+		c.activeMsgCompleteChan <- replyMsg
 	} else if activeMsg.OverTimeDuration >= 0 {
-		go func(msg *ActiveMessage) {
-			duration := 5 * time.Second
-			if msg.OverTimeDuration > 0 {
-				duration = msg.OverTimeDuration
-			}
+		duration := 3 * time.Second
+		if activeMsg.OverTimeDuration > 0 {
+			duration = activeMsg.OverTimeDuration
+		}
+		go func(overtimeMsg *Message) {
 			time.Sleep(duration)
 			select {
 			case <-c.stopChan:
 				return
 			default:
 			}
-			c.activeMsgCompleteChan <- newErrMessage(errors.Join(ErrWriteDataOverTime,
-				fmt.Errorf("overtime is [%.2f]second", duration.Seconds())))
-		}(activeMsg)
+			overtimeMsg.ExtensionFields.Err = errors.Join(ErrWriteDataOverTime,
+				fmt.Errorf("overtime is [%.2f]second", duration.Seconds()))
+			c.activeMsgCompleteChan <- overtimeMsg
+		}(replyMsg)
 	}
-
-	c.activeMsgCompleteChan <- replyMsg
 }
 
 func (c *connection) onActiveRespondEvent(record map[uint16]*ActiveMessage, msg *Message) bool {
@@ -318,6 +317,7 @@ func (c *connection) onActiveRespondEvent(record map[uint16]*ActiveMessage, msg 
 		}
 		for k := range record {
 			if tmp.HasRespondFunc(k) {
+				msg.ExtensionFields.PlatformSeq = k
 				c.activeMsgCompleteChan <- msg
 				return true
 			}
