@@ -250,6 +250,16 @@ func TestReply(t *testing.T) {
 				msg2019: "7e080500290123456789017ffff4c0000009000000010000000200000003000000040000000500000006000000070000000800000009107e",
 			},
 		},
+		{
+			name: "T0x0800 终端-多媒体事件信息上传",
+			args: args{
+				Handler: &T0x0800{},
+				msg2013: "7e080000080123456789017fff0000007b00000701757e",
+			},
+			want: want{
+				result2013: "7e8001000501234567890100007fff080000847e",
+			},
+		},
 	}
 	checkReplyInfo := func(t *testing.T, msg string, handler Handler, expectedResult string) {
 		if msg == "" {

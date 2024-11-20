@@ -184,6 +184,12 @@ func TestReplyProtocol(t *testing.T) {
 			wantProtocol:      consts.T0805CameraShootImmediately,
 			wantReplyProtocol: consts.P8001GeneralRespond,
 		},
+		{
+			name:              "T0x0800 终端-多媒体事件信息上传",
+			args:              &T0x0800{},
+			wantProtocol:      consts.T0800MultimediaEventInfoUpload,
+			wantReplyProtocol: consts.P8001GeneralRespond,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

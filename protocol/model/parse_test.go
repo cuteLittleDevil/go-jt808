@@ -838,6 +838,21 @@ func TestParse(t *testing.T) {
 				MultimediaIDList:    []uint32{1, 2, 3, 4, 5, 6, 7, 8, 9},
 			},
 		},
+		{
+			name: "T0x0800 终端-多媒体事件信息上传",
+			args: args{
+				msg:      "7e080000080123456789017fff0000007b00000701757e",
+				Handler:  &T0x0800{},
+				bodyLens: []int{1},
+			},
+			fields: &T0x0800{
+				MultimediaID:           123,
+				MultimediaType:         0,
+				MultimediaFormatEncode: 0,
+				EventItemEncode:        7,
+				ChannelID:              1,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
