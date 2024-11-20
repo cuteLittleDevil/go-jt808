@@ -190,6 +190,12 @@ func TestReplyProtocol(t *testing.T) {
 			wantProtocol:      consts.T0800MultimediaEventInfoUpload,
 			wantReplyProtocol: consts.P8001GeneralRespond,
 		},
+		{
+			name:              "T0x0801 终端-多媒体数据上传",
+			args:              &T0x0801{},
+			wantProtocol:      consts.T0801MultimediaDataUpload,
+			wantReplyProtocol: consts.P8001GeneralRespond,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

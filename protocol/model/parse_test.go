@@ -853,6 +853,34 @@ func TestParse(t *testing.T) {
 				ChannelID:              1,
 			},
 		},
+		{
+			name: "T0x0801 终端-多媒体数据上传",
+			args: args{
+				msg:      "7e080100290123456789017fff0000007b01020102000004000000080006eeb6ad02633df70138000300632007071923590d7b0d7b7b667e",
+				Handler:  &T0x0801{},
+				bodyLens: []int{1, 10},
+			},
+			fields: &T0x0801{
+				MultimediaID:           123,
+				MultimediaType:         1,
+				MultimediaFormatEncode: 2,
+				EventItemEncode:        1,
+				ChannelID:              2,
+				T0x0200LocationItem: T0x0200LocationItem{
+					AlarmSign:         1024,
+					StatusSign:        2048,
+					Latitude:          116307629,
+					Longitude:         40058359,
+					Altitude:          312,
+					Speed:             3,
+					Direction:         99,
+					DateTime:          "2020-07-07 19:23:59",
+					AlarmSignDetails:  AlarmSignDetails{},
+					StatusSignDetails: StatusSignDetails{},
+				},
+				MultimediaPackage: []byte{13, 123, 13, 123, 123},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
