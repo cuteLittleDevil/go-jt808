@@ -13,13 +13,13 @@ jt808服务端 jt1078服务端 模拟器在2核4G腾讯云服务器
 | LAL | go  | 在线播放地址 http://49.234.235.7:8080/live/295696659617_1.flv | [详情点击](./example/jt1078/README.md#lal)  |
 | sky-java | java  | 需要部署后 HTTP请求 10秒内拉流 参考格式如下 <br/> http://222.244.144.181:7777/video/1001-1-0-0.live.mp4 | [详情点击](./example/jt1078/README.md#sky-java)  |
 
-2. 存储经纬度 [代码参考](./example/simulator/server/main.go)
+2. 存储经纬度 [详情](./README.md#save)
 ``` txt
 jt808服务端 模拟器 消息队列 数据库都运行在2核4G腾讯云服务器
 测试每秒保存5000条的情况 约5.5小时保存了近1亿的经纬度
 ```
 
-3. 平台下发指令给终端 [代码参考](./example/protocol/active_reply/main.go)
+3. 平台下发指令给终端 [获取参数](./example/protocol/active_reply/main.go) [立即拍摄](./example/protocol/camera/main.go)
 ``` txt
 主动下发给设备指令 获取应答的情况
 ```
@@ -294,7 +294,7 @@ func (t *T0x0200) OnWriteExecutionEvent(_ service.Message) {}
 ### 4. jt1078相关
 
 #### 4.1 流媒体服务使用lal
-
+[详情点击](./example/jt1078/lal/main.go)
 -  把1078格式流转对应格式 放入lal服务中 核心代码参考
 
 ``` go
@@ -326,6 +326,51 @@ func (j *jt1078) createStream(name string) chan<- *Packet {
 }
 ```
 
+#### 4.2 流媒体服务使用rtvs
+[详情点击](./example/jt1078/rtvs/main.go)
+
+``` go
+	type Handler interface {
+		Protocol() consts.JT808CommandType
+		Parse(jtMsg *jt808.JTMessage) error
+		Encode() []byte
+	}
+	var (
+		handler  Handler
+		overTime time.Duration
+	)
+	overTime = 3 * time.Second
+	switch content[:4] {
+	case "9101":
+		handler = &model.P0x9101{}
+	case "9102":
+		handler = &model.P0x9102{}
+	case "9201":
+		handler = &model.P0x9201{}
+		overTime = 5 * time.Second
+	case "9202":
+		handler = &model.P0x9202{}
+	case "9205":
+		handler = &model.P0x9205{}
+		overTime = 10 * time.Second
+	case "9206":
+		handler = &model.P0x9206{}
+	}
+	if handler == nil {
+		return nil, fmt.Errorf("unknown command: %s", content[:4])
+	}
+	if err := handler.Parse(jtMsg); err != nil {
+		return nil, err
+	}
+	return &service.ActiveMessage{
+		Key:              jtMsg.Header.TerminalPhoneNo,
+		Command:          handler.Protocol(),
+		Body:             handler.Encode(),
+		OverTimeDuration: overTime,
+	}, nil
+
+```
+
 ## 协议对接完成情况
 ### JT808 终端通讯协议消息对照表
 
@@ -343,6 +388,11 @@ func (j *jt1078) createStream(name string) chan<- *Packet {
 |  11   |    0x0104     |    ✅    |     ✅     | 查询终端参数应答			|				|           |
 |  18   |    0x0200     |    ✅    |     ✅     | 位置信息汇报				| 增加附加信息 	|  被修改	|
 |  49   |    0x0704     |    ✅    |     ✅     | 定位数据批量上传			|     修改		|  被新增	|
+|  51   |    0x0800     |    ✅    |     ✅     | 多媒体事件信息上传           |              |  被修改   |
+|  52   |    0x0801     |    ✅    |     ✅     | 多媒体数据上传               |     修改     |  被修改   |
+|  53   |    0x8800     |    ✅    |     ✅     | 平台-多媒体数据上传应答       |              |  被修改   |
+|  54   |    0x8801     |    ✅    |     ✅     | 平台-摄像头立即拍摄命令       |     修改     |           |
+|  55   |    0x0805     |    ✅    |     ✅     | 摄像头立即拍摄命令应答        |     修改     |  被新增   |
 
 ### JT1078 扩展 JT808 议消息对照表
 
