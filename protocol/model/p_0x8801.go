@@ -84,7 +84,7 @@ func (p *P0x8801) String() string {
 		"数据体对象:{",
 		fmt.Sprintf("\t%s:[%x]", p.Protocol(), p.Encode()),
 		fmt.Sprintf("\t[%02x] 通道ID:[%d]", p.ChannelID, p.ChannelID),
-		fmt.Sprintf("\t[%04x] 拍摄命令:[%d]", p.ShootCommand, p.ShootCommand),
+		fmt.Sprintf("\t[%04x] 拍摄命令:[%d] 0-表示停止拍摄 0xFFFF-表示录像 其它表示拍照张数", p.ShootCommand, p.ShootCommand),
 		fmt.Sprintf("\t[%04x] 拍照间隔/录像时间:[%d] 单位秒0表示按最小间隔拍照或一直录像", p.PhotoIntervalOrVideoTime, p.PhotoIntervalOrVideoTime),
 		fmt.Sprintf("\t[%02x] 保存标志:[%d]  1-保存 0-实时上传", p.SaveFlag, p.SaveFlag),
 		fmt.Sprintf("\t[%02x] 分辨率:[%d] 0x01-320*240 0x02-640*480 0x03-800*600 0x04-1024*768", p.Resolution, p.Resolution),

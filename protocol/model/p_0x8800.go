@@ -45,11 +45,13 @@ func (p *P0x8800) Parse(jtMsg *jt808.JTMessage) error {
 }
 
 func (p *P0x8800) Encode() []byte {
-	data := make([]byte, 5)
+	data := make([]byte, 4)
 	binary.BigEndian.PutUint32(data[0:4], p.MultimediaID)
-	data[4] = p.AgainPackageCount
-	for _, v := range p.AgainPackageList {
-		data = binary.BigEndian.AppendUint16(data, v)
+	if len(p.AgainPackageList) > 0 {
+		data = append(data, p.AgainPackageCount)
+		for _, v := range p.AgainPackageList {
+			data = binary.BigEndian.AppendUint16(data, v)
+		}
 	}
 	return data
 }
