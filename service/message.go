@@ -23,6 +23,8 @@ type Message struct {
 		ActiveSend bool `json:"activeSend,omitempty"`
 		// SubcontractComplete 分包情况是否最终完成了
 		SubcontractComplete bool `json:"subcontractComplete,omitempty"`
+		// PlatformCommand 平台的指令
+		PlatformCommand consts.JT808CommandType `json:"platformCommand,omitempty"`
 		// Err 异常情况
 		Err error `json:"err,omitempty"`
 	}
@@ -33,13 +35,14 @@ func newTerminalMessage(jtMsg *jt808.JTMessage, terminalData []byte) *Message {
 		JTMessage: jtMsg,
 		Command:   consts.JT808CommandType(jtMsg.Header.ID),
 		ExtensionFields: struct {
-			TerminalSeq         uint16 `json:"terminalSeq,omitempty"`
-			PlatformSeq         uint16 `json:"platformSeq,omitempty"`
-			TerminalData        []byte `json:"-"`
-			PlatformData        []byte `json:"-"`
-			ActiveSend          bool   `json:"activeSend,omitempty"`
-			SubcontractComplete bool   `json:"subcontractComplete,omitempty"`
-			Err                 error  `json:"err,omitempty"`
+			TerminalSeq         uint16                  `json:"terminalSeq,omitempty"`
+			PlatformSeq         uint16                  `json:"platformSeq,omitempty"`
+			TerminalData        []byte                  `json:"-"`
+			PlatformData        []byte                  `json:"-"`
+			ActiveSend          bool                    `json:"activeSend,omitempty"`
+			SubcontractComplete bool                    `json:"subcontractComplete,omitempty"`
+			PlatformCommand     consts.JT808CommandType `json:"platformCommand,omitempty"`
+			Err                 error                   `json:"err,omitempty"`
 		}{
 			TerminalData: terminalData,
 			TerminalSeq:  jtMsg.Header.SerialNumber,
@@ -54,31 +57,34 @@ func newActiveMessage(seq uint16, command consts.JT808CommandType, platformData 
 		JTMessage: jtMsg,
 		Command:   command,
 		ExtensionFields: struct {
-			TerminalSeq         uint16 `json:"terminalSeq,omitempty"`
-			PlatformSeq         uint16 `json:"platformSeq,omitempty"`
-			TerminalData        []byte `json:"-"`
-			PlatformData        []byte `json:"-"`
-			ActiveSend          bool   `json:"activeSend,omitempty"`
-			SubcontractComplete bool   `json:"subcontractComplete,omitempty"`
-			Err                 error  `json:"err,omitempty"`
+			TerminalSeq         uint16                  `json:"terminalSeq,omitempty"`
+			PlatformSeq         uint16                  `json:"platformSeq,omitempty"`
+			TerminalData        []byte                  `json:"-"`
+			PlatformData        []byte                  `json:"-"`
+			ActiveSend          bool                    `json:"activeSend,omitempty"`
+			SubcontractComplete bool                    `json:"subcontractComplete,omitempty"`
+			PlatformCommand     consts.JT808CommandType `json:"platformCommand,omitempty"`
+			Err                 error                   `json:"err,omitempty"`
 		}{
-			PlatformSeq:  seq,
-			PlatformData: platformData,
-			ActiveSend:   true,
-			Err:          err,
+			PlatformSeq:     seq,
+			PlatformData:    platformData,
+			ActiveSend:      true,
+			PlatformCommand: command,
+			Err:             err,
 		},
 	}
 }
 
 func newErrMessage(err error) *Message {
 	return &Message{ExtensionFields: struct {
-		TerminalSeq         uint16 `json:"terminalSeq,omitempty"`
-		PlatformSeq         uint16 `json:"platformSeq,omitempty"`
-		TerminalData        []byte `json:"-"`
-		PlatformData        []byte `json:"-"`
-		ActiveSend          bool   `json:"activeSend,omitempty"`
-		SubcontractComplete bool   `json:"subcontractComplete,omitempty"`
-		Err                 error  `json:"err,omitempty"`
+		TerminalSeq         uint16                  `json:"terminalSeq,omitempty"`
+		PlatformSeq         uint16                  `json:"platformSeq,omitempty"`
+		TerminalData        []byte                  `json:"-"`
+		PlatformData        []byte                  `json:"-"`
+		ActiveSend          bool                    `json:"activeSend,omitempty"`
+		SubcontractComplete bool                    `json:"subcontractComplete,omitempty"`
+		PlatformCommand     consts.JT808CommandType `json:"platformCommand,omitempty"`
+		Err                 error                   `json:"err,omitempty"`
 	}{
 		Err: err,
 	}}

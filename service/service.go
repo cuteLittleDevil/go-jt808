@@ -13,7 +13,7 @@ type GoJT808 struct {
 }
 
 func New(opts ...Option) *GoJT808 {
-	options := NewOptions(opts)
+	options := newOptions(opts)
 	g := &GoJT808{
 		opts: options,
 	}

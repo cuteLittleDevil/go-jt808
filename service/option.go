@@ -11,7 +11,7 @@ type Option struct {
 const (
 	defaultAddr              = "0.0.0.0:808" // 服务默认地址
 	defaultNetwork           = "tcp"         // 服务默认网络协议
-	defaultFilterSubcontract = true          // 读写事件是否过滤分包的情况
+	defaultFilterSubcontract = true          // 是否过滤分包的情况
 )
 
 type Options struct {
@@ -23,7 +23,7 @@ type Options struct {
 	CustomHandleFunc          func() map[consts.JT808CommandType]Handler
 }
 
-func NewOptions(opts []Option) *Options {
+func newOptions(opts []Option) *Options {
 	options := &Options{
 		Addr:              defaultAddr,
 		Network:           defaultNetwork,

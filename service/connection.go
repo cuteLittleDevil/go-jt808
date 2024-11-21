@@ -145,6 +145,7 @@ func (c *connection) write() {
 				seq := msg.ExtensionFields.PlatformSeq
 				if v, ok := record[seq]; ok {
 					msg.ExtensionFields.PlatformData = v.ExtensionFields.Data
+					msg.ExtensionFields.PlatformCommand = v.Command
 					msg.ExtensionFields.ActiveSend = true
 					c.onWriteExecutionEvent(msg)
 					v.replyChan <- msg
@@ -162,7 +163,9 @@ func (c *connection) write() {
 						continue
 					}
 				}
-				c.defaultReplyEvent(msg)
+				if msg.hasComplete() || !c.filter { // 默认完整包才触发回复
+					c.defaultReplyEvent(msg)
+				}
 			}
 		}
 	}
