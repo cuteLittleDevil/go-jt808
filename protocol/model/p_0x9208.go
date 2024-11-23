@@ -1,6 +1,7 @@
 package model
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"github.com/cuteLittleDevil/go-jt808/protocol"
@@ -64,7 +65,8 @@ func (p *P0x9208) Parse(jtMsg *jt808.JTMessage) error {
 	p.TcpPort = binary.BigEndian.Uint16(body[1+k : 1+k+2])
 	p.UdpPort = binary.BigEndian.Uint16(body[3+k : 3+k+2])
 	p.P9208AlarmSign.parse(body[5+k : 5+k+16])
-	p.AlarmID = string(body[21+k : 21+k+32])
+	//p.AlarmID = string(body[21+k : 21+k+32])
+	p.AlarmID = string(bytes.Trim(body[21+k:21+k+32], "\x00"))
 	p.Reserve = body[53+k:]
 	return nil
 }
@@ -93,13 +95,7 @@ func (p *P0x9208) String() string {
 		fmt.Sprintf("\t [%x]服务器IP地址:[%s]", p.ServerAddr, p.ServerAddr),
 		fmt.Sprintf("\t [%04x]TCP端口:[%d]", p.TcpPort, p.TcpPort),
 		fmt.Sprintf("\t [%04x]UDP端口:[%d]", p.UdpPort, p.UdpPort),
-		"\t报警标识{",
-		fmt.Sprintf("\t\t [%014x]终端ID:[%s]", p.TerminalID, p.TerminalID),
-		fmt.Sprintf("\t\t [%012x]时间:[%s]", utils.Time2BCD(p.Time), p.Time),
-		fmt.Sprintf("\t\t [%02x]序号:[%d]", p.SerialNumber, p.SerialNumber),
-		fmt.Sprintf("\t\t [%02x]附件数量:[%d]", p.AttachNumber, p.AttachNumber),
-		fmt.Sprintf("\t\t [%02x]预留:[%x]", p.P9208AlarmSign.AlarmReserve, p.P9208AlarmSign.AlarmReserve),
-		"\t}",
+		p.P9208AlarmSign.String(),
 		fmt.Sprintf("\t [%064x]告警ID:[%s]", p.AlarmID, p.AlarmID),
 		fmt.Sprintf("\t [%032x]预留:[%x]", p.Reserve, p.Reserve),
 		"}",
@@ -107,7 +103,7 @@ func (p *P0x9208) String() string {
 }
 
 func (p *P9208AlarmSign) parse(data []byte) {
-	p.TerminalID = string(data[:7])
+	p.TerminalID = string(bytes.Trim(data[:7], "\x00"))
 	p.Time = utils.BCD2Time(data[7 : 7+6])
 	p.SerialNumber = data[13]
 	p.AttachNumber = data[14]
@@ -122,4 +118,16 @@ func (p *P9208AlarmSign) encode() []byte {
 	data[14] = p.AttachNumber
 	data[15] = p.AlarmReserve
 	return data
+}
+
+func (p *P9208AlarmSign) String() string {
+	return strings.Join([]string{
+		"\t报警标识{",
+		fmt.Sprintf("\t\t [%014x]终端ID:[%s]", p.TerminalID, p.TerminalID),
+		fmt.Sprintf("\t\t [%012x]时间:[%s]", utils.Time2BCD(p.Time), p.Time),
+		fmt.Sprintf("\t\t [%02x]序号:[%d]", p.SerialNumber, p.SerialNumber),
+		fmt.Sprintf("\t\t [%02x]附件数量:[%d]", p.AttachNumber, p.AttachNumber),
+		fmt.Sprintf("\t\t [%02x]预留:[%x]", p.AlarmReserve, p.AlarmReserve),
+		"\t}",
+	}, "\n")
 }

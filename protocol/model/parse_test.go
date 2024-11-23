@@ -782,29 +782,6 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
-			name: "P0x9208 平台-报警附件上传指令",
-			args: args{
-				msg:      "7e9208005212345678901200010d34372e3130342e39372e313639200a200b37363534333231200707192359010101616437323133313537396535346265306230663733376366633732633564623800000000000000000000000000000000427e",
-				Handler:  &P0x9208{},
-				bodyLens: []int{1, 54},
-			},
-			fields: &P0x9208{
-				ServerIPLen: 13,
-				ServerAddr:  "47.104.97.169",
-				TcpPort:     8202,
-				UdpPort:     8203,
-				P9208AlarmSign: P9208AlarmSign{
-					TerminalID:   "7654321",
-					Time:         "2020-07-07 19:23:59",
-					SerialNumber: 1,
-					AttachNumber: 1,
-					AlarmReserve: 1,
-				},
-				AlarmID: "ad72131579e54be0b0f737cfc72c5db8",
-				Reserve: make([]byte, 16),
-			},
-		},
-		{
 			name: "P0x8801 平台-摄像头立即拍摄命令",
 			args: args{
 				msg:      "7e8801400c0100000000017299841738ffff0100020003010405ff7f7fff857e",
@@ -892,6 +869,62 @@ func TestParse(t *testing.T) {
 				MultimediaID:      49503,
 				AgainPackageCount: 9,
 				AgainPackageList:  []uint16{1, 2, 3, 4, 5, 6, 7, 8, 9},
+			},
+		},
+		{
+			name: "P0x9208 平台-报警附件上传指令",
+			args: args{
+				msg:      "7e9208005212345678901200010d34372e3130342e39372e313639200a200b37363534333231200707192359010101616437323133313537396535346265306230663733376366633732633564623800000000000000000000000000000000427e",
+				Handler:  &P0x9208{},
+				bodyLens: []int{1, 54},
+			},
+			fields: &P0x9208{
+				ServerIPLen: 13,
+				ServerAddr:  "47.104.97.169",
+				TcpPort:     8202,
+				UdpPort:     8203,
+				P9208AlarmSign: P9208AlarmSign{
+					TerminalID:   "7654321",
+					Time:         "2020-07-07 19:23:59",
+					SerialNumber: 1,
+					AttachNumber: 1,
+					AlarmReserve: 1,
+				},
+				AlarmID: "ad72131579e54be0b0f737cfc72c5db8",
+				Reserve: make([]byte, 16),
+			},
+		},
+		{
+			name: "T0x1210 终端-报警附件信息消息",
+			args: args{
+				msg:      "7e1210005800000000155800003132336364000031323363640000241111000000010201616161000000000000000000000000000000000000000000000000000000000000020b3132335f6161612e6a7067000004d20a63645f6161612e6d70340001e240457e",
+				Handler:  &T0x1210{},
+				bodyLens: []int{56, 58, 72},
+			},
+			fields: &T0x1210{
+				TerminalID: "123cd",
+				P9208AlarmSign: P9208AlarmSign{
+					TerminalID:   "123cd",
+					Time:         "2024-11-11 00:00:00",
+					SerialNumber: 1,
+					AttachNumber: 2,
+					AlarmReserve: 1,
+				},
+				AlarmID:     "aaa",
+				InfoType:    0,
+				AttachCount: 2,
+				T0x1210AlarmItemList: []T0x1210AlarmItem{
+					{
+						FileNameLen: byte(len("123_aaa.jpg")),
+						FileName:    "123_aaa.jpg",
+						FileSize:    1234,
+					},
+					{
+						FileNameLen: byte(len("cd_aaa.mp4")),
+						FileName:    "cd_aaa.mp4",
+						FileSize:    123456,
+					},
+				},
 			},
 		},
 	}

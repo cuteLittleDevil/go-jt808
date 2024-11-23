@@ -167,12 +167,6 @@ func TestReplyProtocol(t *testing.T) {
 			wantReplyProtocol: consts.T0001GeneralRespond,
 		},
 		{
-			name:              "P0x9208 平台-报警附件上传指令",
-			args:              &P0x9208{},
-			wantProtocol:      consts.P9208AlarmAttachUpload,
-			wantReplyProtocol: consts.T0001GeneralRespond,
-		},
-		{
 			name:              "P0x8801 平台-摄像头立即拍摄命令",
 			args:              &P0x8801{},
 			wantProtocol:      consts.P8801CameraShootImmediateCommand,
@@ -201,6 +195,18 @@ func TestReplyProtocol(t *testing.T) {
 			args:              &P0x8800{},
 			wantProtocol:      consts.P8800MultimediaUploadRespond,
 			wantReplyProtocol: consts.T0001GeneralRespond,
+		},
+		{
+			name:              "P0x9208 平台-报警附件上传指令",
+			args:              &P0x9208{},
+			wantProtocol:      consts.P9208AlarmAttachUpload,
+			wantReplyProtocol: consts.T0001GeneralRespond,
+		},
+		{
+			name:              "T0x1210 终端-报警附件信息消息",
+			args:              &T0x1210{},
+			wantProtocol:      consts.T1210AlarmAttachInfoMessage,
+			wantReplyProtocol: consts.P8001GeneralRespond,
 		},
 	}
 	for _, tt := range tests {
