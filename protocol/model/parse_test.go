@@ -927,6 +927,57 @@ func TestParse(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "T0x1211 终端-文件信息上传",
+			args: args{
+				msg:      "7e121140130112345678901234567890ffff0d7777772e6a74743830382e636e0100000400797e",
+				Handler:  &T0x1211{},
+				bodyLens: []int{1, 7},
+			},
+			fields: &T0x1211{
+				FileNameLen: 13,
+				FileName:    "www.jtt808.cn",
+				FileType:    1,
+				FileSize:    1024,
+			},
+		},
+		{
+			name: "T0x1212 终端-文件上传完成消息",
+			args: args{
+				msg:      "7e1212001312345678901200010d7777772e6a74743830382e636e0100000400b07e",
+				Handler:  &T0x1212{},
+				bodyLens: []int{1, 7},
+			},
+			fields: &T0x1212{
+				T0x1211: T0x1211{
+					FileNameLen: 13,
+					FileName:    "www.jtt808.cn",
+					FileType:    1,
+					FileSize:    1024,
+				},
+			},
+		},
+		{
+			name: "P0x9212 平台-文件上传完成消息应答",
+			args: args{
+				msg:      "7e921240190112345678901234567890ffff0d7777772e6a74743830382e636e0001010000000000000400f17e",
+				Handler:  &P0x9212{},
+				bodyLens: []int{1, 5, 20},
+			},
+			fields: &P0x9212{
+				FileNameLen:            13,
+				FileName:               "www.jtt808.cn",
+				FileType:               0,
+				UploadResult:           1,
+				RetransmitPacketNumber: 1,
+				P0x9212RetransmitPacketList: []P0x9212RetransmitPacket{
+					{
+						DataOffset: 0,
+						DataLength: 1024,
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

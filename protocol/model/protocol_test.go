@@ -208,6 +208,24 @@ func TestReplyProtocol(t *testing.T) {
 			wantProtocol:      consts.T1210AlarmAttachInfoMessage,
 			wantReplyProtocol: consts.P8001GeneralRespond,
 		},
+		{
+			name:              "T0x1211 终端-文件信息上传",
+			args:              &T0x1211{},
+			wantProtocol:      consts.T1211FileInfoUpload,
+			wantReplyProtocol: consts.P8001GeneralRespond,
+		},
+		{
+			name:              "T0x1212 终端-文件上传完成消息",
+			args:              &T0x1212{},
+			wantProtocol:      consts.T1212FileUploadComplete,
+			wantReplyProtocol: consts.P9212FileUploadCompleteRespond,
+		},
+		{
+			name:              "P0x9212 平台-文件上传完成消息应答",
+			args:              &P0x9212{},
+			wantProtocol:      consts.P9212FileUploadCompleteRespond,
+			wantReplyProtocol: consts.T0001GeneralRespond,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

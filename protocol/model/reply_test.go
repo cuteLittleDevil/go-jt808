@@ -287,6 +287,48 @@ func TestReply(t *testing.T) {
 				result2013: "7e8001000500000000155800000000121000cb7e",
 			},
 		},
+		{
+			name: "T0x1211 终端-文件信息上传",
+			args: args{
+				Handler: &T0x1211{},
+				msg2013: "7e121140130112345678901234567890ffff0d7777772e6a74743830382e636e0100000400797e",
+			},
+			want: want{
+				result2013: "7e8001400501123456789012345678900000ffff121100c67e",
+			},
+		},
+		{
+			name: "T0x1212 终端-文件上传完成消息",
+			args: args{
+				Handler: &T0x1212{},
+				msg2013: "7e1212001312345678901200010d7777772e6a74743830382e636e0100000400b07e",
+			},
+			want: want{
+				result2013: "7e9212001112345678901200000d7777772e6a74743830382e636e010000377e",
+			},
+		},
+		{
+			name: "T0x1212 终端-文件上传完成消息 有补包",
+			args: args{
+				Handler: &T0x1212{
+					P0x9212RetransmitPacketList: []P0x9212RetransmitPacket{{
+						DataOffset: 100,
+						DataLength: 200,
+					}},
+				},
+				msg2013: "7e1212001312345678901200010d7777772e6a74743830382e636e0100000400b07e",
+			},
+			want: want{
+				result2013: "7e9212001912345678901200000d7777772e6a74743830382e636e01010100000064000000c8937e",
+			},
+		},
+		{
+			name: "P0x9212 平台-文件上传完成消息应答",
+			args: args{
+				Handler: &P0x9212{},
+				msg2013: "7e921240190112345678901234567890ffff0d7777772e6a74743830382e636e0001010000000000000400f17e",
+			},
+		},
 	}
 	checkReplyInfo := func(t *testing.T, msg string, handler Handler, expectedResult string) {
 		if msg == "" {
