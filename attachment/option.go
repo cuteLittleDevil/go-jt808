@@ -25,7 +25,7 @@ func newOptions(opts []Option) *Options {
 			return nil
 		},
 		StreamDataHandleFunc: func() StreamDataHandler {
-			return nil
+			return newSuBiaoStreamDataHandle()
 		},
 		JT808DataHandleFunc: func() JT808DataHandler {
 			return nil
