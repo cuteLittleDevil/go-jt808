@@ -98,16 +98,12 @@ func (p *Package) StatisticalMissSegments() []model.P0x9212RetransmitPacket {
 
 func (p *PackageProgress) switchState(curData []byte) (bool, error) {
 	p.historyData = append(p.historyData, curData...)
-	if p.ProgressStage == ProgressStageStart && bytes.Contains(p.historyData, []byte{0x30, 0x31, 0x63, 0x64}) {
-		p.ProgressStage = ProgressStageStreamData // 切换成收集流模式
-	}
-	if p.ProgressStage == ProgressStageStreamData || p.ProgressStage == ProgressStageSupplementary {
-		ok, err := p.stageStreamData()
-		if len(p.historyData) > 2 { // 不知道是不是要切换 每次收到数据都判断一次
-			if jtMsg, err := p.parseJT808Message(); err == nil {
-				return p.stageJT808Data(jtMsg)
-			}
-		}
+	var (
+		ok  bool
+		err error
+	)
+	if p.hasStreamData() {
+		ok, err = p.stageStreamData()
 		if err != nil {
 			return false, err
 		}
@@ -115,11 +111,13 @@ func (p *PackageProgress) switchState(curData []byte) (bool, error) {
 		if ok {
 			p.ProgressStage = ProgressStageStreamDataComplete
 		}
-		return true, nil
+		if len(p.historyData) == 0 { // 没有多余的数据 说明本次没收到1212
+			return true, nil
+		}
 	}
 	jtMsg, err := p.parseJT808Message()
 	if err != nil {
-		return false, err
+		return ok, err
 	}
 	return p.stageJT808Data(jtMsg)
 }
@@ -187,6 +185,10 @@ func (p *PackageProgress) stageJT808Data(jtMsg *jt808.JTMessage) (bool, error) {
 	p.ExtensionFields.RecentTerminalMessage = jtMsg
 	p.handle.OnPackageProgressEvent(p)
 	return true, nil
+}
+
+func (p *PackageProgress) hasStreamData() bool {
+	return bytes.Contains(p.historyData, []byte{0x30, 0x31, 0x63, 0x64})
 }
 
 func (p *PackageProgress) hasJT808Reply() bool {
