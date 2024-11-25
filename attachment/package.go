@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
+	"github.com/cuteLittleDevil/go-jt808/protocol/model"
 	"maps"
 	"sort"
 )
@@ -50,6 +51,50 @@ type (
 		OffsetRecord map[int]int
 	}
 )
+
+func (p *Package) StatisticalMissSegments() []model.P0x9212RetransmitPacket {
+	// 不需要补包的情况 收到的文件大小=最终文件大小
+	if p.CurrentSize == p.FileSize {
+		return nil
+	}
+	var (
+		missSegments  []model.P0x9212RetransmitPacket
+		currentOffset = uint32(0)
+	)
+
+	segments := make([]model.P0x9212RetransmitPacket, 0, len(p.OffsetRecord))
+	for offset, dataLen := range p.OffsetRecord {
+		segments = append(segments, model.P0x9212RetransmitPacket{
+			DataOffset: uint32(offset),
+			DataLength: uint32(dataLen),
+		})
+	}
+	// 看看漏掉了哪些包
+	if len(segments) > 0 {
+		sort.Slice(segments, func(i, j int) bool {
+			return segments[i].DataOffset < segments[j].DataOffset
+		})
+		for _, segment := range segments {
+			if currentOffset < segment.DataOffset {
+				missSegments = append(missSegments, model.P0x9212RetransmitPacket{
+					DataOffset: currentOffset,
+					DataLength: segment.DataOffset - currentOffset,
+				})
+			}
+			currentOffset = segment.DataOffset + segment.DataLength
+		}
+	}
+
+	// 看看最后的包有没有漏掉
+	if currentOffset < p.FileSize {
+		missSegments = append(missSegments, model.P0x9212RetransmitPacket{
+			DataOffset: currentOffset,
+			DataLength: p.FileSize - currentOffset,
+		})
+	}
+
+	return missSegments
+}
 
 func (p *PackageProgress) switchState(curData []byte) (bool, error) {
 	p.historyData = append(p.historyData, curData...)
