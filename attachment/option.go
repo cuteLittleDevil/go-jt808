@@ -22,13 +22,13 @@ func newOptions(opts []Option) *Options {
 		Addr:    defaultAddr,
 		Network: defaultNetwork,
 		FileEventerFunc: func() FileEventer {
-			return nil
+			return newFileEvent()
 		},
 		StreamDataHandleFunc: func() StreamDataHandler {
 			return newSuBiaoStreamDataHandle()
 		},
 		JT808DataHandleFunc: func() JT808DataHandler {
-			return nil
+			return newSuBiaoJT808DataHandle()
 		},
 	}
 	for _, op := range opts {
