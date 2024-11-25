@@ -1,7 +1,12 @@
 package attachment
 
 import (
+	"bytes"
+	"errors"
+	"fmt"
 	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
+	"maps"
+	"sort"
 )
 
 type (
@@ -48,11 +53,95 @@ type (
 
 func (p *PackageProgress) switchState(curData []byte) (bool, error) {
 	p.historyData = append(p.historyData, curData...)
-	return false, ErrDataInconsistency
+	if p.ProgressStage == ProgressStageStart && bytes.Contains(p.historyData, []byte{0x30, 0x31, 0x63, 0x64}) {
+		p.ProgressStage = ProgressStageStreamData // 切换成收集流模式
+	}
+	if p.ProgressStage == ProgressStageStreamData || p.ProgressStage == ProgressStageSupplementary {
+		ok, err := p.stageStreamData()
+		if len(p.historyData) > 2 { // 不知道是不是要切换 每次收到数据都判断一次
+			if jtMsg, err := p.parseJT808Message(); err == nil {
+				return p.stageJT808Data(jtMsg)
+			}
+		}
+		if err != nil {
+			return false, err
+		}
+		p.ProgressStage = ProgressStageStreamData
+		if ok {
+			p.ProgressStage = ProgressStageStreamDataComplete
+		}
+		return true, nil
+	}
+	jtMsg, err := p.parseJT808Message()
+	if err != nil {
+		return false, err
+	}
+	return p.stageJT808Data(jtMsg)
 }
 
 func (p *PackageProgress) stageStreamData() (bool, error) {
+	stream := p.streamFunc()
+	headLen, bodyLen, ok := stream.GetLen(p.historyData)
+	if !ok {
+		return false, ErrInsufficientDataLen
+	}
+	if len(p.historyData) >= headLen+bodyLen {
+		name := stream.GetFileName()
+		pack, ok := p.Record[name]
+		if !ok {
+			return false, errors.Join(fmt.Errorf("name[%s] is not exist record[%v]",
+				name, p.Record), ErrDataInconsistency)
+		}
+		defer func() {
+			p.ExtensionFields.CurrentPackage = pack
+			p.Record[name] = pack
+			p.historyData = p.historyData[headLen+bodyLen:]
+		}()
+		offset, dataLen := stream.GetDataOffsetAndLen()
+		pack.OffsetRecord[offset] = dataLen
+		pack.OffsetDataRecord[offset] = p.historyData[headLen : headLen+bodyLen]
+		pack.CurrentSize += uint32(bodyLen)
+		if pack.CurrentSize == pack.FileSize {
+			pack.StreamHead = p.historyData[:headLen]
+			keys := make([]int, 0)
+			for key := range maps.Keys(pack.OffsetDataRecord) {
+				keys = append(keys, key)
+			}
+			sort.Ints(keys)
+			for _, key := range keys {
+				pack.StreamBody = append(pack.StreamBody, pack.OffsetDataRecord[key]...)
+			}
+			return true, nil
+		}
+		return false, nil
+	}
 	return false, ErrInsufficientDataLen
+}
+
+func (p *PackageProgress) parseJT808Message() (*jt808.JTMessage, error) {
+	const sign = 0x7e
+	index := bytes.IndexFunc(p.historyData[1:], func(r rune) bool {
+		return r == sign
+	})
+	if index == -1 {
+		return nil, ErrInsufficientDataLen
+	}
+	index += 2
+	jtMsg := jt808.NewJTMessage()
+	if err := jtMsg.Decode(p.historyData[:index]); err != nil {
+		return nil, fmt.Errorf("%w [%x]", err, p.historyData[:index])
+	}
+	p.historyData = p.historyData[index:]
+	return jtMsg, nil
+}
+
+func (p *PackageProgress) stageJT808Data(jtMsg *jt808.JTMessage) (bool, error) {
+	if err := p.handle.Parse(jtMsg); err != nil {
+		return false, err
+	}
+	p.ExtensionFields.RecentTerminalMessage = jtMsg
+	p.handle.OnPackageProgressEvent(p)
+	return true, nil
 }
 
 func (p *PackageProgress) hasJT808Reply() bool {
