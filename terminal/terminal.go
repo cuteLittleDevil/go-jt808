@@ -17,7 +17,7 @@ type Terminal struct {
 
 func New(opts ...Option) *Terminal {
 	var header *jt808.Header
-	options := NewOptions(opts)
+	options := newOptions(opts)
 	if options.Header != nil {
 		header = options.Header
 	}
@@ -28,10 +28,16 @@ func New(opts ...Option) *Terminal {
 		_ = jtMsg.Decode(data)
 		header = jtMsg.Header
 	}
+	protocolHandles := defaultProtocolHandles(header.ProtocolVersion)
+	if options.CustomProtocolHandleFunc != nil {
+		for commandType, handler := range options.CustomProtocolHandleFunc() {
+			protocolHandles[commandType] = handler
+		}
+	}
 	return &Terminal{
 		TerminalPhoneNo: header.TerminalPhoneNo,
 		header:          header,
-		protocolHandles: defaultProtocolHandles(options.Header.ProtocolVersion),
+		protocolHandles: protocolHandles,
 	}
 }
 

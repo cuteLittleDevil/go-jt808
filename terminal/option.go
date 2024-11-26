@@ -19,15 +19,11 @@ type Options struct {
 	CustomProtocolHandleFunc func() map[consts.JT808CommandType]Handler
 }
 
-func (o *Options) Apply(opts []Option) {
-	for _, op := range opts {
-		op.F(o)
-	}
-}
-
-func NewOptions(opts []Option) *Options {
+func newOptions(opts []Option) *Options {
 	options := &Options{}
-	options.Apply(opts)
+	for _, op := range opts {
+		op.F(options)
+	}
 	return options
 }
 
