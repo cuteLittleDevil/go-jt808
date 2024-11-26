@@ -23,6 +23,39 @@ type meHandle interface {
 	ReplyProtocol() consts.JT808CommandType
 }
 
+type defaultHandle struct {
+	meHandle
+}
+
+func newDefaultHandle(command consts.JT808CommandType) *defaultHandle {
+	var tmp meHandle
+	switch command {
+	case consts.P8001GeneralRespond:
+		tmp = &model.P0x8001{
+			RespondSerialNumber: 1,
+			RespondID:           0x0200,
+			Result:              0,
+		}
+	case consts.P8003ReissueSubcontractingRequest:
+		tmp = &model.P0x8003{
+			OriginalSerialNumber: 1,
+			AgainPackageCount:    0,
+			AgainPackageList:     nil,
+		}
+	case consts.P8100RegisterRespond:
+		tmp = &model.P0x8100{
+			RespondSerialNumber: 1,
+			Result:              0,
+			AuthCode:            "1234567890abcdefghijk",
+		}
+	}
+	return &defaultHandle{meHandle: tmp}
+}
+
+func (d defaultHandle) ReplyBody(_ *jt808.JTMessage) ([]byte, error) {
+	return nil, nil
+}
+
 func defaultProtocolHandles(protocolVersion consts.ProtocolVersionType) map[consts.JT808CommandType]Handler {
 	item := model.T0x0200LocationItem{
 		AlarmSign:  1024,
@@ -45,8 +78,10 @@ func defaultProtocolHandles(protocolVersion consts.ProtocolVersionType) map[cons
 		consts.T1205UploadAudioVideoResourceList:      newT0x1205(),
 		consts.T1206FileUploadCompleteNotice:          newT0x1206(),
 		consts.P8001GeneralRespond:                    newDefaultHandle(consts.P8001GeneralRespond),
+		consts.P8003ReissueSubcontractingRequest:      newDefaultHandle(consts.P8003ReissueSubcontractingRequest),
 		consts.P8100RegisterRespond:                   newDefaultHandle(consts.P8100RegisterRespond),
 		consts.P8104QueryTerminalParams:               &model.P0x8104{},
+		consts.P8801CameraShootImmediateCommand:       newP0x8801(),
 		consts.P9003QueryTerminalAudioVideoProperties: &model.P0x9003{},
 		consts.P9101RealTimeAudioVideoRequest:         newP0x9101(),
 		consts.P9102AudioVideoControl:                 newP0x9102(),
@@ -54,34 +89,73 @@ func defaultProtocolHandles(protocolVersion consts.ProtocolVersionType) map[cons
 		consts.P9205QueryResourceList:                 newP0x9205(),
 		consts.P9206FileUploadInstructions:            newP0x9206(),
 		consts.P9207FileUploadControl:                 newP0x9207(),
+		consts.T1210AlarmAttachInfoMessage:            newP0x1210(),
+		consts.T1211FileInfoUpload:                    newP0x1211(),
+		consts.T1212FileUploadComplete:                newP0x1212(),
 	}
 }
 
-type defaultHandle struct {
-	meHandle
-}
-
-func newDefaultHandle(command consts.JT808CommandType) *defaultHandle {
-	var tmp meHandle
-	switch command {
-	case consts.P8001GeneralRespond:
-		tmp = &model.P0x8001{
-			RespondSerialNumber: 1,
-			RespondID:           0x0200,
-			Result:              0,
-		}
-	case consts.P8100RegisterRespond:
-		tmp = &model.P0x8100{
-			RespondSerialNumber: 1,
-			Result:              0,
-			AuthCode:            "1234567890abcdefghijk",
-		}
+func newP0x1212() Handler {
+	return &model.T0x1212{
+		T0x1211: model.T0x1211{
+			FileNameLen: byte(len("123_aaa.jpg")),
+			FileName:    "123_aaa.jpg",
+			FileType:    0,
+			FileSize:    1234,
+		},
 	}
-	return &defaultHandle{meHandle: tmp}
 }
 
-func (d defaultHandle) ReplyBody(_ *jt808.JTMessage) ([]byte, error) {
-	return nil, nil
+func newP0x1211() Handler {
+	return &model.T0x1211{
+		FileNameLen: byte(len("123_aaa.jpg")),
+		FileName:    "123_aaa.jpg",
+		FileType:    0,
+		FileSize:    1234,
+	}
+}
+
+func newP0x1210() Handler {
+	return &model.T0x1210{
+		TerminalID: "123cd",
+		P9208AlarmSign: model.P9208AlarmSign{
+			TerminalID:   "123cd",
+			Time:         "2024-11-11 00:00:00",
+			SerialNumber: 1,
+			AttachNumber: 2,
+			AlarmReserve: 1,
+		},
+		AlarmID:     "aaa",
+		InfoType:    0,
+		AttachCount: 2,
+		T0x1210AlarmItemList: []model.T0x1210AlarmItem{
+			{
+				FileNameLen: byte(len("123_aaa.jpg")),
+				FileName:    "123_aaa.jpg",
+				FileSize:    1234,
+			},
+			{
+				FileNameLen: byte(len("cd_aaa.mp4")),
+				FileName:    "cd_aaa.mp4",
+				FileSize:    123456,
+			},
+		},
+	}
+}
+
+func newP0x8801() Handler {
+	return &model.P0x8801{
+		ChannelID:                1,
+		ShootCommand:             2,
+		PhotoIntervalOrVideoTime: 3,
+		SaveFlag:                 1,
+		Resolution:               4,
+		VideoQuality:             5,
+		Intensity:                255,
+		Contrast:                 127,
+		Saturation:               127,
+		Chroma:                   255,
+	}
 }
 
 func newT0x0001() *model.T0x0001 {

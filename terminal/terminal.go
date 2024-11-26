@@ -53,6 +53,12 @@ func (t *Terminal) CreateDefaultCommandData(commandType consts.JT808CommandType)
 	return nil
 }
 
+func (t *Terminal) CreateCommandData(commandType consts.JT808CommandType, body []byte) []byte {
+	t.header.ReplyID = uint16(commandType)
+	t.header.PlatformSerialNumber++
+	return t.header.Encode(body)
+}
+
 func (t *Terminal) ExpectedReply(seq uint16, msg string) []byte {
 	jtMsg := jt808.NewJTMessage()
 	data, _ := hex.DecodeString(msg)
