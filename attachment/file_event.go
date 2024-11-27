@@ -8,16 +8,24 @@ import (
 )
 
 type fileEvent struct {
+	file *os.File
 }
 
 func newFileEvent() *fileEvent {
-	return &fileEvent{}
+	f, _ := os.OpenFile("file.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, os.ModePerm)
+	return &fileEvent{
+		file: f,
+	}
 }
 
 func (f *fileEvent) OnEvent(progress *PackageProgress) {
 	str := fmt.Sprintf("当前进度: [%s] ", progress.ProgressStage.String())
 	defer func() {
 		fmt.Println(str)
+		if f.file != nil {
+			_, _ = f.file.WriteString(str)
+			_ = f.file.Sync()
+		}
 	}()
 	extension := progress.ExtensionFields
 	switch progress.ProgressStage {
@@ -38,11 +46,13 @@ func (f *fileEvent) OnEvent(progress *PackageProgress) {
 			"",
 		}, "\n")
 	case ProgressStageStreamData:
-		str += fmt.Sprintf(" 文件传输中[%s] 进度[%d/%d]", extension.CurrentPackage.FileName,
-			extension.CurrentPackage.CurrentSize, extension.CurrentPackage.FileSize)
+		curPack := extension.CurrentPackage
+		str += fmt.Sprintf(" 文件传输中[%s] 进度[%d/%d] 偏移[%d]", curPack.FileName,
+			curPack.CurrentSize, curPack.FileSize, curPack.Offset)
 	case ProgressStageSupplementary:
-		str += fmt.Sprintf(" 文件补传传输中[%s] 进度[%d/%d]", extension.CurrentPackage.FileName,
-			extension.CurrentPackage.CurrentSize, extension.CurrentPackage.FileSize)
+		curPack := extension.CurrentPackage
+		str += fmt.Sprintf(" 文件补传传输中[%s] 进度[%d/%d] 偏移[%d]", curPack.FileName,
+			curPack.CurrentSize, curPack.FileSize, curPack.Offset)
 	case ProgressStageStreamDataComplete:
 		str += " 目前传输文件整体进度:\n"
 		for name, v := range progress.Record {
@@ -61,6 +71,7 @@ func (f *fileEvent) OnEvent(progress *PackageProgress) {
 	case ProgressStageSuccessQuit:
 		phone := progress.ExtensionFields.RecentTerminalMessage.Header.TerminalPhoneNo
 		str += fmt.Sprintf(" 文件传输成功 开始保存 保存数量[%d]\n", len(progress.Record))
+		_ = os.MkdirAll(phone, os.ModePerm)
 		for name, pack := range progress.Record {
 			savePath := fmt.Sprintf("./%s/%s", phone, name)
 			err := os.WriteFile(savePath, pack.StreamBody, os.ModePerm)

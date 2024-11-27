@@ -51,22 +51,26 @@ func (c *connection) run() {
 			progress.ExtensionFields.Err = err
 			return
 		} else if n > 0 {
-			ok, err := progress.switchState(curData[:n])
-			if err != nil && !errors.Is(err, ErrInsufficientDataLen) {
-				progress.ExtensionFields.Err = err
-				return
-			}
-			if ok {
-				if progress.hasJT808Reply() {
-					data, err := progress.handle.ReplyData()
-					progress.ExtensionFields.RecentPlatformData = data
-					progress.ExtensionFields.Err = err
-					if _, err := c.conn.Write(data); err != nil {
-						progress.ExtensionFields.Err = errors.Join(err, progress.ExtensionFields.Err)
-						return
+			progress.historyData = append(progress.historyData, curData[:n]...)
+			for err := range progress.iter() {
+				if err == nil {
+					if progress.hasJT808Reply() {
+						data, err := progress.handle.ReplyData()
+						progress.ExtensionFields.RecentPlatformData = data
+						progress.ExtensionFields.Err = err
+						if _, err := c.conn.Write(data); err != nil {
+							progress.ExtensionFields.Err = errors.Join(err, progress.ExtensionFields.Err)
+							return
+						}
 					}
+					c.fileEventer.OnEvent(progress)
+				} else if errors.Is(err, ErrInsufficientDataLen) {
+					// 是数据长度不够的错误情况 就结束
+					break
+				} else {
+					progress.ExtensionFields.Err = err
+					return
 				}
-				c.fileEventer.OnEvent(progress)
 			}
 		}
 

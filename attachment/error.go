@@ -6,4 +6,5 @@ var (
 	ErrUnknownCommand      = errors.New("unknown command")
 	ErrDataInconsistency   = errors.New("data inconsistency")
 	ErrInsufficientDataLen = errors.New("insufficient data len")
+	_errNotStreamData      = errors.New("not stream data")
 )

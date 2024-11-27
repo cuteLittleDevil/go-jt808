@@ -45,6 +45,8 @@ type (
 		StreamHead []byte
 		// StreamBody 数据体 当数据完成时候记录
 		StreamBody []byte
+		// Offset 偏移
+		Offset int
 		// OffsetDataRecord 偏移的数据记录 key=偏移 value=数据
 		OffsetDataRecord map[int][]byte
 		// OffsetRecord 偏移的记录 key=偏移 value=文件大小
@@ -96,43 +98,40 @@ func (p *Package) StatisticalMissSegments() []model.P0x9212RetransmitPacket {
 	return missSegments
 }
 
-func (p *PackageProgress) switchState(curData []byte) (bool, error) {
-	p.historyData = append(p.historyData, curData...)
-	var (
-		ok  bool
-		err error
-	)
-	if p.hasStreamData() {
-		ok, err = p.stageStreamData()
-		if err != nil {
-			return false, err
-		}
-		p.ProgressStage = ProgressStageStreamData
-		if ok {
-			p.ProgressStage = ProgressStageStreamDataComplete
-		}
-		if len(p.historyData) == 0 { // 没有多余的数据 说明本次没收到1212
-			return true, nil
+func (p *PackageProgress) iter() func(func(err error) bool) {
+	return func(yield func(err error) bool) {
+		for len(p.historyData) > 0 {
+			if err := p.stageStreamData(); err == nil {
+				yield(nil)
+			} else if errors.Is(err, _errNotStreamData) { // 不是流数据格式的 换一个格式试一试
+				if err := p.stageJT808Data(); err == nil {
+					yield(nil)
+				} else {
+					return
+				}
+			} else {
+				yield(err)
+				return
+			}
 		}
 	}
-	jtMsg, err := p.parseJT808Message()
-	if err != nil {
-		return ok, err
-	}
-	return p.stageJT808Data(jtMsg)
 }
 
-func (p *PackageProgress) stageStreamData() (bool, error) {
+func (p *PackageProgress) stageStreamData() error {
 	stream := p.streamFunc()
-	headLen, bodyLen, ok := stream.GetLen(p.historyData)
-	if !ok {
-		return false, ErrInsufficientDataLen
+	if !stream.HasStreamData(p.historyData) {
+		return _errNotStreamData
 	}
+	if !stream.HasMinHeadLen(p.historyData) {
+		return ErrInsufficientDataLen
+	}
+	headLen, bodyLen := stream.GetLen(p.historyData)
 	if len(p.historyData) >= headLen+bodyLen {
+		p.ProgressStage = ProgressStageStreamData
 		name := stream.GetFileName()
 		pack, ok := p.Record[name]
 		if !ok {
-			return false, errors.Join(fmt.Errorf("name[%s] is not exist record[%v]",
+			return errors.Join(fmt.Errorf("name[%s] is not exist record[%v]",
 				name, p.Record), ErrDataInconsistency)
 		}
 		defer func() {
@@ -141,6 +140,7 @@ func (p *PackageProgress) stageStreamData() (bool, error) {
 			p.historyData = p.historyData[headLen+bodyLen:]
 		}()
 		offset, dataLen := stream.GetDataOffsetAndLen()
+		pack.Offset = offset
 		pack.OffsetRecord[offset] = dataLen
 		pack.OffsetDataRecord[offset] = p.historyData[headLen : headLen+bodyLen]
 		pack.CurrentSize += uint32(bodyLen)
@@ -154,14 +154,17 @@ func (p *PackageProgress) stageStreamData() (bool, error) {
 			for _, key := range keys {
 				pack.StreamBody = append(pack.StreamBody, pack.OffsetDataRecord[key]...)
 			}
-			return true, nil
+			p.ProgressStage = ProgressStageStreamDataComplete
 		}
-		return false, nil
+		return nil
 	}
-	return false, ErrInsufficientDataLen
+	return ErrInsufficientDataLen
 }
 
 func (p *PackageProgress) parseJT808Message() (*jt808.JTMessage, error) {
+	if len(p.historyData) < 10 {
+		return nil, ErrInsufficientDataLen
+	}
 	const sign = 0x7e
 	index := bytes.IndexFunc(p.historyData[1:], func(r rune) bool {
 		return r == sign
@@ -178,22 +181,22 @@ func (p *PackageProgress) parseJT808Message() (*jt808.JTMessage, error) {
 	return jtMsg, nil
 }
 
-func (p *PackageProgress) stageJT808Data(jtMsg *jt808.JTMessage) (bool, error) {
+func (p *PackageProgress) stageJT808Data() error {
+	jtMsg, err := p.parseJT808Message()
+	if err != nil {
+		return err
+	}
 	if err := p.handle.Parse(jtMsg); err != nil {
-		return false, err
+		return err
 	}
 	p.ExtensionFields.RecentTerminalMessage = jtMsg
 	p.handle.OnPackageProgressEvent(p)
-	return true, nil
-}
-
-func (p *PackageProgress) hasStreamData() bool {
-	return bytes.Contains(p.historyData, []byte{0x30, 0x31, 0x63, 0x64})
+	return nil
 }
 
 func (p *PackageProgress) hasJT808Reply() bool {
 	switch p.ProgressStage {
-	case ProgressStageInit, ProgressStageStart, ProgressStageComplete:
+	case ProgressStageInit, ProgressStageStart, ProgressStageComplete, ProgressStageSupplementary:
 		return true
 	default:
 	}

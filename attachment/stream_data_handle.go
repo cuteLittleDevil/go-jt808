@@ -22,19 +22,21 @@ func newSuBiaoStreamDataHandle() *suBiaoStreamDataHandle {
 	return &suBiaoStreamDataHandle{}
 }
 
-func (s *suBiaoStreamDataHandle) GetLen(data []byte) (headLen int, bodyLen int, ok bool) {
-	if len(data) < 62 {
-		return -1, -1, false
-	}
+func (s *suBiaoStreamDataHandle) HasMinHeadLen(data []byte) bool {
+	return len(data) >= 62
+}
+
+func (s *suBiaoStreamDataHandle) HasStreamData(data []byte) bool {
+	return bytes.Contains(data, []byte{0x30, 0x31, 0x63, 0x64}) // 808543076 = 0x30 0x31 0x63 0x64
+}
+
+func (s *suBiaoStreamDataHandle) GetLen(data []byte) (headLen int, bodyLen int) {
 	s.FrameSign = binary.BigEndian.Uint32(data[0:4])
-	if s.FrameSign != 808543076 { // 808543076 = 0x30 0x31 0x63 0x64
-		return -1, -1, false
-	}
 	s.FileName = string(bytes.Trim(data[4:54], "\x00"))
 	s.DataOffset = binary.BigEndian.Uint32(data[54:58])
 	s.DataLen = binary.BigEndian.Uint32(data[58:62])
 	s.Data = data[62:]
-	return 62, int(s.DataLen), true
+	return 62, int(s.DataLen)
 }
 
 func (s *suBiaoStreamDataHandle) GetFileName() string {
