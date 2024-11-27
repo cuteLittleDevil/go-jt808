@@ -1,4 +1,4 @@
-module attachment
+module github.com/cuteLittleDevil/go-jt808/attachment
 
 go 1.23.2
 
