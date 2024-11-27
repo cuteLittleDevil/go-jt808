@@ -13,7 +13,8 @@ type (
 		AlarmID uint32 `json:"alarmID"`
 		// FlagStatus 标志状态 0x00-不可用 0x01-开始标志 0x02-结束标志
 		FlagStatus byte `json:"alarmFlag"`
-		// AlarmEventType 报警事件类型 0x01：前向碰撞预警
+		// AlarmEventType 报警事件类型
+		//0x01：前向碰撞预警
 		//0x02：车道偏离报警
 		//0x03：车距过近报警
 		//0x04：行人碰撞报警
@@ -49,12 +50,12 @@ type (
 		// DateTime 时间 YY-MM-DD-hh-mm-ss（GMT+8 时间，本标准中之后涉及的时间均采用此时区）bcd[6]
 		DateTime string `json:"dateTime"`
 		// VehicleStatus 车辆状态 见表18
-		VehicleStatus VehicleStatus `json:"vehicleStatus"`
+		VehicleStatus T0x0200ExtensionVehicleStatus `json:"vehicleStatus"`
 		// P9208AlarmSign 报警标识号 苏标
 		P9208AlarmSign `json:"p9208AlarmSign"`
 	}
 
-	VehicleStatus struct {
+	T0x0200ExtensionVehicleStatus struct {
 		// OriginalValue 原始值
 		OriginalValue uint16 `json:"originalValue"`
 		// ACC ACC 0-关 1-开
@@ -72,9 +73,49 @@ type (
 		// Location 定位状态标志 0-未定位 1-定位
 		Location bool `json:"location,omitempty"`
 	}
+
+	T0x0200AdditionExtension0x65 struct {
+		// AlarmID 报警ID 按照报警先后 从0开始循环 不区分报警类型
+		AlarmID uint32 `json:"alarmID"`
+		// FlagStatus 标志状态 0x00-不可用 0x01-开始标志 0x02-结束标志
+		FlagStatus byte `json:"alarmFlag"`
+		// AlarmEventType 报警事件类型
+		//0x01：疲劳驾驶报警
+		//0x02：接打手持电话报警
+		//0x03：抽烟报警
+		//0x04：长时间不目视前方报警
+		//0x05：未检测到驾驶员报警
+		//0x06：双手同时脱离方向盘报警
+		//0x07：驾驶员行为检测功能失效报警
+		//0x08-0xFF: 用户自定义
+		//0x10：自动抓拍事件
+		//0x11：驾驶员变更事件
+		//0x12~0xFF：用户自定义
+		AlarmEventType byte `json:"alarmEventType"`
+		// AlarmLevel 报警级别 0x01:一级报警 0x02:二级报警
+		AlarmLevel byte `json:"alarmLevel"`
+		// FatigueLevel 疲劳程度 1-10 数值越大越疲劳 仅在报警类型0x01生效 不可用时0x00
+		FatigueLevel byte `json:"fatigueLevel"`
+		// Reserved 预留 [4]byte
+		Reserved [4]byte `json:"reserved"`
+		// VehicleSpeed 车速 单位:km/h 范围0-250
+		VehicleSpeed byte `json:"vehicleSpeed"`
+		// Altitude 海拔高度 单位米(m)
+		Altitude uint16 `json:"altitude"`
+		// Latitude 纬度 以度为单位的纬度值乘以 10 的 6 次方，精确到百万分之一度
+		Latitude uint32 `json:"latitude"`
+		// Longitude 经度 以度为单位的经度值乘以 10 的 6 次方，精确到百万分之一度
+		Longitude uint32 `json:"longitude"`
+		// DateTime 时间 YY-MM-DD-hh-mm-ss（GMT+8 时间，本标准中之后涉及的时间均采用此时区）bcd[6]
+		DateTime string `json:"dateTime"`
+		// VehicleStatus 车辆状态 见表18
+		VehicleStatus T0x0200ExtensionVehicleStatus `json:"vehicleStatus"`
+		// P9208AlarmSign 报警标识号 苏标
+		P9208AlarmSign `json:"p9208AlarmSign"`
+	}
 )
 
-func (vs *VehicleStatus) parse(value uint16) {
+func (vs *T0x0200ExtensionVehicleStatus) parse(value uint16) {
 	vs.OriginalValue = value
 	data := fmt.Sprintf("%.32b", vs.OriginalValue)
 	if data[31] == '1' {
@@ -100,7 +141,7 @@ func (vs *VehicleStatus) parse(value uint16) {
 	}
 }
 
-func (vs *VehicleStatus) String() string {
+func (vs *T0x0200ExtensionVehicleStatus) String() string {
 	return strings.Join([]string{
 		fmt.Sprintf("\t车辆状态:[%d] {", vs.OriginalValue),
 		fmt.Sprintf("\t\t ACC: [%v]", vs.ACC),
@@ -170,6 +211,65 @@ func (t T0x0200AdditionExtension0x64) String() string {
 		fmt.Sprintf("\t偏离类型:[%d] 0x01-左侧偏离 0x02-右侧偏离 仅报警类型为0x02时有效 不可用时=0x00", t.DeviationType),
 		fmt.Sprintf("\t道路标志识别类型:[%d] 0x01-限速 0x02-限高 0x03-限重 仅报警类型为0x06和0x10时有效 不可用时=0x00", t.RoadSignRecognitionType),
 		fmt.Sprintf("\t道路标志识别数据:[%d] 识别到道路标志的数据 不可用时=0x00", t.RoadSignRecognitionData),
+		fmt.Sprintf("\t车速:[%d] 单位:km/h 范围0-250", t.VehicleSpeed),
+		fmt.Sprintf("\t海拔高度:[%d] 单位米(m)", t.Altitude),
+		fmt.Sprintf("\t纬度:[%d] 以度为单位的纬度值乘以 10 的 6 次方，精确到百万分之一度", t.Latitude),
+		fmt.Sprintf("\t经度:[%d] 以度为单位的经度值乘以 10 的 6 次方，精确到百万分之一度", t.Longitude),
+		fmt.Sprintf("\t时间:[%s] 时间 YY-MM-DD-hh-mm-ss（GMT+8 时间，本标准中之后涉及的时间均采用此时区）", t.DateTime),
+		t.VehicleStatus.String(),
+		t.P9208AlarmSign.String(),
+	}, "\n")
+}
+
+func (t T0x0200AdditionExtension0x65) Parse(id uint8, content []byte) (AdditionContent, bool) {
+	if id == 0x65 && len(content) == 31+16 {
+		t.AlarmID = binary.BigEndian.Uint32(content[0:4])
+		t.FlagStatus = content[4]
+		t.AlarmEventType = content[5]
+		t.AlarmLevel = content[6]
+		t.FatigueLevel = content[7]
+		t.Reserved = [4]byte(content[8:12])
+		t.VehicleSpeed = content[12]
+		t.Altitude = binary.BigEndian.Uint16(content[13:15])
+		t.Latitude = binary.BigEndian.Uint32(content[15:19])
+		t.Longitude = binary.BigEndian.Uint32(content[19:23])
+		t.DateTime = utils.BCD2Time(content[23:29])
+		t.VehicleStatus.parse(binary.BigEndian.Uint16(content[29:31]))
+		t.P9208AlarmSign.parse(content[31:])
+		return AdditionContent{
+			Data:        content,
+			CustomValue: t,
+		}, true
+	}
+	return AdditionContent{}, false
+}
+
+func (t T0x0200AdditionExtension0x65) String() string {
+	alarmEventDetails := func() string {
+		infos := map[uint8]string{
+			0x01: "疲劳驾驶报警",
+			0x02: "接打手持电话报警",
+			0x03: "抽烟报警",
+			0x04: "长时间不目视前方报警",
+			0x05: "未检测到驾驶员报警",
+			0x06: "双手同时脱离方向盘报警",
+			0x07: "驾驶员行为检测功能失效报警",
+			0x10: "自动抓拍事件",
+			0x11: "驾驶员变更事件",
+		}
+		str := fmt.Sprintf("自定义报警类型[%d]", t.AlarmEventType)
+		if v, ok := infos[t.AlarmEventType]; ok {
+			str = v
+		}
+		return str
+	}
+	return strings.Join([]string{
+		fmt.Sprintf("\t报警ID:[%d] 从0开始循环 不区分报警类型", t.AlarmID),
+		fmt.Sprintf("\t标志状态:[%d] 0x00-不可用 0x01-开始标志 0x02-结束标志", t.FlagStatus),
+		fmt.Sprintf("\t报警事件类型:[%d] %s", t.AlarmEventType, alarmEventDetails()),
+		fmt.Sprintf("\t报警级别:[%d] 0x01:一级报警 0x02:二级报警", t.AlarmLevel),
+		fmt.Sprintf("\t疲劳程度:[%d] 单位:km/h 1-10 数值越大越疲劳 仅在报警类型0x01生效 不可用时0x00", t.FatigueLevel),
+		fmt.Sprintf("\t预留:[%x]", t.Reserved),
 		fmt.Sprintf("\t车速:[%d] 单位:km/h 范围0-250", t.VehicleSpeed),
 		fmt.Sprintf("\t海拔高度:[%d] 单位米(m)", t.Altitude),
 		fmt.Sprintf("\t纬度:[%d] 以度为单位的纬度值乘以 10 的 6 次方，精确到百万分之一度", t.Latitude),
