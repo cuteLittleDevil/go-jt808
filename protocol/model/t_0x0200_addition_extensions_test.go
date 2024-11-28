@@ -151,6 +151,43 @@ func TestT0x0200AdditionExtension(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "苏标 0x67",
+			args: args{
+				msg:     "7E0200407801000000000202326095590A4F00002000004C100301E0D7F2073E6EAC0064021400142411271542300104000000CC020201D425040000000030010831010914040000007F15040000000116040000000117020001180300070967290000001F000201323201000035006701E0241127154210FFFF696430303030332411271542170005003F7E",
+				Handler: &T0x0200AdditionExtension0x67{},
+				ID:      0x67,
+			},
+			want: &T0x0200AdditionExtension0x67{
+				AlarmID:        31,
+				FlagStatus:     0,
+				AlarmEventType: 2,
+				T0x0200ExtensionSBBase: T0x0200ExtensionSBBase{
+					VehicleSpeed: 1,
+					Altitude:     12850,
+					Latitude:     16777269,
+					Longitude:    6750688,
+					DateTime:     "2024-11-27 15:42:10",
+					VehicleStatus: T0x0200ExtensionTable18{
+						OriginalValue: 65535,
+						ACC:           true,
+						LeftTurn:      true,
+						RightTurn:     true,
+						Wipers:        true,
+						Brake:         true,
+						Card:          true,
+						Location:      true,
+					},
+					P9208AlarmSign: P9208AlarmSign{
+						TerminalID:   "id00003", // 69643030303033
+						Time:         "2024-11-27 15:42:17",
+						SerialNumber: 0,
+						AttachNumber: 5,
+						AlarmReserve: 0,
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

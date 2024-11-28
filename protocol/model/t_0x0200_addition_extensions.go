@@ -149,6 +149,18 @@ type (
 		// BatteryLevel 电池电量 单位 %
 		BatteryLevel uint16 `json:"batteryLevel"`
 	}
+
+	// T0x0200AdditionExtension0x67 表23-变道决策辅助报警信息
+	T0x0200AdditionExtension0x67 struct {
+		// AlarmID 报警ID 按照报警先后 从0开始循环 不区分报警类型
+		AlarmID uint32 `json:"alarmID"`
+		// FlagStatus 标志状态 0x00-不可用 0x01-开始标志 0x02-结束标志
+		FlagStatus byte `json:"alarmFlag"`
+		// AlarmEventType 报警/事件类型 0x01-后方接近报警 0x02-左侧后方接近报警 0x03-右侧后方接近报警
+		AlarmEventType byte `json:"alarmEventType"`
+		// T0x0200ExtensionSBBase  苏标扩展的基础数据
+		T0x0200ExtensionSBBase
+	}
 )
 
 func (t *T0x0200AdditionExtension0x64) Parse(id uint8, content []byte) (AdditionContent, bool) {
@@ -210,6 +222,20 @@ func (t *T0x0200AdditionExtension0x66) Parse(id uint8, content []byte) (Addition
 				CustomValue: t,
 			}, true
 		}
+	}
+	return AdditionContent{}, false
+}
+
+func (t *T0x0200AdditionExtension0x67) Parse(id uint8, content []byte) (AdditionContent, bool) {
+	if id == 0x67 && len(content) == 25+16 {
+		t.AlarmID = binary.BigEndian.Uint32(content[0:4])
+		t.FlagStatus = content[4]
+		t.AlarmEventType = content[5]
+		t.T0x0200ExtensionSBBase.parse(content[6:41])
+		return AdditionContent{
+			Data:        content,
+			CustomValue: t,
+		}, true
 	}
 	return AdditionContent{}, false
 }
@@ -293,6 +319,15 @@ func (t *T0x0200AdditionExtension0x66) String() string {
 		fmt.Sprintf("\t标志状态:[%d] 0x00-不可用 0x01-开始标志 0x02-结束标志", t.FlagStatus),
 		t.T0x0200ExtensionSBBase.String(),
 		str,
+	}, "\n")
+}
+
+func (t *T0x0200AdditionExtension0x67) String() string {
+	return strings.Join([]string{
+		fmt.Sprintf("\t报警ID:[%d] 从0开始循环 不区分报警类型", t.AlarmID),
+		fmt.Sprintf("\t标志状态:[%d] 0x00-不可用 0x01-开始标志 0x02-结束标志", t.FlagStatus),
+		fmt.Sprintf("\t报警/事件类型:[%d] 0x01-后方接近报警 0x02-左侧后方接近报警 0x03-右侧后方接近报警", t.AlarmEventType),
+		t.T0x0200ExtensionSBBase.String(),
 	}, "\n")
 }
 
