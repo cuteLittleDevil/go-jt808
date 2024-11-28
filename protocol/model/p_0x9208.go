@@ -127,7 +127,7 @@ func (p *P9208AlarmSign) String() string {
 		fmt.Sprintf("\t\t [%012x]时间:[%s]", utils.Time2BCD(p.Time), p.Time),
 		fmt.Sprintf("\t\t [%02x]序号:[%d]", p.SerialNumber, p.SerialNumber),
 		fmt.Sprintf("\t\t [%02x]附件数量:[%d]", p.AttachNumber, p.AttachNumber),
-		fmt.Sprintf("\t\t [%02x]预留:[%x]", p.AlarmReserve, p.AlarmReserve),
+		fmt.Sprintf("\t\t [%02x]预留:[%d]", p.AlarmReserve, p.AlarmReserve),
 		"\t}",
 	}, "\n")
 }
