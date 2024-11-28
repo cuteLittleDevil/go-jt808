@@ -161,6 +161,36 @@ type (
 		// T0x0200ExtensionSBBase  苏标扩展的基础数据
 		T0x0200ExtensionSBBase
 	}
+
+	// T0x0200AdditionExtension0x70 表24-激烈驾驶报警定义数据格式
+	T0x0200AdditionExtension0x70 struct {
+		// AlarmID 报警ID 按照报警先后 从0开始循环 不区分报警类型
+		AlarmID uint32 `json:"alarmID"`
+		// FlagStatus 标志状态 0x00-不可用 0x01-开始标志 0x02-结束标志
+		FlagStatus byte `json:"alarmFlag"`
+		// AlarmEventType 报警/事件类型
+		// 0x01：急加速报警
+		// 0x02：急减速报警
+		// 0x03：急转弯报警
+		// 0x04：怠速报警
+		// 0x05：异常熄火报警
+		// 0x06：空挡滑行报警
+		// 0x07：发动机超转报警
+		// 0x12~OxFF：用户自定义
+		AlarmEventType byte `json:"alarmEventType"`
+		// AlarmTimeThreshold 报警时间阈值 单位秒
+		AlarmTimeThreshold uint16 `json:"alarmTimeThreshold"`
+		// AlarmThreshold1 报警阈值1
+		// 当报警类型为0x01-0x03时, 该位为报警重力加速度阈值 单位1/100g
+		// 当报警类型为0x04-0x07时 该位为报警车速阈值 单位km/h
+		AlarmThreshold1 uint16 `json:"alarmThreshold1"`
+		// AlarmThreshold2 报警阈值2
+		// 当报警类型为0x01-0x03时, 该位预留
+		// 当报警类型为0x04-0x07时 该位为发动机转速阈值 单位RPM
+		AlarmThreshold2 uint16 `json:"alarmThreshold2"`
+		// T0x0200ExtensionSBBase  苏标扩展的基础数据
+		T0x0200ExtensionSBBase
+	}
 )
 
 func (t *T0x0200AdditionExtension0x64) Parse(id uint8, content []byte) (AdditionContent, bool) {
@@ -232,6 +262,23 @@ func (t *T0x0200AdditionExtension0x67) Parse(id uint8, content []byte) (Addition
 		t.FlagStatus = content[4]
 		t.AlarmEventType = content[5]
 		t.T0x0200ExtensionSBBase.parse(content[6:41])
+		return AdditionContent{
+			Data:        content,
+			CustomValue: t,
+		}, true
+	}
+	return AdditionContent{}, false
+}
+
+func (t *T0x0200AdditionExtension0x70) Parse(id uint8, content []byte) (AdditionContent, bool) {
+	if id == 0x70 && len(content) == 31+16 {
+		t.AlarmID = binary.BigEndian.Uint32(content[0:4])
+		t.FlagStatus = content[4]
+		t.AlarmEventType = content[5]
+		t.AlarmTimeThreshold = binary.BigEndian.Uint16(content[6:8])
+		t.AlarmThreshold1 = binary.BigEndian.Uint16(content[8:10])
+		t.AlarmThreshold2 = binary.BigEndian.Uint16(content[10:12])
+		t.T0x0200ExtensionSBBase.parse(content[12:48])
 		return AdditionContent{
 			Data:        content,
 			CustomValue: t,
@@ -327,6 +374,34 @@ func (t *T0x0200AdditionExtension0x67) String() string {
 		fmt.Sprintf("\t报警ID:[%d] 从0开始循环 不区分报警类型", t.AlarmID),
 		fmt.Sprintf("\t标志状态:[%d] 0x00-不可用 0x01-开始标志 0x02-结束标志", t.FlagStatus),
 		fmt.Sprintf("\t报警/事件类型:[%d] 0x01-后方接近报警 0x02-左侧后方接近报警 0x03-右侧后方接近报警", t.AlarmEventType),
+		t.T0x0200ExtensionSBBase.String(),
+	}, "\n")
+}
+
+func (t *T0x0200AdditionExtension0x70) String() string {
+	alarmEventDetails := func() string {
+		infos := map[uint8]string{
+			0x01: "急加速报警",
+			0x02: "急减速报警",
+			0x03: "急转弯报警",
+			0x04: "怠速报警",
+			0x05: "异常熄火报警",
+			0x06: "空挡滑行报警",
+			0x07: "发动机超转报警",
+		}
+		str := fmt.Sprintf("自定义报警类型[%d]", t.AlarmEventType)
+		if v, ok := infos[t.AlarmEventType]; ok {
+			str = v
+		}
+		return str
+	}
+	return strings.Join([]string{
+		fmt.Sprintf("\t报警ID:[%d] 从0开始循环 不区分报警类型", t.AlarmID),
+		fmt.Sprintf("\t标志状态:[%d] 0x00-不可用 0x01-开始标志 0x02-结束标志", t.FlagStatus),
+		fmt.Sprintf("\t报警/事件类型:[%d] %s", t.AlarmEventType, alarmEventDetails()),
+		fmt.Sprintf("\t报警时间阈值:[%d] 单位秒", t.AlarmTimeThreshold),
+		fmt.Sprintf("\t报警阈值1:[%d] 当报警类型为0x01-0x03时, 该位为报警重力加速度阈值 单位1/100g 当报警类型为0x04-0x07时 该位为报警车速阈值 单位km/h", t.AlarmThreshold1),
+		fmt.Sprintf("\t报警阈值2:[%d] 当报警类型为0x01-0x03时, 该位预留 当报警类型为0x04-0x07时 该位为发动机转速阈值 单位RPM", t.AlarmThreshold2),
 		t.T0x0200ExtensionSBBase.String(),
 	}, "\n")
 }
