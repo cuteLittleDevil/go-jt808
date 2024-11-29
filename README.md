@@ -13,23 +13,28 @@ jt808服务端 jt1078服务端 模拟器在2核4G腾讯云服务器
 | LAL | go  | 在线播放地址 http://49.234.235.7:8080/live/295696659617_1.flv | [详情点击](./example/jt1078/README.md#lal)  |
 | sky-java | java  | 需要部署后 HTTP请求 10秒内拉流 参考格式如下 <br/> http://222.244.144.181:7777/video/1001-1-0-0.live.mp4 | [详情点击](./example/jt1078/README.md#sky-java)  |
 
-2. 存储经纬度 [详情](./README.md#save)
+2. 主动安全附件 [流程](./README.md#主动安全)
+``` txt
+默认支持苏标 可自定义各事件扩展（开始、传输进度、补传情况、完成、退出等事件）
+```
+
+3. 存储经纬度 [详情](./README.md#save)
 ``` txt
 jt808服务端 模拟器 消息队列 数据库都运行在2核4G腾讯云服务器
 测试每秒保存5000条的情况 约5.5小时保存了近1亿的经纬度
 ```
 
-3. 平台下发指令给终端 [获取参数](./example/protocol/active_reply/main.go) [立即拍摄](./example/protocol/camera/main.go)
+4. 平台下发指令给终端 [获取参数](./example/protocol/active_reply/main.go) [立即拍摄](./example/protocol/camera/main.go)
 ``` txt
 主动下发给设备指令 获取应答的情况
 ```
 
-4. 协议交互详情 [代码参考](./example/protocol/register/main.go)
+5. 协议交互详情 [代码参考](./example/protocol/register/main.go)
 ``` txt
 使用自定义模拟器 可以轻松生成测试用的报文 有详情描述
 ```
 
-5. 自定义协议扩展 [代码参考](./example/protocol/custom_parse/main.go)
+6. 自定义协议扩展 [代码参考](./example/protocol/custom_parse/main.go)
 ``` txt
 自定义附加信息处理 获取想要的扩展内容
 ```
@@ -38,7 +43,7 @@ jt808服务端 模拟器 消息队列 数据库都运行在2核4G腾讯云服务
 - 看飞哥的单机TCP百万并发 好奇有数据情况的表现 因此国庆准备试一试有数据的情况
 - 性能测试 单机[2核4G机器]并发10w+ 每日保存4亿+经纬度 [详情](./README.md#save)
 - 支持JT808(2011/2013/209) JT1078(需要其他流媒体服务)
-- 支持主动安全扩展(苏标) 支持分包和自动补传
+- 支持分包和自动补传 支持主动安全扩展(苏标)
 
 | 特点  |   描述   |
 | :---:   | -------- |
@@ -177,6 +182,12 @@ func main() {
 
 自定义解析扩展 0x33为例 关键代码如下
 ``` go
+type Location struct {
+	model.T0x0200
+	customMile  int
+	customValue uint8
+}
+
 func (l *Location) Parse(jtMsg *jt808.JTMessage) error {
 	l.T0x0200AdditionDetails.CustomAdditionContentFunc = func(id uint8, content []byte) (model.AdditionContent, bool) {
 		if id == uint8(consts.A0x01Mile) {
@@ -193,16 +204,6 @@ func (l *Location) Parse(jtMsg *jt808.JTMessage) error {
 		return model.AdditionContent{}, false
 	}
 	return l.T0x0200.Parse(jtMsg)
-}
-
-func (l *Location) OnReadExecutionEvent(message *service.Message) {
-	if v, ok := tmp.Additions[consts.A0x01Mile]; ok {
-		fmt.Println(fmt.Sprintf("里程[%d] 自定义辅助里程[%d]", v.Content.Mile, tmp.customMile))
-	}
-	id := consts.JT808LocationAdditionType(0x33)
-	if v, ok := tmp.Additions[id]; ok {
-		fmt.Println("自定义未知信息扩展", v.Content.CustomValue, tmp.customValue)
-	}
 }
 ```
 
@@ -290,7 +291,54 @@ func (t *T0x0200) OnWriteExecutionEvent(_ service.Message) {}
 	goJt808.Run()
 ```
 
-### 3. jt808附件上传
+### 3. 主动安全附件
+
+附件服务调用方式
+``` go
+	attach := attachment.New(
+		attachment.WithNetwork("tcp"),
+		attachment.WithHostPorts(address),
+		attachment.WithFileEventerFunc(func() attachment.FileEventer {
+			f, _ := os.OpenFile("file.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, os.ModePerm)
+			return &meFileEvent{file: f} // 自定义附件事件
+		}),
+	)
+	attach.Run()
+
+```
+#### 3.1 苏标
+[详情点击](./example/su_biao/main.md)
+- 自定义0x0200指令 自定义苏标相关附加指令扩展 获取报警标识号
+``` go
+type meLocation struct {
+	model.T0x0200
+	model.T0x0200AdditionExtension0x64
+	model.T0x0200AdditionExtension0x65
+	model.T0x0200AdditionExtension0x66
+	model.T0x0200AdditionExtension0x67
+	model.T0x0200AdditionExtension0x70
+}
+
+func (l *meLocation) Parse(jtMsg *jt808.JTMessage) error {
+	l.T0x0200.CustomAdditionContentFunc = func(id uint8, content []byte) (model.AdditionContent, bool) {
+		switch id {
+		case 0x64:
+			return l.T0x0200AdditionExtension0x64.Parse(id, content)
+		case 0x65:
+			return l.T0x0200AdditionExtension0x65.Parse(id, content)
+		case 0x66:
+			return l.T0x0200AdditionExtension0x66.Parse(id, content)
+		case 0x67:
+			return l.T0x0200AdditionExtension0x67.Parse(id, content)
+		case 0x70:
+			return l.T0x0200AdditionExtension0x70.Parse(id, content)
+		}
+		return model.AdditionContent{}, false
+	}
+	return l.T0x0200.Parse(jtMsg)
+}
+
+```
 
 ### 4. jt1078相关
 

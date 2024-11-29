@@ -28,7 +28,7 @@ func main() {
 		}),
 		service.WithCustomHandleFunc(func() map[consts.JT808CommandType]service.Handler {
 			return map[consts.JT808CommandType]service.Handler{
-				//consts.T0200LocationReport: &Location{},
+				consts.T0200LocationReport: &Location{}, // 自定义位置报文
 			}
 		}),
 	)

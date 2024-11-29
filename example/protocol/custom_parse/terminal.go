@@ -20,7 +20,7 @@ func (m *meTerminal) OnLeaveEvent(key string) {
 }
 
 func (m *meTerminal) OnNotSupportedEvent(msg *service.Message) {
-
+	fmt.Println(fmt.Sprintf("暂未实现的报文 %x", msg.ExtensionFields.TerminalData))
 }
 
 func (m *meTerminal) OnReadExecutionEvent(msg *service.Message) {
@@ -39,8 +39,10 @@ func (m *meTerminal) OnReadExecutionEvent(msg *service.Message) {
 	}
 }
 
-func (m *meTerminal) OnWriteExecutionEvent(_ service.Message) {
-
+func (m *meTerminal) OnWriteExecutionEvent(msg service.Message) {
+	extension := msg.ExtensionFields
+	fmt.Println(fmt.Sprintf("设备上传的 %x", extension.TerminalData))
+	fmt.Println(fmt.Sprintf("平台下发的 %x", extension.PlatformData))
 }
 
 type Location struct {
@@ -66,3 +68,9 @@ func (l *Location) Parse(jtMsg *jt808.JTMessage) error {
 	}
 	return l.T0x0200.Parse(jtMsg)
 }
+
+func (l *Location) OnReadExecutionEvent(_ *service.Message) {
+
+}
+
+func (l *Location) OnWriteExecutionEvent(_ service.Message) {}
