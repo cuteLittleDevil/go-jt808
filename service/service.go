@@ -94,5 +94,11 @@ func (g *GoJT808) createDefaultHandle() map[consts.JT808CommandType]Handler {
 		consts.P9206FileUploadInstructions:            newDefaultHandle(&model.P0x9206{}),
 		consts.T1206FileUploadCompleteNotice:          newDefaultHandle(&model.T0x1206{}),
 		consts.P9207FileUploadControl:                 newDefaultHandle(&model.P0x9207{}),
+
+		// 主动安全的 默认苏标
+		consts.P9208AlarmAttachUpload:      newDefaultHandle(&model.P0x9208{}),
+		consts.T1210AlarmAttachInfoMessage: newDefaultHandle(&model.T0x1210{}),
+		consts.T1211FileInfoUpload:         newDefaultHandle(&model.T0x1211{}),
+		consts.T1212FileUploadComplete:     newDefaultHandle(&model.T0x1212{}),
 	}
 }
