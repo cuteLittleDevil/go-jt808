@@ -207,6 +207,7 @@ func (c *connection) defaultReplyEvent(msg *Message) {
 			slog.Any("err", err))
 		msg.ExtensionFields.Err = errors.Join(ErrWriteDataFail, err)
 	}
+	msg.ExtensionFields.PlatformCommand = msg.ReplyProtocol()
 	msg.ExtensionFields.PlatformSeq = seq
 	msg.ExtensionFields.PlatformData = data
 	c.onWriteExecutionEvent(msg)
