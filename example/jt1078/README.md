@@ -24,7 +24,7 @@ docker run --restart always -p 5288:80 -d vanjoge/rtvsdevice
 3. 调用sky-java的JT1078 HTTP接口发送请求(默认10秒内需要去拉流)
 - [sky-java官方地址](https://gitee.com/hui_hui_zhou/open-source-repository)
 - [sky-java HTTP文档](http://222.244.144.181:9991/doc.html)
-- [代码参考](./sky-java/main.go)
+- [代码参考](./sky/java/main.go)
 
 <h2 id="rtvs"> RTVS </h2>
 
