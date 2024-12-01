@@ -13,7 +13,7 @@ jt808服务端 jt1078服务端 模拟器在2核4G腾讯云服务器
 | LAL | go  | 在线播放地址 http://49.234.235.7:8080/live/295696659617_1.flv | [详情点击](./example/jt1078/README.md#lal)  |
 | sky-java | java  | 需要部署后 HTTP请求 10秒内拉流 参考格式如下 <br/> http://222.244.144.181:7777/video/1001-1-0-0.live.mp4 | [详情点击](./example/jt1078/README.md#sky-java)  |
 
-2. 主动安全附件 [流程](./README.md#主动安全)
+2. 主动安全附件 [流程](./example/attachment/README.md#主动安全)
 ``` txt
 默认支持苏标 可自定义各事件扩展（开始、传输进度、补传情况、完成、退出等事件）
 ```
