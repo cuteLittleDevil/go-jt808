@@ -12,7 +12,7 @@ jt808服务端 jt1078服务端 模拟器在2核4G腾讯云服务器
 | RTVS | 不开源可使用  | 在线测试页面 http://49.234.235.7:17001 | [详情点击](./example/jt1078/README.md#rtvs)  |
 | LAL | go  | 在线播放地址 http://49.234.235.7:8080/live/295696659617_1.flv | [详情点击](./example/jt1078/README.md#lal)  |
 | sky-java | java  | 需要部署后 HTTP请求 10秒内拉流 参考格式如下 <br/> http://222.244.144.181:7777/video/1001-1-0-0.live.mp4 | [详情点击](./example/jt1078/README.md#sky-java)  |
-| m7s | go  | 在线播放地址 http://49.234.235.7:8088/mp4/live/jt1078-759253971167-1.mp4 | [详情点击](./example/jt1078/README.md#m7s)  |
+| m7s | go  | 在线播放地址 http://49.234.235.7:8088/mp4/live/jt1078-295696659617-1.mp4 | [详情点击](./m7s-jt1078/README.md#m7s)  |
 
 2. 主动安全附件 [流程](./example/attachment/README.md#主动安全)
 ``` txt

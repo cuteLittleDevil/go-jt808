@@ -2,7 +2,7 @@
 
 - [m7s官方地址](https://monibuca.com)
 - [部署文档参考](https://blog.csdn.net/vanjoge/article/details/108319078)
-- [代码参考](./main.go)
+- [代码参考](./example/main.go)
 
 目前v5版本还没有发布 需要把monibuca项目拉入到本地 使用go.work
 
