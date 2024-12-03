@@ -63,7 +63,7 @@ func main() {
 			StreamType:   1,
 		}
 		body := p9101.Encode()
-		fmt.Println(fmt.Sprintf(time.Now().Format(time.DateTime), "发送 9101指令 key=[%s]", _phone))
+		fmt.Println(time.Now().Format(time.DateTime), "发送 9101指令 key=", _phone)
 		activeMsg := service.NewActiveMessage(_phone, p9101.Protocol(), body, 3*time.Second)
 		msg := goJt808.SendActiveMessage(activeMsg)
 		var t0x0001 model.T0x0001

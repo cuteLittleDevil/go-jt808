@@ -6,9 +6,25 @@
 rtvsdev（1078终端模拟器docker版本）
 命令行运行
 docker run --restart always -p 5288:80 -d vanjoge/rtvsdevice
-然后访问你的http://IP:5288即可
+然后访问你的//IP:5288即可
 
 ```
+
+<h2 id="rtvs"> RTVS </h2>
+
+- [RTVS官方地址](https://gitee.com/vanjoge/RTVS)
+- [部署文档参考](https://blog.csdn.net/vanjoge/article/details/108319078)
+- [代码参考](./rtvs/main.go)
+
+1. 测试部署网页 http://49.234.235.7:17001
+2. 让终端(模拟器)默认连接到了49.234.235.7:8082地址
+3. 根据测试部署网页进行测试 如点击9101观看在线视频
+
+测试模拟器的手机号为 013777883241
+
+![9101实时视频测试](./data/rtvs9101.png)
+
+需要对讲的话 则在本地打开tsrtvs.html测试
 
 <h2 id="lal"> LAL流媒体服务 </h2>
 
@@ -26,18 +42,7 @@ docker run --restart always -p 5288:80 -d vanjoge/rtvsdevice
 - [sky-java HTTP文档](http://222.244.144.181:9991/doc.html)
 - [代码参考](./sky/java/main.go)
 
-<h2 id="rtvs"> RTVS </h2>
+<h2 id="m7s"> m7s-jt1078 </h2>
 
-- [RTVS官方地址](https://gitee.com/vanjoge/RTVS)
-- [部署文档参考](https://blog.csdn.net/vanjoge/article/details/108319078)
-- [代码参考](./rtvs/main.go)
-
-1. 测试部署网页 http://49.234.235.7:17001
-2. 让终端(模拟器)默认连接到了49.234.235.7:8082地址
-3. 根据测试部署网页进行测试 如点击9101观看在线视频
-
-测试模拟器的手机号为 013777883241
-
-![9101实时视频测试](./data/rtvs9101.png)
-
-需要对讲的话 则在本地打开tsrtvs.html测试
+- 目前m7s v5版本还没有发布 不做过多介绍
+- [代码参考](./m7s/main.go)
