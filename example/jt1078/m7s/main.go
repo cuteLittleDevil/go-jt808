@@ -53,7 +53,7 @@ func (t *terminal) OnJoinEvent(_ *service.Message, key string, err error) {
 				TcpPort:      uint16(_realTimePort),
 				UdpPort:      0,
 				ChannelNo:    1,
-				DataType:     1,
+				DataType:     0,
 				StreamType:   1,
 			}
 			body := p9101.Encode()

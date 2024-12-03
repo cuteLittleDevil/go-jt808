@@ -4,8 +4,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/cuteLittleDevil/go-jt808/protocol"
-	"github.com/cuteLittleDevil/go-jt808/protocol/utils"
 	"strings"
 )
 
@@ -57,10 +55,8 @@ type (
 	}
 
 	customAttributes struct {
-		// parseLastKeyFrameInterval 是否有该祯与上一个关键祯之间的时间间隔
-		parseLastKeyFrameInterval bool
-		// parseLastFrameInterval 是否有该祯与上一个祯之间的时间间隔
-		parseLastFrameInterval bool
+		// videoFrame 是否为视频帧
+		videoFrame bool
 		// headEnd 头部是到哪里结束的
 		headEnd int
 	}
@@ -76,7 +72,7 @@ func (p *Packet) Decode(data []byte) (remainData []byte, err error) {
 	}
 	body := data[p.headEnd:]
 	if len(body) < int(p.DataBodyLen) {
-		return body, errors.Join(fmt.Errorf("cur body len is [%d]", len(body)), protocol.ErrBodyLength2Short)
+		return body, errors.Join(fmt.Errorf("cur body len is [%d]", len(body)), ErrBodyLength2Short)
 	}
 	p.Body = body[:p.DataBodyLen]
 	if len(body) == int(p.DataBodyLen) {
@@ -87,11 +83,12 @@ func (p *Packet) Decode(data []byte) (remainData []byte, err error) {
 
 func (p *Packet) decodeHead(data []byte) error {
 	if len(data) < 16 {
-		return protocol.ErrHeaderLength2Short
+		return ErrHeaderLength2Short
 	}
 	p.ID = string(data[:4])
 	if p.ID != "01cd" { // 1078协议固定
-		return errors.Join(fmt.Errorf("id is [%s]", p.ID), protocol.ErrUnqualifiedData)
+		fmt.Println(fmt.Sprintf("%x", data[:16]))
+		return errors.Join(fmt.Errorf("id is [%s]", p.ID), ErrUnqualifiedData)
 	}
 
 	attr := data[4]
@@ -106,33 +103,32 @@ func (p *Packet) decodeHead(data []byte) error {
 	}
 
 	p.Seq = binary.BigEndian.Uint16(data[6:8])
-	p.Sim = utils.Bcd2Dec(data[8:14])
+	p.Sim = bcd2dec(data[8:14])
 	p.LogicChannel = data[14]
 	p.DataType = DataType((data[15] >> 4) & 0x0F)
 	p.SubcontractType = SubcontractType(data[15] & 0x0F)
 
 	end := 18
 	if p.DataType != DataTypePenetrate {
-		p.customAttributes.parseLastKeyFrameInterval = true
-		end += 8 + 2
+		end += 8
 	}
 	if p.DataType == DataTypeI || p.DataType == DataTypeP || p.DataType == DataTypeB {
-		p.customAttributes.parseLastFrameInterval = true
-		end += 2
+		p.customAttributes.videoFrame = true
+		end += 4
 	}
 
 	if len(data) < end {
-		return protocol.ErrHeaderLength2Short
+		return ErrHeaderLength2Short
 	}
 	start := 16
-	if p.parseLastKeyFrameInterval {
+	if p.DataType != DataTypePenetrate {
 		p.Timestamp = binary.BigEndian.Uint64(data[16:24])
-		p.LastIFrameInterval = binary.BigEndian.Uint16(data[24:26])
-		start = 26
+		start = 24
 	}
-	if p.parseLastFrameInterval {
-		p.LastFrameInterval = binary.BigEndian.Uint16(data[start : start+2])
-		start += 2
+	if p.customAttributes.videoFrame {
+		p.LastIFrameInterval = binary.BigEndian.Uint16(data[start : start+2])
+		p.LastFrameInterval = binary.BigEndian.Uint16(data[start+2 : start+4])
+		start += 4
 	}
 	p.DataBodyLen = binary.BigEndian.Uint16(data[start : start+2])
 	p.headEnd = start + 2
@@ -140,6 +136,17 @@ func (p *Packet) decodeHead(data []byte) error {
 }
 
 func (p *Packet) String() string {
+	str := ""
+	if p.DataType != DataTypePenetrate {
+		str += fmt.Sprintf("\t[%016x] 标识此RTP数据包当前祯的相对时间:[%d]\n", p.Timestamp, p.Timestamp)
+	}
+	if p.customAttributes.videoFrame {
+		str += fmt.Sprintf("\t[%04x] 该帧与上一个关键帧之间的时间间隔:[%d]单位毫秒(ms)\n",
+			p.LastIFrameInterval, p.LastIFrameInterval)
+		str += fmt.Sprintf("\t[%04x] 该祯与上一个祯之间的时间间隔:[%d]单位毫秒(ms)\n",
+			p.LastFrameInterval, p.LastFrameInterval)
+	}
+	str += fmt.Sprintf("\t[%04x] 后续数据体长度:[%d]不含此字段", p.DataBodyLen, p.DataBodyLen)
 	return strings.Join([]string{
 		"{",
 		fmt.Sprintf("\t[%04x] 固定标志头:[%s]", p.ID, p.ID),
@@ -154,10 +161,7 @@ func (p *Packet) String() string {
 		fmt.Sprintf("\t[%02x] 逻辑通道号:[%d]", p.LogicChannel, p.LogicChannel),
 		fmt.Sprintf("\t[%02x] 数据帧类型:[%d] [%s]", uint8(p.DataType), p.DataType, p.DataType.String()),
 		fmt.Sprintf("\t[%02x] 分包处理标记:[%d] [%s]", uint8(p.SubcontractType), p.SubcontractType, p.SubcontractType.String()),
-		fmt.Sprintf("\t[%016x] 标识此RTP数据包当前祯的相对时间:[%d]", p.Timestamp, p.Timestamp),
-		fmt.Sprintf("\t[%04x] 该帧与上一个关键帧之间的时间间隔:[%d]单位毫秒(ms)", p.LastIFrameInterval, p.LastIFrameInterval),
-		fmt.Sprintf("\t[%04x] 该祯与上一个祯之间的时间间隔:[%d]单位毫秒(ms)", p.LastFrameInterval, p.LastFrameInterval),
-		fmt.Sprintf("\t[%04x] 后续数据体长度:[%d]不含此字段", p.DataBodyLen, p.DataBodyLen),
+		str,
 		fmt.Sprintf("\t数据体长度:[%d]", len(p.Body)),
 		"}",
 	}, "\n")

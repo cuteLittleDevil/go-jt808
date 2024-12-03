@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
-	"github.com/cuteLittleDevil/go-jt808/protocol"
 	"testing"
 )
 
@@ -31,7 +30,7 @@ func TestPacketDecode(t *testing.T) {
 			args: "2031636481e20000295696659617010000000000000000000000000000020000",
 			want: want{
 				msg: "2031636481e20000295696659617010000000000000000000000000000020000",
-				err: protocol.ErrUnqualifiedData,
+				err: ErrUnqualifiedData,
 			},
 		},
 		{
@@ -39,7 +38,7 @@ func TestPacketDecode(t *testing.T) {
 			args: "3031636481e200",
 			want: want{
 				msg: "3031636481e200",
-				err: protocol.ErrHeaderLength2Short,
+				err: ErrHeaderLength2Short,
 			},
 		},
 		{
@@ -47,7 +46,7 @@ func TestPacketDecode(t *testing.T) {
 			args: "3031636481e2000029569665961701000000000000000000000000000",
 			want: want{
 				msg: "3031636481e2000029569665961701000000000000000000000000000",
-				err: protocol.ErrHeaderLength2Short,
+				err: ErrHeaderLength2Short,
 			},
 		},
 		{
@@ -55,7 +54,7 @@ func TestPacketDecode(t *testing.T) {
 			args: "3031636481e200002956966596170100000000000000000000000000000200",
 			want: want{
 				msg: "00",
-				err: protocol.ErrBodyLength2Short,
+				err: ErrBodyLength2Short,
 			},
 		},
 		{

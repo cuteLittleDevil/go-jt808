@@ -2,8 +2,7 @@ package pkg
 
 import (
 	"errors"
-	"github.com/cuteLittleDevil/go-jt808/protocol"
-	"github.com/cuteLittleDevil/go-jt808/protocol/jt1078"
+	"github.com/cuteLittleDevil/go-jt808/m7s-jt1078/pkg/jt1078"
 	_ "github.com/go-resty/resty/v2"
 	"io"
 	"log/slog"
@@ -65,7 +64,7 @@ func (c *connection) run(audioChan <-chan []byte) error {
 					if onJoinErr == nil {
 						c.handle(pack)
 					}
-				} else if errors.Is(err, protocol.ErrBodyLength2Short) || errors.Is(err, protocol.ErrHeaderLength2Short) {
+				} else if errors.Is(err, jt1078.ErrBodyLength2Short) || errors.Is(err, jt1078.ErrHeaderLength2Short) {
 					// 数据长度不够的 忽略
 				} else {
 					return err
