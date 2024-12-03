@@ -1,0 +1,26 @@
+global:
+
+jt1078:
+  enable: true
+  audioports: [10000, 10010] # 音频端口 用于下发数据[min,max]
+  simulations:
+    # jt1078文件 默认循环发送
+      - name: ./testdata/data.txt
+        addr: 127.0.0.1:1078 # 模拟实时
+      - name: ./testdata/data.txt
+        addr: 127.0.0.1:1079 # 模拟回放
+
+  realtime: # 实时视频
+    addr: '0.0.0.0:1078'
+    onjoinurl: "http://127.0.0.1:10011/api/v1/real-time-join"
+    onleaveurl: "http://127.0.0.1:10011/api/v1/real-time-leave"
+    prefix: "live/jt1078" # 默认自定义前缀-手机号-通道 如：live/jt1078-295696659617-1
+
+  playback: # 回放视频
+    addr: '0.0.0.0:1079'
+    onjoinurl: "http://127.0.0.1:10011/api/v1/play-back-join"
+    onleaveurl: "http://127.0.0.1:10011/api/v1/play-back-leave"
+    prefix: "live/jt1079" # 默认自定义前缀-手机号-通道 如：live/jt1079-295696659617-1
+
+mp4:
+  enable: true
