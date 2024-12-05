@@ -1,11 +1,11 @@
-package m7s_jt1078
+package v5
 
 import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/cuteLittleDevil/go-jt808/m7s-jt1078/pkg"
-	"github.com/cuteLittleDevil/go-jt808/m7s-jt1078/pkg/jt1078"
+	"github.com/cuteLittleDevil/go-jt808/protocol/jt1078"
+	"github.com/cuteLittleDevil/m7s-jt1078/v5/pkg"
 	"golang.org/x/net/context"
 	"log/slog"
 	"m7s.live/v5"
@@ -56,7 +56,9 @@ func (j *JT1078Plugin) OnInit() (err error) {
 			pkg.WithURL(j.RealTime.OnJoinURL, j.RealTime.OnLeaveURL),
 			pkg.WithPubFunc(func(ctx context.Context, pack *jt1078.Packet) (publisher *m7s.Publisher, err error) {
 				streamPath := strings.Join([]string{
-					j.RealTime.Prefix, pack.Sim, fmt.Sprintf("%d", pack.LogicChannel),
+					j.RealTime.Prefix,
+					pack.Sim,
+					fmt.Sprintf("%d", pack.LogicChannel),
 				}, "-")
 				if pub, err := j.Publish(ctx, streamPath); err == nil {
 					return pub, nil
@@ -79,7 +81,9 @@ func (j *JT1078Plugin) OnInit() (err error) {
 			pkg.WithURL(j.Playback.OnJoinURL, j.Playback.OnLeaveURL),
 			pkg.WithPubFunc(func(ctx context.Context, pack *jt1078.Packet) (publisher *m7s.Publisher, err error) {
 				streamPath := strings.Join([]string{
-					j.Playback.Prefix, pack.Sim, fmt.Sprintf("%d", pack.LogicChannel),
+					j.Playback.Prefix,
+					pack.Sim,
+					fmt.Sprintf("%d", pack.LogicChannel),
 				}, "-")
 				return j.Publish(ctx, streamPath) // 回放唯一
 			}),

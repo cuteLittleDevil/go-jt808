@@ -1,14 +1,13 @@
 <h2 id="m7s"> m7s </h2>
 
 - [m7s官方地址](https://monibuca.com)
-- [部署文档参考](https://blog.csdn.net/vanjoge/article/details/108319078)
-- [代码参考](./example/main.go)
+- [v5代码参考](./example/v5/main.go)
 
 目前v5版本还没有发布 需要把monibuca项目拉入到本地 使用go.work
 
 ```
 .
-├── example
+├── v5
 │    ├── config.yaml
 │    ├── main.go
 │    ├── go.work
@@ -23,9 +22,10 @@ go 1.23.2
 
 use (
     .
-    ../monibuca
-    ../../m7s-jt1078
+    ../../monibuca
+    ../../v5
 )
+
 ```
 
 <h3>参数说明</h3>

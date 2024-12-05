@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	_ "github.com/cuteLittleDevil/go-jt808/m7s-jt1078"
 	"io"
 	"m7s.live/v5"
 	_ "m7s.live/v5/plugin/mp4"

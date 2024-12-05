@@ -2,7 +2,7 @@ package pkg
 
 import (
 	"errors"
-	"github.com/cuteLittleDevil/go-jt808/m7s-jt1078/pkg/jt1078"
+	"github.com/cuteLittleDevil/go-jt808/protocol/jt1078"
 	_ "github.com/go-resty/resty/v2"
 	"io"
 	"log/slog"

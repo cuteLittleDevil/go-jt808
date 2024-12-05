@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/cuteLittleDevil/go-jt808/protocol/utils"
 	"strings"
 )
 
@@ -103,7 +104,7 @@ func (p *Packet) decodeHead(data []byte) error {
 	}
 
 	p.Seq = binary.BigEndian.Uint16(data[6:8])
-	p.Sim = bcd2dec(data[8:14])
+	p.Sim = utils.Bcd2Dec(data[8:14])
 	p.LogicChannel = data[14]
 	p.DataType = DataType((data[15] >> 4) & 0x0F)
 	p.SubcontractType = SubcontractType(data[15] & 0x0F)

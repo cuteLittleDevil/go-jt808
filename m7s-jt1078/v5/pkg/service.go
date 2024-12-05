@@ -2,7 +2,7 @@ package pkg
 
 import (
 	"context"
-	"github.com/cuteLittleDevil/go-jt808/m7s-jt1078/pkg/jt1078"
+	"github.com/cuteLittleDevil/go-jt808/protocol/jt1078"
 	"github.com/go-resty/resty/v2"
 	"log/slog"
 	"m7s.live/v5"
@@ -77,7 +77,7 @@ func (s *Service) Run() {
 				"channel":    pack.LogicChannel,
 				"audioPort":  audioPort,
 			}
-			s.onEvent(s.opts.onJoinURL, httpBody)
+			go s.onNoticeEvent(s.opts.onJoinURL, httpBody)
 			return nil
 		}
 		client.onLeaveEvent = func() {
@@ -85,7 +85,7 @@ func (s *Service) Run() {
 				s.opts.sessions.recycle(audioPort)
 			}
 			if len(httpBody) > 0 {
-				s.onEvent(s.opts.onLeaveURL, httpBody)
+				go s.onNoticeEvent(s.opts.onLeaveURL, httpBody)
 			}
 			cancel()
 		}
@@ -99,9 +99,9 @@ func (s *Service) Run() {
 	}
 }
 
-func (s *Service) onEvent(url string, httpBody map[string]any) {
+func (s *Service) onNoticeEvent(url string, httpBody map[string]any) {
 	client := resty.New()
-	client.SetTimeout(5 * time.Second)
+	client.SetTimeout(1 * time.Second)
 	_, _ = client.R().
 		SetBody(httpBody).
 		ForceContentType("application/json; charset=utf-8").
