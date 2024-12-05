@@ -16,3 +16,39 @@ const (
 	// T1FC4TerminalUpgradeProgressReport 终端-升级进度上报
 	T1FC4TerminalUpgradeProgressReport JT808CommandType = 0x1FC4
 )
+
+type ActiveSafetyType uint8
+
+const (
+	// ActiveSafetyJS 主动安全扩展江苏
+	ActiveSafetyJS ActiveSafetyType = iota + 1
+	// ActiveSafetyHLJ 主动安全扩展黑龙江
+	ActiveSafetyHLJ
+	// ActiveSafetyGD 主动安全扩展广东
+	ActiveSafetyGD
+	// ActiveSafetyHN 主动安全扩展湖南
+	ActiveSafetyHN
+	// ActiveSafetySC 主动安全扩展四川
+	ActiveSafetySC
+	// ActiveSafetyBJ 主动安全扩展北京
+	ActiveSafetyBJ
+)
+
+func (a ActiveSafetyType) String() string {
+	switch a {
+	case ActiveSafetyJS:
+		return "主动安全扩展-江苏"
+	case ActiveSafetyHLJ:
+		return "主动安全扩展-黑龙江"
+	case ActiveSafetyGD:
+		return "主动安全扩展-广东"
+	case ActiveSafetyHN:
+		return "主动安全扩展-湖南"
+	case ActiveSafetySC:
+		return "主动安全扩展-四川"
+	case ActiveSafetyBJ:
+		return "主动安全扩展-北京"
+	default:
+	}
+	return "未知"
+}
