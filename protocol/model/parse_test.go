@@ -888,10 +888,86 @@ func TestParse(t *testing.T) {
 					Time:         "2020-07-07 19:23:59",
 					SerialNumber: 1,
 					AttachNumber: 1,
-					AlarmReserve: 1,
+					AlarmReserve: []byte{1},
 				},
 				AlarmID: "ad72131579e54be0b0f737cfc72c5db8",
 				Reserve: make([]byte, 16),
+			},
+		},
+		{
+			name: "T0x1210 终端-报警附件信息消息 (广东)",
+			args: args{
+				msg: "7e121000ae00000000100100013132333463642e00000000000000000000000000000000000000000000003132333463642e000000000000000000000000000000000000000000000024120619041201020000323032342d31312d32325f31305f30305f30305f00000000000000000000000000021c323032342d31312d32325f31305f30305f30305f646174612e747874000803e620323032342d31312d32325f31305f30305f30305f72747673393130312e706e670005633f147e",
+				Handler: &T0x1210{
+					P9208AlarmSign: P9208AlarmSign{
+						ActiveSafetyType: consts.ActiveSafetyGD,
+					},
+				},
+				bodyLens: []int{},
+			},
+			fields: &T0x1210{
+				TerminalID: "1234cd.",
+				P9208AlarmSign: P9208AlarmSign{
+					TerminalID:       "1234cd.",
+					Time:             "2024-12-06 19:04:12",
+					SerialNumber:     1,
+					AttachNumber:     2,
+					AlarmReserve:     []byte{0, 0},
+					ActiveSafetyType: consts.ActiveSafetyGD,
+				},
+				AlarmID:     "2024-11-22_10_00_00_",
+				InfoType:    0,
+				AttachCount: 2,
+				T0x1210AlarmItemList: []T0x1210AlarmItem{
+					{
+						FileNameLen: 28,
+						FileName:    "2024-11-22_10_00_00_data.txt",
+						FileSize:    525286,
+					},
+					{
+						FileNameLen: 32,
+						FileName:    "2024-11-22_10_00_00_rtvs9101.png",
+						FileSize:    353087,
+					},
+				},
+			},
+		},
+		{
+			name: "T0x1210 终端-报警附件信息消息 (黑龙江)",
+			args: args{
+				msg: "7e1210008e00000000100100013132333463642e00000000000000000000000000000000000000000000002412061836590102323032342d31312d32325f31305f30305f30305f00000000000000000000000000021c323032342d31312d32325f31305f30305f30305f646174612e747874000803e620323032342d31312d32325f31305f30305f30305f72747673393130312e706e670005633f617e",
+				Handler: &T0x1210{
+					P9208AlarmSign: P9208AlarmSign{
+						ActiveSafetyType: consts.ActiveSafetyHLJ,
+					},
+				},
+				bodyLens: []int{},
+			},
+			fields: &T0x1210{
+				TerminalID: "",
+				P9208AlarmSign: P9208AlarmSign{
+					TerminalID:       "1234cd.",
+					Time:             "2024-12-06 18:36:59",
+					SerialNumber:     1,
+					AttachNumber:     2,
+					AlarmReserve:     nil,
+					ActiveSafetyType: consts.ActiveSafetyHLJ,
+				},
+				AlarmID:     "2024-11-22_10_00_00_",
+				InfoType:    0,
+				AttachCount: 2,
+				T0x1210AlarmItemList: []T0x1210AlarmItem{
+					{
+						FileNameLen: 28,
+						FileName:    "2024-11-22_10_00_00_data.txt",
+						FileSize:    525286,
+					},
+					{
+						FileNameLen: 32,
+						FileName:    "2024-11-22_10_00_00_rtvs9101.png",
+						FileSize:    353087,
+					},
+				},
 			},
 		},
 		{
@@ -908,7 +984,7 @@ func TestParse(t *testing.T) {
 					Time:         "2024-11-11 00:00:00",
 					SerialNumber: 1,
 					AttachNumber: 2,
-					AlarmReserve: 1,
+					AlarmReserve: []byte{1},
 				},
 				AlarmID:     "aaa",
 				InfoType:    0,
@@ -1065,5 +1141,96 @@ func TestT0x0200LocationItemString(t *testing.T) {
 			t.Errorf("path[%s]\n%s", signPath, tmp.StatusSignDetails.String())
 			return
 		}
+	}
+}
+
+func TestP9208AlarmSign(t *testing.T) {
+	type want struct {
+		terminalIDLen int
+		alarmSignLen  int
+	}
+	tests := []struct {
+		name string
+		args consts.ActiveSafetyType
+		want want
+	}{
+		{
+			name: "江苏",
+			args: consts.ActiveSafetyJS,
+			want: want{
+				terminalIDLen: 7,
+				alarmSignLen:  16,
+			},
+		},
+		{
+			name: "黑龙江",
+			args: consts.ActiveSafetyHLJ,
+			want: want{
+				terminalIDLen: 30,
+				alarmSignLen:  38,
+			},
+		},
+		{
+			name: "广东",
+			args: consts.ActiveSafetyGD,
+			want: want{
+				terminalIDLen: 30,
+				alarmSignLen:  40,
+			},
+		},
+		{
+			name: "湖南",
+			args: consts.ActiveSafetyHN,
+			want: want{
+				terminalIDLen: 7,
+				alarmSignLen:  32,
+			},
+		},
+		{
+			name: "四川",
+			args: consts.ActiveSafetySC,
+			want: want{
+				terminalIDLen: 30,
+				alarmSignLen:  39,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &P9208AlarmSign{
+				ActiveSafetyType: tt.args,
+			}
+			if got := p.getTerminalIDLen(); got != tt.want.terminalIDLen {
+				t.Errorf("getTerminalIDLen got=[%d] want=[%d]", got, tt.want.terminalIDLen)
+			}
+			if got := p.getAlarmSignLen(); got != tt.want.alarmSignLen {
+				t.Errorf("getAlarmSignLen got=[%d] want=[%d]", got, tt.want.alarmSignLen)
+			}
+		})
+	}
+}
+
+func TestP9208AlarmSignEncode(t *testing.T) {
+	p1 := P9208AlarmSign{
+		TerminalID:       "1234cd.",
+		Time:             "2024-12-06 19:04:12",
+		SerialNumber:     1,
+		AttachNumber:     2,
+		AlarmReserve:     []byte{0, 0},
+		ActiveSafetyType: consts.ActiveSafetyGD,
+	}
+	p2 := P9208AlarmSign{
+		TerminalID:       "1234cd.",
+		Time:             "2024-12-06 19:04:12",
+		SerialNumber:     1,
+		AttachNumber:     2,
+		ActiveSafetyType: consts.ActiveSafetyGD,
+	}
+	p1.encode()
+	p2.encode()
+	if p1.String() != p2.String() {
+		t.Errorf("want[%s] actual[%s]", p1.String(), p2.String())
+		return
 	}
 }

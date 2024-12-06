@@ -30,7 +30,7 @@ type (
 	}
 
 	P9208AlarmSign struct {
-		// TerminalID 终端ID
+		// TerminalID 终端ID 苏标7 黑标30 广东标30 湖南标7 四川标30
 		TerminalID string `json:"terminalID"`
 		// Time 时间 bcd[6]
 		Time string `json:"time"`
@@ -38,8 +38,10 @@ type (
 		SerialNumber byte `json:"serialNumber"`
 		// AttachNumber 附件数量
 		AttachNumber byte `json:"attachNumber"`
-		// AlarmReserve 预留
-		AlarmReserve byte `json:"alarmReserve"`
+		// AlarmReserve 预留 苏标1 黑标0 广东标2 湖南1 四川标1
+		AlarmReserve []byte `json:"alarmReserve"`
+		// ActiveSafetyType 主动安全告警类型
+		consts.ActiveSafetyType `json:"activeSafetyType"`
 	}
 )
 
@@ -53,21 +55,21 @@ func (p *P0x9208) ReplyProtocol() consts.JT808CommandType {
 
 func (p *P0x9208) Parse(jtMsg *jt808.JTMessage) error {
 	body := jtMsg.Body
-	if len(body) < 53 {
+	sign := 1 + 2 + 2 + p.P9208AlarmSign.getAlarmSignLen() + 32
+	if len(body) < sign {
 		return protocol.ErrBodyLengthInconsistency
 	}
 	p.ServerIPLen = body[0]
 	k := int(p.ServerIPLen)
-	if k+53 > len(body) {
+	if sign+k > len(body) {
 		return protocol.ErrBodyLengthInconsistency
 	}
 	p.ServerAddr = string(body[1 : 1+k])
 	p.TcpPort = binary.BigEndian.Uint16(body[1+k : 1+k+2])
 	p.UdpPort = binary.BigEndian.Uint16(body[3+k : 3+k+2])
 	p.P9208AlarmSign.parse(body[5+k : 5+k+16])
-	//p.AlarmID = string(body[21+k : 21+k+32])
-	p.AlarmID = string(bytes.Trim(body[21+k:21+k+32], "\x00"))
-	p.Reserve = body[53+k:]
+	p.AlarmID = string(bytes.Trim(body[sign+k-32:sign+k], "\x00"))
+	p.Reserve = body[sign+k:]
 	return nil
 }
 
@@ -103,31 +105,74 @@ func (p *P0x9208) String() string {
 }
 
 func (p *P9208AlarmSign) parse(data []byte) {
-	p.TerminalID = string(bytes.Trim(data[:7], "\x00"))
-	p.Time = utils.BCD2Time(data[7 : 7+6])
-	p.SerialNumber = data[13]
-	p.AttachNumber = data[14]
-	p.AlarmReserve = data[15]
+	idLen := p.getTerminalIDLen()
+	p.TerminalID = string(bytes.Trim(data[:idLen], "\x00"))
+	p.Time = utils.BCD2Time(data[idLen : idLen+6])
+	p.SerialNumber = data[idLen+6]
+	p.AttachNumber = data[idLen+7]
+	if len(data) >= idLen+8 {
+		p.AlarmReserve = data[idLen+8:]
+	}
 }
 
 func (p *P9208AlarmSign) encode() []byte {
-	data := make([]byte, 16)
-	copy(data[0:7], p.TerminalID)
-	copy(data[7:13], utils.Time2BCD(p.Time))
-	data[13] = p.SerialNumber
-	data[14] = p.AttachNumber
-	data[15] = p.AlarmReserve
+	data := make([]byte, 0, 16)
+	data = append(data, utils.String2FillingBytes(p.TerminalID, p.getTerminalIDLen())...)
+	data = append(data, utils.Time2BCD(p.Time)...)
+	data = append(data, p.SerialNumber)
+	data = append(data, p.AttachNumber)
+	if len(p.AlarmReserve) > 0 {
+		data = append(data, p.AlarmReserve...)
+	}
+	if num := p.getAlarmSignLen() - len(data); num > 0 {
+		p.AlarmReserve = make([]byte, num)
+		data = append(data, p.AlarmReserve...) // 忘记写预留的情况 帮忙补0
+	}
 	return data
+}
+
+func (p *P9208AlarmSign) getTerminalIDLen() int {
+	switch p.ActiveSafetyType {
+	case consts.ActiveSafetyJS:
+		return 7
+	case consts.ActiveSafetyHLJ:
+		return 30
+	case consts.ActiveSafetyGD:
+		return 30
+	case consts.ActiveSafetyHN:
+		return 7
+	case consts.ActiveSafetySC:
+		return 30
+	default:
+	}
+	return 7
+}
+
+func (p *P9208AlarmSign) getAlarmSignLen() int {
+	switch p.ActiveSafetyType {
+	case consts.ActiveSafetyJS:
+		return 16
+	case consts.ActiveSafetyHLJ:
+		return 38
+	case consts.ActiveSafetyGD:
+		return 40
+	case consts.ActiveSafetyHN:
+		return 32
+	case consts.ActiveSafetySC:
+		return 39
+	default:
+	}
+	return 16
 }
 
 func (p *P9208AlarmSign) String() string {
 	return strings.Join([]string{
-		"\t报警标识{",
+		fmt.Sprintf("\t报警标识 [%s]{ 默认使用苏标", p.ActiveSafetyType.String()),
 		fmt.Sprintf("\t\t [%014x]终端ID:[%s]", p.TerminalID, p.TerminalID),
 		fmt.Sprintf("\t\t [%012x]时间:[%s]", utils.Time2BCD(p.Time), p.Time),
 		fmt.Sprintf("\t\t [%02x]序号:[%d]", p.SerialNumber, p.SerialNumber),
 		fmt.Sprintf("\t\t [%02x]附件数量:[%d]", p.AttachNumber, p.AttachNumber),
-		fmt.Sprintf("\t\t [%02x]预留:[%d]", p.AlarmReserve, p.AlarmReserve),
+		fmt.Sprintf("\t\t [%x]预留", p.AlarmReserve),
 		"\t}",
 	}, "\n")
 }

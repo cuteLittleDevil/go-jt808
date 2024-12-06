@@ -413,7 +413,7 @@ func (t *T0x0200ExtensionSBBase) parse(data []byte) {
 	t.Longitude = binary.BigEndian.Uint32(data[7:11])
 	t.DateTime = utils.BCD2Time(data[11:17])
 	t.VehicleStatus.parse(binary.BigEndian.Uint16(data[17:19]))
-	t.P9208AlarmSign.parse(data[19:])
+	t.P9208AlarmSign.parse(data[19:35])
 	t.ParseSuccess = true
 	return
 }

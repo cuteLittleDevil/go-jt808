@@ -14,9 +14,9 @@ import (
 type (
 	T0x1210 struct {
 		BaseHandle
-		// TerminalID 终端ID byte[7]
+		// TerminalID 终端ID byte[7] 苏标-终端7 黑标-0 广东标-终端30 湖南标-终端7 四川标-终端30
 		TerminalID string `json:"terminalID"`
-		// P9208AlarmSign 报警标识号 byte[16]
+		// P9208AlarmSign 报警标识号 苏标-16 黑标-38 广东标-40 湖南标-16 四川标-39
 		P9208AlarmSign `json:"p9208AlarmSign"`
 		// AlarmID 平台给报警分配的唯一编号 byte[32]
 		AlarmID string `json:"alarmID"`
@@ -48,18 +48,29 @@ func (t *T0x1210) ReplyProtocol() consts.JT808CommandType {
 
 func (t *T0x1210) Parse(jtMsg *jt808.JTMessage) error {
 	body := jtMsg.Body
-	if len(body) < 57 {
+	idLen := t.P9208AlarmSign.getTerminalIDLen()
+	alarmSignLen := t.P9208AlarmSign.getAlarmSignLen()
+	if t.P9208AlarmSign.ActiveSafetyType == consts.ActiveSafetyHLJ { // 黑标的情况是没有终端ID
+		idLen = 0
+	}
+	if len(body) < idLen+alarmSignLen+32+1+1 {
 		return protocol.ErrBodyLengthInconsistency
 	}
-	t.TerminalID = string(bytes.Trim(body[0:7], "\x00"))
-	t.P9208AlarmSign.parse(body[7:23])
-	t.AlarmID = string(bytes.Trim(body[23:55], "\x00"))
-	t.InfoType = body[55]
-	t.AttachCount = body[56]
-	if len(body) < 57+int(t.AttachCount)*(1+1+4) {
+	cursor := idLen
+	if idLen > 0 {
+		t.TerminalID = string(bytes.Trim(body[0:cursor], "\x00"))
+	}
+	t.P9208AlarmSign.parse(body[cursor : cursor+alarmSignLen])
+	cursor += alarmSignLen
+	t.AlarmID = string(bytes.Trim(body[cursor:cursor+32], "\x00"))
+	cursor += 32
+	t.InfoType = body[cursor]
+	t.AttachCount = body[cursor+1]
+	cursor += 2
+	if len(body) < cursor+int(t.AttachCount)*(1+1+4) {
 		return protocol.ErrBodyLengthInconsistency
 	}
-	start := 57
+	start := cursor
 	for i := 0; i < int(t.AttachCount); i++ {
 		fileNameLen := body[start]
 		if len(body) < start+1+int(fileNameLen)+4 {
@@ -78,12 +89,14 @@ func (t *T0x1210) Parse(jtMsg *jt808.JTMessage) error {
 }
 
 func (t *T0x1210) Encode() []byte {
-	data := make([]byte, 57, 60)
-	copy(data[0:7], utils.String2FillingBytes(t.TerminalID, 7))
-	copy(data[7:23], t.P9208AlarmSign.encode())
-	copy(data[23:55], utils.String2FillingBytes(t.AlarmID, 32))
-	data[55] = t.InfoType
-	data[56] = t.AttachCount
+	data := make([]byte, 0, 60)
+	if t.P9208AlarmSign.ActiveSafetyType != consts.ActiveSafetyHLJ {
+		data = append(data, utils.String2FillingBytes(t.TerminalID, t.P9208AlarmSign.getTerminalIDLen())...)
+	}
+	data = append(data, t.P9208AlarmSign.encode()...)
+	data = append(data, utils.String2FillingBytes(t.AlarmID, 32)...)
+	data = append(data, t.InfoType)
+	data = append(data, t.AttachCount)
 	for _, v := range t.T0x1210AlarmItemList {
 		data = append(data, v.FileNameLen)
 		data = append(data, []byte(v.FileName)...)
@@ -102,7 +115,7 @@ func (t *T0x1210) String() string {
 		items += "\t}\n"
 	}
 	return strings.Join([]string{
-		"数据体对象:{",
+		fmt.Sprintf("数据体对象:{"),
 		fmt.Sprintf("\t%s:[%x]", t.Protocol(), t.Encode()),
 		fmt.Sprintf("\t[%014x] 终端ID:[%s]", t.TerminalID, t.TerminalID),
 		t.P9208AlarmSign.String(),
