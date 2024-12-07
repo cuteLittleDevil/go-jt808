@@ -44,5 +44,5 @@ docker run --restart always -p 5288:80 -d vanjoge/rtvsdevice
 
 <h2 id="m7s"> m7s-jt1078 </h2>
 
-- 目前m7s v5版本还没有发布 不做过多介绍
+- [插件详情](https://github.com/cuteLittleDevil/m7s-jt1078)
 - [代码参考](./m7s/main.go)
