@@ -31,6 +31,7 @@ func (f *fileEvent) OnEvent(progress *PackageProgress) {
 	switch progress.ProgressStage {
 	case ProgressStageInit:
 		var t0x1210 model.T0x1210
+		t0x1210.P9208AlarmSign.ActiveSafetyType = extension.ActiveSafetyType
 		_ = t0x1210.Parse(extension.RecentTerminalMessage)
 		str += strings.Join([]string{
 			t0x1210.String(),
@@ -70,7 +71,8 @@ func (f *fileEvent) OnEvent(progress *PackageProgress) {
 		str += fmt.Sprintf(" 文件传输异常 [%v]", extension.Err)
 	case ProgressStageSuccessQuit:
 		phone := progress.ExtensionFields.RecentTerminalMessage.Header.TerminalPhoneNo
-		str += fmt.Sprintf(" 文件传输成功 开始保存 保存数量[%d]\n", len(progress.Record))
+		str += fmt.Sprintf(" 文件传输成功 开始保存 保存数量[%d] 地方标准[%s]\n",
+			len(progress.Record), progress.ExtensionFields.ActiveSafetyType.String())
 		_ = os.MkdirAll(phone, os.ModePerm)
 		for name, pack := range progress.Record {
 			savePath := fmt.Sprintf("./%s/%s", phone, name)

@@ -70,19 +70,6 @@ func (d *BaseJT808DataHandler[T1210, T1211, T1212]) ReplyData() ([]byte, error) 
 	return d.head.Encode(body), nil
 }
 
-type suBiaoJT808DataHandle struct {
-	BaseJT808DataHandler[*model.T0x1210, *model.T0x1211, *model.T0x1212]
-}
-
-func newSuBiaoJT808DataHandle() *suBiaoJT808DataHandle {
-	return &suBiaoJT808DataHandle{
-		BaseJT808DataHandler: BaseJT808DataHandler[*model.T0x1210, *model.T0x1211, *model.T0x1212]{
-			T0x1210: &model.T0x1210{},
-			T0x1211: &model.T0x1211{},
-			T0x1212: &model.T0x1212{},
-		}}
-}
-
 func (d *BaseJT808DataHandler[T1210, T1211, T1212]) OnPackageProgressEvent(progress *PackageProgress) {
 	switch d.Command {
 	case consts.T1210AlarmAttachInfoMessage:
@@ -94,11 +81,32 @@ func (d *BaseJT808DataHandler[T1210, T1211, T1212]) OnPackageProgressEvent(progr
 	}
 }
 
-func (sb *suBiaoJT808DataHandle) OnPackageProgressEvent(progress *PackageProgress) {
-	sb.BaseJT808DataHandler.OnPackageProgressEvent(progress)
-	switch sb.Command {
+func (d *BaseJT808DataHandler[T1210, T1211, T1212]) CreateStreamDataHandler() StreamDataHandler {
+	return newBaseStreamDataHandle()
+}
+
+type standardJT808DataHandle struct {
+	BaseJT808DataHandler[*model.T0x1210, *model.T0x1211, *model.T0x1212]
+}
+
+func newStandardJT808DataHandle(asType consts.ActiveSafetyType) *standardJT808DataHandle {
+	return &standardJT808DataHandle{
+		BaseJT808DataHandler: BaseJT808DataHandler[*model.T0x1210, *model.T0x1211, *model.T0x1212]{
+			T0x1210: &model.T0x1210{
+				P9208AlarmSign: model.P9208AlarmSign{
+					ActiveSafetyType: asType,
+				},
+			},
+			T0x1211: &model.T0x1211{},
+			T0x1212: &model.T0x1212{},
+		}}
+}
+
+func (s *standardJT808DataHandle) OnPackageProgressEvent(progress *PackageProgress) {
+	s.BaseJT808DataHandler.OnPackageProgressEvent(progress)
+	switch s.Command {
 	case consts.T1210AlarmAttachInfoMessage:
-		for _, v := range sb.T0x1210.T0x1210AlarmItemList {
+		for _, v := range s.T0x1210.T0x1210AlarmItemList {
 			progress.Record[v.FileName] = &Package{
 				FileName:         v.FileName,
 				FileSize:         v.FileSize,
@@ -110,13 +118,20 @@ func (sb *suBiaoJT808DataHandle) OnPackageProgressEvent(progress *PackageProgres
 			}
 		}
 	case consts.T1212FileUploadComplete:
-		name := sb.T0x1212.FileName
+		name := s.T0x1212.FileName
 		if v, ok := progress.Record[name]; ok {
-			sb.T0x1212.P0x9212RetransmitPacketList = v.StatisticalMissSegments()
-			if len(sb.T0x1212.P0x9212RetransmitPacketList) > 0 {
+			s.T0x1212.P0x9212RetransmitPacketList = v.StatisticalMissSegments()
+			if len(s.T0x1212.P0x9212RetransmitPacketList) > 0 {
 				progress.ProgressStage = ProgressStageSupplementary
 			}
 			return
 		}
 	}
+}
+
+func (s *standardJT808DataHandle) CreateStreamDataHandler() StreamDataHandler {
+	if s.T0x1210.P9208AlarmSign.ActiveSafetyType == consts.ActiveSafetyHLJ {
+		return newHeiBiaoStreamDataHandle()
+	}
+	return newBaseStreamDataHandle()
 }

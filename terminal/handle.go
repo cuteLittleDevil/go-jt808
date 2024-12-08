@@ -123,7 +123,6 @@ func newP0x1210() Handler {
 			Time:         "2024-11-11 00:00:00",
 			SerialNumber: 1,
 			AttachNumber: 2,
-			AlarmReserve: 1,
 		},
 		AlarmID:     "aaa",
 		InfoType:    0,

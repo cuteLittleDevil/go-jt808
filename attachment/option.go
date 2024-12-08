@@ -1,34 +1,32 @@
 package attachment
 
+import "github.com/cuteLittleDevil/go-jt808/shared/consts"
+
 type Option struct {
 	F func(o *Options)
 }
 
 const (
-	defaultAddr    = "0.0.0.0:10808" // 服务默认地址
-	defaultNetwork = "tcp"           // 服务默认网络协议
+	defaultAddr             = "0.0.0.0:10808" // 服务默认地址
+	defaultNetwork          = "tcp"           // 服务默认网络协议
+	defaultActiveSafetyType = consts.ActiveSafetyJS
 )
 
 type Options struct {
-	Addr                 string
-	Network              string
-	FileEventerFunc      func() FileEventer
-	StreamDataHandleFunc func() StreamDataHandler
-	JT808DataHandleFunc  func() JT808DataHandler
+	Addr             string
+	Network          string
+	FileEventerFunc  func() FileEventer
+	ActiveSafetyType consts.ActiveSafetyType
+	DataHandleFunc   func() DataHandler
 }
 
 func newOptions(opts []Option) *Options {
 	options := &Options{
-		Addr:    defaultAddr,
-		Network: defaultNetwork,
+		Addr:             defaultAddr,
+		Network:          defaultNetwork,
+		ActiveSafetyType: defaultActiveSafetyType,
 		FileEventerFunc: func() FileEventer {
 			return newFileEvent()
-		},
-		StreamDataHandleFunc: func() StreamDataHandler {
-			return newSuBiaoStreamDataHandle()
-		},
-		JT808DataHandleFunc: func() JT808DataHandler {
-			return newSuBiaoJT808DataHandle()
 		},
 	}
 	for _, op := range opts {
@@ -58,16 +56,16 @@ func WithFileEventerFunc(handleFunc func() FileEventer) Option {
 	}}
 }
 
-// WithStreamDataHandlerFunc 自定义主动安全的文件流报文处理
-func WithStreamDataHandlerFunc(handleFunc func() StreamDataHandler) Option {
+// WithActiveSafetyType 使用什么标准的主动安全报文
+func WithActiveSafetyType(activeSafetyType consts.ActiveSafetyType) Option {
 	return Option{F: func(o *Options) {
-		o.StreamDataHandleFunc = handleFunc
+		o.ActiveSafetyType = activeSafetyType
 	}}
 }
 
-// WithJT808DataHandleFunc 自定义主动安全报文处理
-func WithJT808DataHandleFunc(handleFunc func() JT808DataHandler) Option {
+// WithDataHandleFunc 自定义数据处理
+func WithDataHandleFunc(handleFunc func() DataHandler) Option {
 	return Option{F: func(o *Options) {
-		o.JT808DataHandleFunc = handleFunc
+		o.DataHandleFunc = handleFunc
 	}}
 }

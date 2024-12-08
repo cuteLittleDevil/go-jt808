@@ -2,23 +2,29 @@ package attachment
 
 import (
 	"errors"
+	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 	"io"
 	"net"
 )
 
 type connection struct {
-	conn        net.Conn
-	streamFunc  func() StreamDataHandler
-	handle      JT808DataHandler
-	fileEventer FileEventer
+	conn             net.Conn
+	activeSafetyType consts.ActiveSafetyType
+	dataHandleFunc   func() DataHandler
+	fileEventer      FileEventer
 }
 
-func newConnection(c net.Conn, streamFunc func() StreamDataHandler,
-	handle JT808DataHandler, fileEventer FileEventer) *connection {
+func newConnection(conn net.Conn, activeSafetyType consts.ActiveSafetyType,
+	customDataHandleFunc func() DataHandler, fileEventer FileEventer) *connection {
 	return &connection{
-		conn:        c,
-		streamFunc:  streamFunc,
-		handle:      handle,
+		conn:             conn,
+		activeSafetyType: activeSafetyType,
+		dataHandleFunc: func() DataHandler {
+			if customDataHandleFunc == nil {
+				return newStandardJT808DataHandle(activeSafetyType)
+			}
+			return customDataHandleFunc()
+		},
 		fileEventer: fileEventer,
 	}
 }
@@ -30,8 +36,14 @@ func (c *connection) run() {
 			ProgressStage: ProgressStageInit,
 			Record:        map[string]*Package{},
 			historyData:   make([]byte, 0),
-			handle:        c.handle,
-			streamFunc:    c.streamFunc,
+			handle:        c.dataHandleFunc(),
+			ExtensionFields: ExtensionFields{
+				CurrentPackage:        nil,
+				RecentTerminalMessage: nil,
+				RecentPlatformData:    nil,
+				ActiveSafetyType:      c.activeSafetyType,
+				Err:                   nil,
+			},
 		}
 	)
 	defer func() {
@@ -60,7 +72,6 @@ func (c *connection) run() {
 						progress.ExtensionFields.Err = err
 						if _, err := c.conn.Write(data); err != nil {
 							progress.ExtensionFields.Err = errors.Join(err, progress.ExtensionFields.Err)
-							return
 						}
 					}
 					c.fileEventer.OnEvent(progress)

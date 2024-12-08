@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
 	"github.com/cuteLittleDevil/go-jt808/protocol/model"
+	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 	"maps"
 	"sort"
 )
@@ -19,8 +20,7 @@ type (
 		// ExtensionFields 扩展字段信息
 		ExtensionFields ExtensionFields
 		historyData     []byte
-		handle          JT808DataHandler
-		streamFunc      func() StreamDataHandler
+		handle          DataHandler
 	}
 
 	ExtensionFields struct {
@@ -30,6 +30,8 @@ type (
 		RecentTerminalMessage *jt808.JTMessage
 		// RecentPlatformData 平台下发的数据
 		RecentPlatformData []byte `json:"-"`
+		// ActiveSafetyType 主动安全标准
+		consts.ActiveSafetyType
 		// Err 异常情况
 		Err error
 	}
@@ -106,7 +108,8 @@ func (p *PackageProgress) iter() func(func(err error) bool) {
 			} else if errors.Is(err, _errNotStreamData) { // 不是流数据格式的 换一个格式试一试
 				if err := p.stageJT808Data(); err == nil {
 					yield(nil)
-				} else {
+				} else if !errors.Is(err, ErrDataInconsistency) {
+					yield(err)
 					return
 				}
 			} else {
@@ -118,15 +121,16 @@ func (p *PackageProgress) iter() func(func(err error) bool) {
 }
 
 func (p *PackageProgress) stageStreamData() error {
-	stream := p.streamFunc()
+	stream := p.handle.CreateStreamDataHandler()
 	if !stream.HasStreamData(p.historyData) {
 		return _errNotStreamData
 	}
 	if !stream.HasMinHeadLen(p.historyData) {
 		return ErrInsufficientDataLen
 	}
-	headLen, bodyLen := stream.GetLen(p.historyData)
+	headLen, bodyLen := stream.Parse(p.historyData)
 	if len(p.historyData) >= headLen+bodyLen {
+		stream.OnInitEvent(p)
 		p.ProgressStage = ProgressStageStreamData
 		name := stream.GetFileName()
 		pack, ok := p.Record[name]
