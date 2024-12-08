@@ -6,13 +6,18 @@ import (
 	"github.com/cuteLittleDevil/go-jt808/protocol/model"
 	"os"
 	"strings"
+	"sync"
 )
 
 type meFileEvent struct {
 	file *os.File
+	once sync.Once
 }
 
 func (f *meFileEvent) OnEvent(progress *attachment.PackageProgress) {
+	f.once.Do(func() {
+		f.file, _ = os.OpenFile("file.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, os.ModePerm)
+	})
 	str := fmt.Sprintf("当前进度: [%s] ", progress.ProgressStage.String())
 	defer func() {
 		fmt.Println(str)

@@ -21,6 +21,7 @@ func init() {
 	attach := attachment.New(
 		attachment.WithNetwork("tcp"),
 		attachment.WithHostPorts("0.0.0.0:10001"),
+		attachment.WithActiveSafetyType(consts.ActiveSafetyJS), // 默认苏标 支持黑标 广东标 湖南标 四川标
 		attachment.WithFileEventerFunc(func() attachment.FileEventer {
 			return &meFileEvent{} // 自定义文件处理 开始 结束 当前进度 补传 完成等事件
 		}),

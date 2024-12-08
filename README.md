@@ -44,7 +44,7 @@ jt808服务端 模拟器 消息队列 数据库都运行在2核4G腾讯云服务
 - 看飞哥的单机TCP百万并发 好奇有数据情况的表现 因此国庆准备试一试有数据的情况
 - 性能测试 单机[2核4G机器]并发10w+ 每日保存4亿+经纬度 [详情](./README.md#save)
 - 支持JT808(2011/2013/209) JT1078(需要其他流媒体服务)
-- 支持分包和自动补传 支持主动安全扩展(苏标)
+- 支持分包和自动补传 支持主动安全扩展(苏标 黑标 广东标 湖南标 四川标)
 
 | 特点  |   描述   |
 | :---:   | -------- |
@@ -79,6 +79,7 @@ func init() {
 	attach := attachment.New(
 		attachment.WithNetwork("tcp"),
 		attachment.WithHostPorts("0.0.0.0:10001"),
+		attachment.WithActiveSafetyType(consts.ActiveSafetyJS), // 默认苏标 支持黑标 广东标 湖南标 四川标
 		attachment.WithFileEventerFunc(func() attachment.FileEventer {
 			return &meFileEvent{} // 自定义文件处理 开始 结束 当前进度 补传 完成等事件
 		}),

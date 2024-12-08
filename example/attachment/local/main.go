@@ -19,21 +19,28 @@ import (
 )
 
 var (
-	address string
-	phone   string
-	dir     string
-	alarmID string
+	address          string
+	phone            string
+	dir              string
+	alarmID          string
+	activeSafetyType consts.ActiveSafetyType
 )
 
 func main() {
+	var asType int
 	flag.StringVar(&address, "address", "0.0.0.0:17017", "主动安全服务地址")
 	flag.StringVar(&phone, "phone", "1001", "测试的手机号")
-	flag.StringVar(&dir, "dir", "../../jt1078/data/", "要上传的文件目录")
+	flag.StringVar(&dir, "dir", "../jt1078/data/", "要上传的文件目录")
 	flag.StringVar(&alarmID, "alarmID", "2024-11-22_10_00_00_", "报警编号 上传的文件名称包含这个报警编号")
+	// 6-暂不支持北京标
+	flag.IntVar(&asType, "activeSafetyType", 1, "主动安全告警 1-苏标 2-黑标 3-广东标 4-湖南标 5-四川标 6-北京标")
 	flag.Parse()
+	activeSafetyType = consts.ActiveSafetyType(asType)
+	//activeSafetyType = consts.ActiveSafetyBJ
 	attach := attachment.New(
 		attachment.WithNetwork("tcp"),
 		attachment.WithHostPorts(address),
+		attachment.WithActiveSafetyType(activeSafetyType),
 		attachment.WithFileEventerFunc(func() attachment.FileEventer {
 			f, _ := os.OpenFile("file.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, os.ModePerm)
 			return &meFileEvent{file: f}
@@ -127,7 +134,12 @@ func splitStreamData(name string, group int) [][]byte {
 
 func sendStreamData(conn net.Conn, name string, offset int, data []byte) {
 	_, _ = conn.Write([]byte{0x30, 0x31, 0x63, 0x64})
-	_, _ = conn.Write(utils.String2FillingBytes(name, 50))
+	if activeSafetyType == consts.ActiveSafetyHLJ {
+		_, _ = conn.Write([]byte{byte(len(name))})
+		_, _ = conn.Write([]byte(name))
+	} else {
+		_, _ = conn.Write(utils.String2FillingBytes(name, 50))
+	}
 	_, _ = conn.Write(binary.BigEndian.AppendUint32([]byte{}, uint32(offset)))
 	_, _ = conn.Write(binary.BigEndian.AppendUint32([]byte{}, uint32(len(data))))
 	_, _ = conn.Write(data)
@@ -136,6 +148,7 @@ func sendStreamData(conn net.Conn, name string, offset int, data []byte) {
 func sendJT808Data(conn net.Conn, t *terminal.Terminal, jt808Data JT808Dataer) {
 	data := t.CreateCommandData(jt808Data.Protocol(), jt808Data.Encode())
 	_, _ = conn.Write(data)
+	fmt.Println(fmt.Sprintf("%x", data))
 	var buf [1023]byte
 	_, _ = conn.Read(buf[:])
 }
@@ -144,11 +157,11 @@ func uploadNotice(ts []model.T0x1211) model.T0x1210 {
 	t0x1210 := model.T0x1210{
 		TerminalID: "1234cd.",
 		P9208AlarmSign: model.P9208AlarmSign{
-			TerminalID:   "1234cd.",
-			Time:         time.Now().Format(time.DateTime),
-			SerialNumber: 1,
-			AttachNumber: byte(len(ts)),
-			AlarmReserve: 0,
+			TerminalID:       "1234cd.",
+			Time:             time.Now().Format(time.DateTime),
+			SerialNumber:     1,
+			AttachNumber:     byte(len(ts)),
+			ActiveSafetyType: activeSafetyType,
 		},
 		AlarmID:              alarmID,
 		InfoType:             0,
