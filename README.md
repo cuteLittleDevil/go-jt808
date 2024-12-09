@@ -25,17 +25,23 @@ jt808服务端 模拟器 消息队列 数据库都运行在2核4G腾讯云服务
 测试每秒保存5000条的情况 约5.5小时保存了近1亿的经纬度
 ```
 
-4. 平台下发指令给终端 [获取参数](./example/protocol/active_reply/main.go) [立即拍摄](./example/protocol/camera/main.go)
+4. 分布式集群方案 [详情](./example/distributed_cluster/README.md)
+``` txt
+使用nginx把终端分配到多个808服务上 下发数据使用广播
+存在则回复终端应答到新主题 不存在则忽略
+```
+
+5. 平台下发指令给终端 [获取参数](./example/protocol/active_reply/main.go) [立即拍摄](./example/protocol/camera/main.go)
 ``` txt
 主动下发给设备指令 获取应答的情况
 ```
 
-5. 协议交互详情 [代码参考](./example/protocol/register/main.go)
+6. 协议交互详情 [代码参考](./example/protocol/register/main.go)
 ``` txt
 使用自定义模拟器 可以轻松生成测试用的报文 有详情描述
 ```
 
-6. 自定义协议扩展 [代码参考](./example/protocol/custom_parse/main.go)
+7. 自定义协议扩展 [代码参考](./example/protocol/custom_parse/main.go)
 ``` txt
 自定义附加信息处理 获取想要的扩展内容
 ```
