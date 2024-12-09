@@ -7,7 +7,7 @@ import (
 
 type Message struct {
 	*jt808.JTMessage
-	Handler
+	Handler `json:"-"`
 	// Command 指令类型
 	Command         consts.JT808CommandType `json:"command"`
 	ExtensionFields struct {
