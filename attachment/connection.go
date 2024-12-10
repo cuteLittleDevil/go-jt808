@@ -53,6 +53,7 @@ func (c *connection) run() {
 		}
 		c.fileEventer.OnEvent(progress)
 		clear(curData)
+		_ = c.conn.Close()
 	}()
 
 	for {
