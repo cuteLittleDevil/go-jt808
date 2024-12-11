@@ -4,7 +4,6 @@
 1. jt1078视频 [详情](./example/jt1078/README.md)
 
 ``` txt
-jt808服务端 jt1078服务端 模拟器在2核4G腾讯云服务器
 平台下发0x9101等指令 模拟器开始推流等动作
 ```
 | 流媒体服务 | 语言 | 描述       | 说明 |
@@ -16,7 +15,7 @@ jt808服务端 jt1078服务端 模拟器在2核4G腾讯云服务器
 
 2. 兼容任意808服务 [详情](./example/adapter/README.md)
 ``` txt
-真实设备连接到适配器 适配器产生多个模拟设备连接808服务
+真实设备连接到适配器 适配器产生多个模拟设备连接多个808服务
 ```
 
 3. 主动安全附件 [流程](./example/attachment/README.md#主动安全)
@@ -90,7 +89,8 @@ func init() {
 	attach := attachment.New(
 		attachment.WithNetwork("tcp"),
 		attachment.WithHostPorts("0.0.0.0:10001"),
-		attachment.WithActiveSafetyType(consts.ActiveSafetyJS), // 默认苏标 支持黑标 广东标 湖南标 四川标
+		// 默认苏标 支持黑标 广东标 湖南标 四川标
+		attachment.WithActiveSafetyType(consts.ActiveSafetyJS),
 		attachment.WithFileEventerFunc(func() attachment.FileEventer {
 			return &meFileEvent{} // 自定义文件处理 开始 结束 当前进度 补传 完成等事件
 		}),
@@ -151,9 +151,9 @@ func main() {
 - save进程丢失了部分数据 channel队列溢出抛弃 (测试channel队列为100)
 - 保存1亿丢失826条 保存4.32亿丢失1216条（分两次测试)
 
-| 服务端版本  | 客户端 |  服务器配置  | 服务使用资源情况 |  描述  |
-| :---:   | :--: | :------: | :-------------- | :----------------------------: |
-|  v0.3.0 | 1w go模拟器 |  2核4G | 35%cpu 180.4MB内存 | 每秒5000 一共保存经纬度1亿  <br/> 实际保存99999174 成功率99.999% |
+| 服务端版本  | 客户端 |  服务器配置  |  描述  |
+| :---:   | :--: | :------: | :----------------------------: |
+|  v0.3.0 | 1w go模拟器 |  2核4G | 每秒5000 一共保存经纬度1亿  <br/> 实际保存99999174 成功率99.999% |
 
 | 服务  |   cpu   | 内存 | 描述 |
 | :---:   | :-------: | :--: | :--: |

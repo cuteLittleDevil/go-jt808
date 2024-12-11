@@ -130,7 +130,7 @@ func TestBCD2Time(t *testing.T) {
 		{
 			name: "非正常的时间格式",
 			args: "2024100100000",
-			want: "02024100100000", //
+			want: "02024100100000",
 		},
 	}
 	for _, tt := range tests {
