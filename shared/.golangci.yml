@@ -1,0 +1,28 @@
+# golangci-lint run -v
+linters:
+  # https://golangci-lint.run/usage/linters/#enabled-by-default
+  enable-all: true
+  fast: true
+
+linters-settings:
+
+issues:
+  exclude-rules:
+    - linters:
+        - funlen
+      source: "String.*"
+    - linters:
+        - gocyclo
+      source: "String.*"
+    - linters:
+        - maintidx
+      source: "String.*"
+
+output:
+  show-stats: true
+
+run:
+  tests: false # 不包含测试文件
+  go: "1.23"
+
+severity:

@@ -18,5 +18,6 @@ func (p ProtocolVersionType) String() string {
 		return "JT2019"
 	default:
 	}
+
 	return "未支持的协议"
 }
