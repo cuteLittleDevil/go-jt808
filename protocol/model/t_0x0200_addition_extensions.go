@@ -8,7 +8,7 @@ import (
 )
 
 type (
-	// T0x0200ExtensionSBBase  苏标扩展的基础数据
+	// T0x0200ExtensionSBBase  苏标扩展的基础数据.
 	T0x0200ExtensionSBBase struct {
 		// VehicleSpeed 车速 单位:km/h 范围0-250
 		VehicleSpeed byte `json:"vehicleSpeed"`
@@ -28,7 +28,7 @@ type (
 		ParseSuccess bool `json:"parseSuccess"`
 	}
 
-	// T0x0200ExtensionTable18 表18-车辆 状态标志位含义
+	// T0x0200ExtensionTable18 表18-车辆 状态标志位含义.
 	T0x0200ExtensionTable18 struct {
 		// OriginalValue 原始值
 		OriginalValue uint16 `json:"originalValue"`
@@ -48,7 +48,7 @@ type (
 		Location bool `json:"location,omitempty"`
 	}
 
-	// T0x0200AdditionExtension0x64 表17-驾驶辅助功能报警信息 苏标
+	// T0x0200AdditionExtension0x64 表17-驾驶辅助功能报警信息 苏标.
 	T0x0200AdditionExtension0x64 struct {
 		// AlarmID 报警ID 按照报警先后 从0开始循环 不区分报警类型
 		AlarmID uint32 `json:"alarmID"`
@@ -84,7 +84,7 @@ type (
 		T0x0200ExtensionSBBase
 	}
 
-	// T0x0200AdditionExtension0x65 表20-驾驶员行为监测功能报警信息
+	// T0x0200AdditionExtension0x65 表20-驾驶员行为监测功能报警信息.
 	T0x0200AdditionExtension0x65 struct {
 		// AlarmID 报警ID 按照报警先后 从0开始循环 不区分报警类型
 		AlarmID uint32 `json:"alarmID"`
@@ -113,7 +113,7 @@ type (
 		T0x0200ExtensionSBBase
 	}
 
-	// T0x0200AdditionExtension0x66 表21-轮胎状态监测报警信息
+	// T0x0200AdditionExtension0x66 表21-轮胎状态监测报警信息.
 	T0x0200AdditionExtension0x66 struct {
 		// AlarmID 报警ID 按照报警先后 从0开始循环 不区分报警类型
 		AlarmID uint32 `json:"alarmID"`
@@ -126,7 +126,7 @@ type (
 		AlarmOrEventList []T0x0200ExtensionTable22 `json:"alarmOrEventList"`
 	}
 
-	// T0x0200ExtensionTable22 表22-轮胎状态监测功能报警信息列表格式
+	// T0x0200ExtensionTable22 表22-轮胎状态监测功能报警信息列表格式.
 	T0x0200ExtensionTable22 struct {
 		// TirePressureAlarmLocation 胎压报警位置 报警轮胎位置编号（从左前轮开始以Z字形从00依次编号 编号与是否安装TPMS无关)
 		TirePressureAlarmLocation byte `json:"tirePressureAlarmLocation"`
@@ -150,7 +150,7 @@ type (
 		BatteryLevel uint16 `json:"batteryLevel"`
 	}
 
-	// T0x0200AdditionExtension0x67 表23-变道决策辅助报警信息
+	// T0x0200AdditionExtension0x67 表23-变道决策辅助报警信息.
 	T0x0200AdditionExtension0x67 struct {
 		// AlarmID 报警ID 按照报警先后 从0开始循环 不区分报警类型
 		AlarmID uint32 `json:"alarmID"`
@@ -162,7 +162,7 @@ type (
 		T0x0200ExtensionSBBase
 	}
 
-	// T0x0200AdditionExtension0x70 表24-激烈驾驶报警定义数据格式
+	// T0x0200AdditionExtension0x70 表24-激烈驾驶报警定义数据格式.
 	T0x0200AdditionExtension0x70 struct {
 		// AlarmID 报警ID 按照报警先后 从0开始循环 不区分报警类型
 		AlarmID uint32 `json:"alarmID"`

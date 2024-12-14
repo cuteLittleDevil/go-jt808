@@ -1,0 +1,62 @@
+linters:
+  # https://golangci-lint.run/usage/linters/#enabled-by-default
+  enable-all: true
+  disable:
+    - gci # 控制go包的导入顺序
+    - goimports # 格式化代码
+    - gofumpt # 格式化代码
+    - depguard # 允许github包是那些
+    - nlreturn # return break continue 前面需要空一行
+    - wsl # 部分语句需要换行
+    - mnd # 魔数检测
+    - tagliatelle # 标签检测
+  fast: true
+
+linters-settings:
+  gocognit: #圈复杂度 // https://golangci-lint.run/usage/linters#gocognit
+    min-complexity: 30
+  nestif:
+    min-complexity: 15 # if语句复杂度
+  mnd:
+    checks:
+      - case
+      - condition
+      - assign
+  goconst:
+    ignore-strings: '.*\n'
+  dupword: # 检查源代码中的重复单词
+    ignore:
+      - "ACC"
+
+issues:
+  exclude-files: # 那些文件不用检查
+    - ".*_test.go"
+  exclude-rules:
+    - linters:
+        - maintidx
+      source: "String.*"
+    - linters:
+        - lll
+      source: "fmt.*"
+    - linters:
+        - funlen
+      source: "parse.*"
+    - linters:
+        - gocognit
+      source: "parse"
+    - linters:
+        - funlen
+      source: "String"
+    - linters:
+        - gocyclo
+      source: "parse.*"
+
+output:
+  # See the dedicated "output" documentation section.
+  option: value
+
+run:
+  tests: false # 不包含测试文件
+  go: "1.23"
+
+severity:
