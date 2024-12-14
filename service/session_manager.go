@@ -33,11 +33,8 @@ func newSessionManager(keyFunc func(message *Message) (string, bool)) *sessionMa
 
 func (s *sessionManager) run() {
 	record := make(map[string]*session, 1000)
-	for {
-		select {
-		case opFunc := <-s.operationFuncChan:
-			opFunc(record)
-		}
+	for opFunc := range s.operationFuncChan {
+		opFunc(record)
 	}
 }
 
@@ -68,12 +65,9 @@ func (s *sessionManager) leave(key string) {
 	ch := make(chan struct{})
 	s.operationFuncChan <- func(record map[string]*session) {
 		defer close(ch)
-		if _, ok := record[key]; ok {
-			delete(record, key)
-		}
+		delete(record, key)
 	}
 	<-ch
-	return
 }
 
 func (s *sessionManager) write(activeMsg *ActiveMessage) *Message {

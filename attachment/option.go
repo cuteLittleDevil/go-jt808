@@ -35,35 +35,35 @@ func newOptions(opts []Option) *Options {
 	return options
 }
 
-// WithHostPorts 修改运行地址 默认0.0.0.0:808
+// WithHostPorts 修改运行地址 默认0.0.0.0:808.
 func WithHostPorts(address string) Option {
 	return Option{F: func(o *Options) {
 		o.Addr = address
 	}}
 }
 
-// WithNetwork 修改启动协议 默认TCP
+// WithNetwork 修改启动协议 默认TCP.
 func WithNetwork(network string) Option {
 	return Option{F: func(o *Options) {
 		o.Network = network
 	}}
 }
 
-// WithFileEventerFunc 自定义文件事件变化
+// WithFileEventerFunc 自定义文件事件变化.
 func WithFileEventerFunc(handleFunc func() FileEventer) Option {
 	return Option{F: func(o *Options) {
 		o.FileEventerFunc = handleFunc
 	}}
 }
 
-// WithActiveSafetyType 使用什么标准的主动安全报文
+// WithActiveSafetyType 使用什么标准的主动安全报文.
 func WithActiveSafetyType(activeSafetyType consts.ActiveSafetyType) Option {
 	return Option{F: func(o *Options) {
 		o.ActiveSafetyType = activeSafetyType
 	}}
 }
 
-// WithDataHandleFunc 自定义数据处理
+// WithDataHandleFunc 自定义数据处理.
 func WithDataHandleFunc(handleFunc func() DataHandler) Option {
 	return Option{F: func(o *Options) {
 		o.DataHandleFunc = handleFunc

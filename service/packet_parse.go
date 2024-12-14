@@ -42,7 +42,7 @@ func (p *packageParse) clear() {
 	clear(p.timeoutRecord)
 }
 
-// parse 返回一个或者多个完成的包
+// parse 返回一个或者多个完成的包.
 func (p *packageParse) parse(data []byte) ([]*Message, error) {
 	msgs, err := p.unpack(data)
 	for _, msg := range msgs {

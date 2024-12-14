@@ -69,7 +69,8 @@ func newHeiBiaoStreamDataHandle() *heiBiaoStreamDataHandle {
 }
 
 func (h *heiBiaoStreamDataHandle) HasMinHeadLen(data []byte) bool {
-	if len(data) < 5 {
+	const minLen = 4 + 1 // 固定校验码和读取头部的长度
+	if len(data) < minLen {
 		return false
 	}
 	h.FileNameLen = data[4]
@@ -83,8 +84,9 @@ func (h *heiBiaoStreamDataHandle) Parse(data []byte) (headLen int, bodyLen int) 
 	h.FileName = string(bytes.Trim(data[start:end], "\x00"))
 	start = end
 	end += 4
+	const sign = 808543076 // 0x30 0x31 0x63 0x64 固定标识
 	h.baseStreamDataHandle = baseStreamDataHandle{
-		FrameSign:  808543076,
+		FrameSign:  sign,
 		FileName:   h.FileName,
 		DataOffset: binary.BigEndian.Uint32(data[start:end]),
 		DataLen:    binary.BigEndian.Uint32(data[start+4 : end+4]),

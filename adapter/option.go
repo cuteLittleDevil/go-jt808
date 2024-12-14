@@ -47,28 +47,28 @@ func newOptions(opts []Option) *Options {
 	return options
 }
 
-// WithHostPorts 修改运行地址 默认0.0.0.0:808
+// WithHostPorts 修改运行地址 默认0.0.0.0:808.
 func WithHostPorts(address string) Option {
 	return Option{F: func(o *Options) {
 		o.Addr = address
 	}}
 }
 
-// WithTerminals 自定义转发的客户端情况
+// WithTerminals 自定义转发的客户端情况.
 func WithTerminals(terminals ...Terminal) Option {
 	return Option{F: func(o *Options) {
 		o.Terminals = terminals
 	}}
 }
 
-// WithAllowCommand 自定义Follower模式允许的回复命令
+// WithAllowCommand 自定义Follower模式允许的回复命令.
 func WithAllowCommand(commands ...consts.JT808CommandType) Option {
 	return Option{F: func(o *Options) {
 		o.AllowCommand = commands
 	}}
 }
 
-// WithTimeoutRetry 自定义超时重试时间 和自定义各808服务异常断开后 多久尝试重新连接
+// WithTimeoutRetry 自定义超时重试时间 和自定义各808服务异常断开后 多久尝试重新连接.
 func WithTimeoutRetry(timeout time.Duration) Option {
 	return Option{F: func(o *Options) {
 		o.TimeoutRetry = timeout

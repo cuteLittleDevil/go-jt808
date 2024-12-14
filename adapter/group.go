@@ -42,7 +42,6 @@ func newGroup(conn *net.TCPConn, timeoutRetry time.Duration, terminals []Termina
 }
 
 func (g *group) run() {
-
 	go g.reader()
 	go g.write()
 }

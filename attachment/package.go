@@ -166,7 +166,8 @@ func (p *PackageProgress) stageStreamData() error {
 }
 
 func (p *PackageProgress) parseJT808Message() (*jt808.JTMessage, error) {
-	if len(p.historyData) < 10 {
+	const minHeadLen = 12 // jt808报文最小头部
+	if len(p.historyData) < minHeadLen {
 		return nil, ErrInsufficientDataLen
 	}
 	const sign = 0x7e

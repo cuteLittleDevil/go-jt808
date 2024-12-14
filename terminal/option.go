@@ -27,12 +27,14 @@ func newOptions(opts []Option) *Options {
 	return options
 }
 
+// WithCustomHeader 设置自定义header.
 func WithCustomHeader(header *jt808.Header) Option {
 	return Option{F: func(o *Options) {
 		o.Header = header
 	}}
 }
 
+// WithHeader 设置header 根据版本和手机号.
 func WithHeader(protocolVersion consts.ProtocolVersionType, phone string) Option {
 	return Option{F: func(o *Options) {
 		body := "000200000123456789010000"
@@ -70,6 +72,7 @@ func WithHeader(protocolVersion consts.ProtocolVersionType, phone string) Option
 	}}
 }
 
+// WithCustomProtocolHandleFunc 设置自定义协议处理函数.
 func WithCustomProtocolHandleFunc(customFunc func() map[consts.JT808CommandType]Handler) Option {
 	return Option{F: func(o *Options) {
 		o.CustomProtocolHandleFunc = customFunc

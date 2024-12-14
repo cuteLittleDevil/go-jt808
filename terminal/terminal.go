@@ -41,6 +41,7 @@ func New(opts ...Option) *Terminal {
 	}
 }
 
+// CreateDefaultCommandData 创建默认指令.
 func (t *Terminal) CreateDefaultCommandData(commandType consts.JT808CommandType) []byte {
 	if v, ok := t.protocolHandles[commandType]; ok {
 		body := v.Encode()
@@ -53,12 +54,14 @@ func (t *Terminal) CreateDefaultCommandData(commandType consts.JT808CommandType)
 	return nil
 }
 
+// CreateCommandData 创建指令.
 func (t *Terminal) CreateCommandData(commandType consts.JT808CommandType, body []byte) []byte {
 	t.header.ReplyID = uint16(commandType)
 	t.header.PlatformSerialNumber++
 	return t.header.Encode(body)
 }
 
+// ExpectedReply 指令预期回复.
 func (t *Terminal) ExpectedReply(seq uint16, msg string) []byte {
 	jtMsg := jt808.NewJTMessage()
 	data, _ := hex.DecodeString(msg)
@@ -79,6 +82,7 @@ func (t *Terminal) ExpectedReply(seq uint16, msg string) []byte {
 	return header.Encode(body)
 }
 
+// ProtocolDetails 协议详情.
 func (t *Terminal) ProtocolDetails(msg string) string {
 	jtMsg := jt808.NewJTMessage()
 	data, _ := hex.DecodeString(msg)

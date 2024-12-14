@@ -67,7 +67,7 @@ func (d *defaultTerminalEvent) OnLeaveEvent(key string) {
 	slog.Debug("leave",
 		slog.String("key", key),
 		slog.String("create time", d.createTime.Format(time.DateTime)),
-		slog.Float64("online time second", time.Now().Sub(d.createTime).Seconds()))
+		slog.Float64("online time second", time.Since(d.createTime).Seconds()))
 }
 
 func (d *defaultTerminalEvent) OnNotSupportedEvent(msg *Message) {

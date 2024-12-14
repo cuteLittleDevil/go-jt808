@@ -29,6 +29,6 @@ type (
 	} // 	}
 
 	FileEventer interface {
-		OnEvent(*PackageProgress)
+		OnEvent(pack *PackageProgress)
 	}
 )

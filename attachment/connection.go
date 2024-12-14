@@ -85,6 +85,5 @@ func (c *connection) run() {
 				}
 			}
 		}
-
 	}
 }

@@ -61,6 +61,7 @@ func (c *connection) reader() {
 		pack    = newPackageParse()
 		join    = false
 	)
+
 	defer func() {
 		c.stop()
 		clear(curData)
@@ -96,36 +97,49 @@ func (c *connection) reader() {
 						slog.Any("err", err))
 					return
 				}
-				for _, msg := range msgs {
-					if handler, ok := c.handles[msg.Command]; ok {
-						msg.Handler = handler
-						if msg.Command == consts.P8003ReissueSubcontractingRequest {
-							c.reissuePackChan <- msg
-							continue
-						}
-						c.onReadExecutionEvent(msg)
-					} else {
-						c.terminalEvent.OnNotSupportedEvent(msg)
-						continue
-					}
+				if len(msgs) > 0 {
 					if !join {
-						key, err := c.joinFunc(msg, c.activeMsgChan)
-						if err == nil {
+						if err := c.joinHandle(msgs[0]); err == nil {
 							join = true
-							c.key = key
-						}
-						c.terminalEvent.OnJoinEvent(msg, key, err)
-						if errors.Is(err, _errKeyExist) {
+						} else if errors.Is(err, _errKeyExist) {
 							slog.Warn("key",
 								slog.String("effective data", fmt.Sprintf("%x", effectiveData)),
 								slog.Any("err", err))
 							return
 						}
 					}
-					c.msgChan <- msg
+
+					c.handleMessages(msgs)
 				}
 			}
 		}
+	}
+}
+
+func (c *connection) joinHandle(msg *Message) error {
+	key, err := c.joinFunc(msg, c.activeMsgChan)
+	if err == nil {
+		c.key = key
+	}
+
+	c.terminalEvent.OnJoinEvent(msg, key, err)
+	return err
+}
+
+func (c *connection) handleMessages(msgs []*Message) {
+	for _, msg := range msgs {
+		if handler, ok := c.handles[msg.Command]; ok {
+			msg.Handler = handler
+			if msg.Command == consts.P8003ReissueSubcontractingRequest {
+				c.reissuePackChan <- msg
+				continue
+			}
+			c.onReadExecutionEvent(msg)
+		} else {
+			c.terminalEvent.OnNotSupportedEvent(msg)
+			continue
+		}
+		c.msgChan <- msg
 	}
 }
 
@@ -142,19 +156,11 @@ func (c *connection) write() {
 			}
 		case msg, ok := <-c.activeMsgCompleteChan: // 平台主动下发的完成情况
 			if ok {
-				seq := msg.ExtensionFields.PlatformSeq
-				if v, ok := record[seq]; ok {
-					msg.ExtensionFields.PlatformData = v.ExtensionFields.Data
-					msg.ExtensionFields.PlatformCommand = v.Command
-					msg.ExtensionFields.ActiveSend = true
-					c.onWriteExecutionEvent(msg)
-					v.replyChan <- msg
-					delete(record, seq)
-				}
+				c.onActiveEventComplete(msg, record)
 			}
 		case subPackMsg, ok := <-c.reissuePackChan: // 分包补传的
 			if ok {
-				c.subPackReplyEvent(subPackMsg)
+				c.onSubPackReplyEvent(subPackMsg)
 			}
 		case msg, ok := <-c.msgChan: // 终端上传的
 			if ok {
@@ -201,6 +207,7 @@ func (c *connection) defaultReplyEvent(msg *Message) {
 	seq := c.curSeq()
 	header.PlatformSerialNumber = seq
 	data := header.Encode(body)
+
 	if _, err = c.conn.Write(data); err != nil {
 		slog.Warn("write fail",
 			slog.String("data", fmt.Sprintf("%x", data)),
@@ -213,12 +220,13 @@ func (c *connection) defaultReplyEvent(msg *Message) {
 	c.onWriteExecutionEvent(msg)
 }
 
-func (c *connection) subPackReplyEvent(msg *Message) {
+func (c *connection) onSubPackReplyEvent(msg *Message) {
 	header := msg.JTMessage.Header
 	seq := c.curSeq()
 	header.PlatformSerialNumber = seq
 	header.ReplyID = uint16(consts.P8003ReissueSubcontractingRequest)
 	data := header.Encode(msg.JTMessage.Body)
+
 	if _, err := c.conn.Write(data); err != nil {
 		slog.Warn("write fail",
 			slog.String("data", fmt.Sprintf("%x", data)),
@@ -329,12 +337,26 @@ func (c *connection) onActiveRespondEvent(record map[uint16]*ActiveMessage, msg 
 			if tmp.HasRespondFunc(k) {
 				msg.ExtensionFields.PlatformSeq = k
 				c.activeMsgCompleteChan <- msg
+
 				return true
 			}
 		}
 	}
 
 	return false
+}
+
+func (c *connection) onActiveEventComplete(msg *Message, record map[uint16]*ActiveMessage) {
+	seq := msg.ExtensionFields.PlatformSeq
+	if v, ok := record[seq]; ok {
+		msg.ExtensionFields.PlatformData = v.ExtensionFields.Data
+		msg.ExtensionFields.PlatformCommand = v.Command
+		msg.ExtensionFields.ActiveSend = true
+		c.onWriteExecutionEvent(msg)
+		v.replyChan <- msg
+
+		delete(record, seq)
+	}
 }
 
 func (c *connection) onReadExecutionEvent(msg *Message) {
@@ -347,6 +369,7 @@ func (c *connection) onReadExecutionEvent(msg *Message) {
 		return
 	}
 	msg.Handler.OnReadExecutionEvent(msg)
+
 	c.terminalEvent.OnReadExecutionEvent(msg)
 }
 
@@ -360,6 +383,7 @@ func (c *connection) onWriteExecutionEvent(msg *Message) {
 		return
 	}
 	msg.Handler.OnWriteExecutionEvent(*msg)
+
 	c.terminalEvent.OnWriteExecutionEvent(*msg)
 }
 
