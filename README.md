@@ -15,39 +15,44 @@
 | sky-java | java  | 需要部署后 HTTP请求 10秒内拉流 参考格式如下 <br/> http://222.244.144.181:7777/video/1001-1-0-0.live.mp4 | [详情点击](./example/jt1078/README.md#sky-java)  |
 | m7s | go  | 在线播放地址 http://49.234.235.7:8088/mp4/live/jt1078-295696659617-1.mp4 | [详情点击](https://github.com/cuteLittleDevil/m7s-jt1078)  |
 
-### 2. 兼容任意808服务 [详情](./example/adapter/README.md)
+### 2. web服务 [详情](./example/web/README.md)
+``` txt
+终端连接到web服务 通过http下发指令给终端
+```
+
+### 3. 兼容任意808服务 [详情](./example/adapter/README.md)
 ``` txt
 真实设备连接到适配器 适配器产生多个模拟设备连接多个808服务
 ```
 
-### 3. 主动安全附件 [流程](./example/attachment/README.md#主动安全)
+### 4. 主动安全附件 [流程](./example/attachment/README.md#主动安全)
 ``` txt
 默认支持苏标 可自定义各事件扩展（开始、传输进度、补传情况、完成、退出等事件）
 ```
 
-### 4. 存储经纬度 [详情](./README.md#save)
+### 5. 存储经纬度 [详情](./README.md#save)
 ``` txt
 jt808服务端 模拟器 消息队列 数据库都运行在2核4G腾讯云服务器
 测试每秒保存5000条的情况 约5.5小时保存了近1亿的经纬度
 ```
 
-### 5. 分布式集群方案 [详情](./example/distributed_cluster/README.md)
+### 6. 分布式集群方案 [详情](./example/distributed_cluster/README.md)
 ``` txt
 使用nginx把终端分配到多个808服务上 下发数据使用广播
 存在则回复终端应答到新主题 不存在则忽略
 ```
 
-### 6. 平台下发指令给终端 [获取参数](./example/protocol/active_reply/main.go) [立即拍摄](./example/protocol/camera/main.go)
+### 7. 平台下发指令给终端 [获取参数](./example/protocol/active_reply/main.go) [立即拍摄](./example/protocol/camera/main.go)
 ``` txt
 主动下发给设备指令 获取应答的情况
 ```
 
-### 7. 协议交互详情 [代码参考](./example/protocol/register/main.go)
+### 8. 协议交互详情 [代码参考](./example/protocol/register/main.go)
 ``` txt
 使用自定义模拟器 可以轻松生成测试用的报文 有详情描述
 ```
 
-### 8. 自定义协议扩展 [代码参考](./example/protocol/custom_parse/main.go)
+### 9. 自定义协议扩展 [代码参考](./example/protocol/custom_parse/main.go)
 ``` txt
 自定义附加信息处理 获取想要的扩展内容
 ```

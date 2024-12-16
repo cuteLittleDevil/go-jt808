@@ -1,0 +1,13 @@
+server:
+  addr: '0.0.0.0:18000'
+  logDir: ./logs/
+file:
+  addr: '0.0.0.0:18001'
+  dir: ./files/
+  logFile: ./files/file.log
+jt808:
+  addr: '0.0.0.0:808'
+  id: "s1"
+nats:
+  open: false # 不开启的话 默认打印在终端
+  addr: '0.0.0.0:4222'

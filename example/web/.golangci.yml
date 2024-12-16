@@ -1,0 +1,37 @@
+linters:
+  # https://golangci-lint.run/usage/linters/#enabled-by-default
+  enable-all: true
+  disable:
+    - gci # 控制go包的导入顺序
+    - goimports # 格式化代码
+    - gofumpt # 格式化代码
+    - depguard # 允许github包是那些
+    - nlreturn # return break continue 前面需要空一行
+    - wsl # 部分语句需要换行
+    - tagalign # tag标签对齐
+    - mnd # 魔数
+    - gochecknoinits # 不使用init函数
+  fast: true
+
+linters-settings:
+
+
+issues:
+  exclude-files: # 那些文件不用检查
+    - ".*_test.go"
+  exclude-rules:
+    - linters:
+        - funlen
+      source: "OnEvent"
+
+output:
+  # See the dedicated "output" documentation section.
+  option: value
+
+run:
+  tests: false # 不包含测试文件
+  go: "1.23"
+
+severity:
+  # See the dedicated "severity" documentation section.
+  option: value
