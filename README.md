@@ -15,7 +15,7 @@
 | sky-java | java  | 需要部署后 HTTP请求 10秒内拉流 参考格式如下 <br/> http://222.244.144.181:7777/video/1001-1-0-0.live.mp4 | [详情点击](./example/jt1078/README.md#sky-java)  |
 | m7s | go  | 在线播放地址 http://49.234.235.7:8088/mp4/live/jt1078-295696659617-1.mp4 | [详情点击](https://github.com/cuteLittleDevil/m7s-jt1078)  |
 
-### 2. web服务 [详情](./example/web/README.md)
+### 2. web服务 [apifox文档](https://vsh9jdgg5d.apifox.cn/) [web详情](./example/web/README.md)
 ``` txt
 终端连接到web服务 通过http下发指令给终端
 ```

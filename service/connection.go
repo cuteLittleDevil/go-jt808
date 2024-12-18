@@ -293,7 +293,14 @@ func (c *connection) onActiveRespondEvent(record map[uint16]*ActiveMessage, msg 
 		t0x0001 := &model.T0x0001{}
 		tmp.JT808Handler = t0x0001
 		tmp.HasRespondFunc = func(seq uint16) bool {
-			return seq == t0x0001.SerialNumber
+			// 如果是这些命令的话 等待后续应答 如 8801 -> 8805
+			switch record[seq].Command {
+			case consts.P8801CameraShootImmediateCommand, consts.P9003QueryTerminalAudioVideoProperties,
+				consts.P9205QueryResourceList, consts.P9206FileUploadInstructions:
+				return false
+			default:
+				return seq == t0x0001.SerialNumber
+			}
 		}
 	case consts.T0104QueryParameter:
 		t0x0104 := &model.T0x0104{}
