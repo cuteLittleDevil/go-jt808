@@ -18,6 +18,7 @@ import (
 	"web/service/command"
 	"web/service/conf"
 	"web/service/custom"
+	"web/service/record"
 	"web/service/router"
 )
 
@@ -38,6 +39,16 @@ func init() {
 			panic(err)
 		}
 	}
+
+	dirs := []string{
+		conf.GetData().FileConfig.Dir,
+		conf.GetData().JTConfig.CameraDir,
+	}
+	for _, dir := range dirs {
+		_ = os.MkdirAll(dir, os.ModePerm)
+	}
+
+	go record.Run()
 
 	{
 		config := conf.GetData().FileConfig
@@ -86,7 +97,8 @@ func main() {
 				return map[consts.JT808CommandType]service.Handler{
 					consts.T0100Register: &command.Register{AuthInfo: &authInfo},
 					// 如果没有注册过的终端鉴权拒绝 让他触发一次注册报文
-					consts.T0102RegisterAuth: &command.Auth{AuthInfo: &authInfo},
+					consts.T0102RegisterAuth:         &command.Auth{AuthInfo: &authInfo},
+					consts.T0801MultimediaDataUpload: &command.Camera{Dir: config.CameraDir},
 				}
 			}),
 		)

@@ -9,9 +9,12 @@ import (
 	"github.com/cuteLittleDevil/go-jt808/protocol/model"
 	"github.com/cuteLittleDevil/go-jt808/service"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
+	"log/slog"
 	"net/http"
 	"time"
+	"web/service/command"
 	"web/service/conf"
+	"web/service/record"
 )
 
 type (
@@ -45,6 +48,15 @@ func Register(h *server.Hertz) {
 	group.POST("/9202", p9202)
 	group.POST("/9205", p9205)
 	group.POST("/9206", p9206)
+	group.GET("/details", details)
+}
+
+func details(_ context.Context, c *app.RequestContext) {
+	c.JSON(http.StatusOK, Response{
+		Code: http.StatusOK,
+		Msg:  "查询终端详情",
+		Data: record.Details(),
+	})
 }
 
 func p8801(_ context.Context, c *app.RequestContext) {
@@ -179,10 +191,15 @@ func handleCommand(c *app.RequestContext, key string, handle PlatformHandler) {
 			})
 			return
 		}
+		if replyMsg.Command != handle.ReplyProtocol() {
+			slog.Warn("command",
+				slog.String("reality", replyMsg.Command.String()),
+				slog.String("expect", replyMsg.Command.String()))
+		}
 		c.JSON(http.StatusOK, Response{
 			Code: http.StatusOK,
 			Msg:  "success",
-			Data: replyParse(handle.Protocol(), handle.ReplyProtocol(), replyMsg),
+			Data: replyParse(handle.Protocol(), replyMsg.Command, replyMsg),
 		})
 		return
 	}
@@ -193,7 +210,7 @@ func handleCommand(c *app.RequestContext, key string, handle PlatformHandler) {
 	})
 }
 
-func replyParse(command, replyCommand consts.JT808CommandType, msg *service.Message) any {
+func replyParse(commandType, replyCommandType consts.JT808CommandType, msg *service.Message) any {
 	type Reply struct {
 		ErrDescribe     string                  `json:"errDescribe"`
 		Command         consts.JT808CommandType `json:"command"`
@@ -204,16 +221,16 @@ func replyParse(command, replyCommand consts.JT808CommandType, msg *service.Mess
 		Remark          string                  `json:"remark"`
 	}
 	reply := Reply{
-		Command:      command,
-		ReplyCommand: replyCommand,
-		Remark:       fmt.Sprintf("%s -> %s", command.String(), replyCommand.String()),
+		Command:      commandType,
+		ReplyCommand: replyCommandType,
+		Remark:       fmt.Sprintf("%s -> %s", commandType.String(), replyCommandType.String()),
 	}
 	type Handler interface {
 		Parse(jtMsg *jt808.JTMessage) error
 		Protocol() consts.JT808CommandType
 	}
 	var handle Handler
-	switch replyCommand {
+	switch replyCommandType {
 	case consts.T0001GeneralRespond:
 		handle = &model.T0x0001{}
 	case consts.T0104QueryParameter:
@@ -225,10 +242,10 @@ func replyParse(command, replyCommand consts.JT808CommandType, msg *service.Mess
 	case consts.T1206FileUploadCompleteNotice:
 		handle = &model.T0x1206{}
 	case consts.T0805CameraShootImmediately:
-		handle = &model.T0x0805{}
+		handle = &command.CameraShootImmediately{}
 	}
 	if handle == nil {
-		reply.ErrDescribe = fmt.Sprintf("暂未支持的命令 %s", command.String())
+		reply.ErrDescribe = fmt.Sprintf("暂未支持的命令 %s", commandType.String())
 	} else {
 		_ = handle.Parse(msg.JTMessage)
 		reply.Details = handle

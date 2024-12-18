@@ -29,8 +29,10 @@ type (
 	}
 
 	JTConfig struct {
-		Address string `mapstructure:"addr" json:"addr"`
-		ID      string `mapstructure:"id" json:"id"`
+		Address         string `mapstructure:"addr" json:"addr"`
+		ID              string `mapstructure:"id" json:"id"`
+		CameraDir       string `mapstructure:"cameraDir" json:"cameraDir"`
+		CameraURLPrefix string `mapstructure:"cameraURLPrefix" json:"cameraURLPrefix"`
 	}
 )
 
