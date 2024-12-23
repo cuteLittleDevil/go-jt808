@@ -343,8 +343,8 @@ func (c *connection) onActiveRespondEvent(record map[uint16]*ActiveMessage, msg 
 		for k := range record {
 			if tmp.HasRespondFunc(k) {
 				msg.ExtensionFields.PlatformSeq = k
+				msg.ExtensionFields.TerminalCommand = tmp.Protocol()
 				c.activeMsgCompleteChan <- msg
-
 				return true
 			}
 		}

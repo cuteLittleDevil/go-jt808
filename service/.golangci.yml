@@ -19,7 +19,7 @@ linters-settings:
   nestif:
     min-complexity: 15 # if语句复杂度
   funlen:
-    lines: 70 # 检查函数最多多少行
+    lines: 60 # 检查函数最多多少行
     statements: 50 # 检查函数最多多少语句
   mnd:
     checks:
@@ -30,6 +30,10 @@ linters-settings:
 issues:
   exclude-files: # 那些文件不用检查
     - ".*_test.go"
+  exclude-rules:
+    - linters:
+        - funlen
+      source: "onActiveRespondEvent"
 
 output:
   # See the dedicated "output" documentation section.
