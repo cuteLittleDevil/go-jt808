@@ -3,6 +3,8 @@ package record
 import (
 	"fmt"
 	"github.com/cuteLittleDevil/go-jt808/service"
+	"github.com/cuteLittleDevil/go-jt808/shared/consts"
+	"sort"
 	"time"
 )
 
@@ -12,11 +14,12 @@ type (
 	}
 
 	terminalInfo struct {
-		images    []string
-		joinTime  time.Time
-		leaveTime time.Time
-		messages  [10]PackageInfo
-		next      int
+		images     []string
+		joinTime   time.Time
+		leaveTime  time.Time
+		updateTime time.Time
+		messages   [10]PackageInfo
+		next       int
 	}
 
 	PackageInfo struct {
@@ -33,9 +36,13 @@ type (
 		// SubcontractComplete 分包情况是否最终完成了
 		SubcontractComplete bool `json:"subcontractComplete,omitempty"`
 		// TerminalCommand 终端的指令
-		TerminalCommand string `json:"terminalCommand,omitempty"`
+		TerminalCommand consts.JT808CommandType `json:"terminalCommand,omitempty"`
 		// PlatformCommand 平台的指令
-		PlatformCommand string `json:"platformCommand,omitempty"`
+		PlatformCommand consts.JT808CommandType `json:"platformCommand,omitempty"`
+		// Remark 备注
+		Remark string `json:"remark,omitempty"`
+		// UpdateTime 更新时间
+		UpdateTime time.Time `json:"updateTime,omitempty"`
 	}
 )
 
@@ -95,6 +102,7 @@ func AddMessage(msg service.Message) {
 			if v.next >= len(v.messages) {
 				v.next = 0
 			}
+			v.updateTime = time.Now()
 			v.messages[v.next] = toPackageInfo(msg)
 			v.next++
 		}
@@ -115,27 +123,41 @@ func PutImageURL(sim string, savePath string) {
 
 func Details() any {
 	type Response struct {
-		Sim       string          `json:"sim"`
-		Images    []string        `json:"images"`
-		JoinTime  string          `json:"joinTime"`
-		LeaveTime string          `json:"leaveTimes"`
-		Messages  [10]PackageInfo `json:"messages"`
-		IsOnline  bool            `json:"isOnline"`
+		Sim        string        `json:"sim"`
+		Images     []string      `json:"images"`
+		JoinTime   string        `json:"joinTime"`
+		LeaveTime  string        `json:"leaveTime"`
+		UpdateTime string        `json:"updateTime"`
+		Messages   []PackageInfo `json:"messages"`
+		IsOnline   bool          `json:"isOnline"`
 	}
 	list := make([]Response, 0, 1000)
 	ch := make(chan struct{})
 	operationFuncChan <- func(record *manager) {
 		defer close(ch)
 		for k, v := range record.terminals {
+			msgs := make([]PackageInfo, 0, 10)
+			for _, info := range v.messages {
+				if info.Remark != "" {
+					msgs = append(msgs, info)
+				}
+			}
+			sort.Slice(msgs, func(i, j int) bool {
+				return msgs[i].UpdateTime.After(msgs[j].UpdateTime)
+			})
 			list = append(list, Response{
-				Sim:       k,
-				Images:    v.images,
-				JoinTime:  v.joinTime.Format(time.RFC3339),
-				LeaveTime: v.leaveTime.Format(time.RFC3339),
-				Messages:  v.messages,
-				IsOnline:  v.joinTime.After(v.leaveTime),
+				Sim:        k,
+				Images:     v.images,
+				JoinTime:   v.joinTime.Format(time.DateTime),
+				LeaveTime:  v.leaveTime.Format(time.DateTime),
+				UpdateTime: v.updateTime.Format(time.DateTime),
+				Messages:   msgs,
+				IsOnline:   v.joinTime.After(v.leaveTime),
 			})
 		}
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].JoinTime > list[j].JoinTime
+		})
 	}
 	<-ch
 	return list
@@ -143,6 +165,10 @@ func Details() any {
 
 func toPackageInfo(msg service.Message) PackageInfo {
 	ex := msg.ExtensionFields
+	source, target := msg.Command, ex.PlatformCommand
+	if msg.ExtensionFields.ActiveSend {
+		source, target = target, source
+	}
 	return PackageInfo{
 		TerminalSeq:         ex.TerminalSeq,
 		PlatformSeq:         ex.PlatformSeq,
@@ -150,7 +176,9 @@ func toPackageInfo(msg service.Message) PackageInfo {
 		PlatformData:        fmt.Sprintf("%x", ex.PlatformData),
 		ActiveSend:          ex.ActiveSend,
 		SubcontractComplete: ex.SubcontractComplete,
-		TerminalCommand:     msg.Command.String(),
-		PlatformCommand:     ex.PlatformCommand.String(),
+		TerminalCommand:     msg.Command,
+		PlatformCommand:     ex.PlatformCommand,
+		Remark:              fmt.Sprintf("%s -> %s", source, target),
+		UpdateTime:          time.Now(),
 	}
 }

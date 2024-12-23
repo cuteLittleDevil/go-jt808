@@ -3,20 +3,17 @@ package shared
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
 	"github.com/cuteLittleDevil/go-jt808/service"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
-	"github.com/google/uuid"
-	"time"
 )
 
 const (
-	InitSubjectPrefix           = "init"
-	LeaveSubjectPrefix          = "leave"
-	NotSupportedSubjectPrefix   = "not-supported"
-	ReadSubjectPrefix           = "read"
-	WriteSubjectPrefix          = "write"
-	NoticeSubjectPrefix         = "notice"
-	NoticeCompleteSubjectPrefix = "notice-complete"
+	InitSubjectPrefix         = "init"
+	LeaveSubjectPrefix        = "leave"
+	NotSupportedSubjectPrefix = "not-supported"
+	ReadSubjectPrefix         = "read"
+	WriteSubjectPrefix        = "write"
 )
 
 const (
@@ -25,25 +22,40 @@ const (
 	OnNotSupported
 	OnRead
 	OnWrite
-	OnNotice
-	OnNoticeComplete
 )
 
 type (
 	EventData struct {
-		ID           string          `json:"id"`
-		Type         int             `json:"type"`
-		Key          string          `json:"key"`
-		Message      service.Message `json:"message"`
-		Subject      string          `json:"subject"`
-		Notice       Notice          `json:"notice"`
-		ReplySubject string          `json:"replySubject"`
-	}
-	Notice struct {
-		Key              string                  `json:"key"`
-		Command          consts.JT808CommandType `json:"command"`
-		Body             []byte                  `json:"body"`
-		OverTimeDuration time.Duration           `json:"overTimeDuration"`
+		ID              string           `json:"id"`
+		Address         string           `json:"address"`
+		AttachIP        string           `json:"attachIP"`
+		AttachPort      int              `json:"attachPort"`
+		Type            int              `json:"type"`
+		Key             string           `json:"key"`
+		JTMessage       *jt808.JTMessage `json:"message"`
+		Subject         string           `json:"subject"`
+		ExtensionFields struct {
+			// TerminalSeq 终端流水号
+			TerminalSeq uint16 `json:"terminalSeq,omitempty"`
+			// PlatformSeq 平台下发的流水号
+			PlatformSeq uint16 `json:"platformSeq,omitempty"`
+			// TerminalData 终端主动上传的数据 分包合并的情况是全部body合在一起
+			TerminalData []byte `json:"terminalData"`
+			// PlatformData 平台下发的数据
+			PlatformData []byte `json:"platformData"`
+			// ActiveSend 是否是平台主动下发的
+			ActiveSend bool `json:"activeSend,omitempty"`
+			// SubcontractComplete 分包情况是否最终完成了
+			SubcontractComplete bool `json:"subcontractComplete,omitempty"`
+			// CurrentCommand 当前的指令
+			CurrentCommand consts.JT808CommandType `json:"currentCommand,omitempty"`
+			// TerminalCommand 终端的指令
+			TerminalCommand consts.JT808CommandType `json:"terminalCommand,omitempty"`
+			// PlatformCommand 平台的指令
+			PlatformCommand consts.JT808CommandType `json:"platformCommand,omitempty"`
+			// Err 异常情况
+			Err error `json:"err,omitempty"`
+		}
 	}
 )
 
@@ -51,9 +63,8 @@ type EventDataOption struct {
 	F func(o *EventData)
 }
 
-func NewEventData(ID string, Type int, key string, opts ...EventDataOption) *EventData {
+func NewEventData(Type int, key string, opts ...EventDataOption) *EventData {
 	tmp := &EventData{
-		ID:   ID,
 		Type: Type,
 		Key:  key,
 	}
@@ -65,15 +76,56 @@ func NewEventData(ID string, Type int, key string, opts ...EventDataOption) *Eve
 
 func WithMessage(msg service.Message) EventDataOption {
 	return EventDataOption{F: func(o *EventData) {
-		o.Message = msg
+		o.JTMessage = msg.JTMessage
+		ex := msg.ExtensionFields
+		o.ExtensionFields = struct {
+			// TerminalSeq 终端流水号
+			TerminalSeq uint16 `json:"terminalSeq,omitempty"`
+			// PlatformSeq 平台下发的流水号
+			PlatformSeq uint16 `json:"platformSeq,omitempty"`
+			// TerminalData 终端主动上传的数据 分包合并的情况是全部body合在一起
+			TerminalData []byte `json:"terminalData"`
+			// PlatformData 平台下发的数据
+			PlatformData []byte `json:"platformData"`
+			// ActiveSend 是否是平台主动下发的
+			ActiveSend bool `json:"activeSend,omitempty"`
+			// SubcontractComplete 分包情况是否最终完成了
+			SubcontractComplete bool `json:"subcontractComplete,omitempty"`
+			// CurrentCommand 当前的指令
+			CurrentCommand consts.JT808CommandType `json:"currentCommand,omitempty"`
+			// TerminalCommand 终端的指令
+			TerminalCommand consts.JT808CommandType `json:"terminalCommand,omitempty"`
+			// PlatformCommand 平台的指令
+			PlatformCommand consts.JT808CommandType `json:"platformCommand,omitempty"`
+			// Err 异常情况
+			Err error `json:"err,omitempty"`
+		}{
+			TerminalSeq:         ex.TerminalSeq,
+			PlatformSeq:         ex.PlatformSeq,
+			TerminalData:        ex.TerminalData,
+			PlatformData:        ex.PlatformData,
+			ActiveSend:          ex.ActiveSend,
+			SubcontractComplete: ex.SubcontractComplete,
+			CurrentCommand:      msg.Command,
+			TerminalCommand:     ex.TerminalCommand,
+			PlatformCommand:     ex.PlatformCommand,
+			Err:                 ex.Err,
+		}
 		o.Subject = o.createSubject(uint16(msg.Command))
 	}}
 }
 
-func WithNotice(n Notice) EventDataOption {
+func WithIDAndAddress(id string, address string) EventDataOption {
 	return EventDataOption{F: func(o *EventData) {
-		o.Notice = n
-		o.ReplySubject = o.createSubject(uuid.New().String())
+		o.ID = id
+		o.Address = address
+	}}
+}
+
+func WithAttachIPAndPort(attachIP string, attachPort int) EventDataOption {
+	return EventDataOption{F: func(o *EventData) {
+		o.AttachIP = attachIP
+		o.AttachPort = attachPort
 	}}
 }
 
@@ -86,7 +138,7 @@ func (d *EventData) Parse(data []byte) error {
 	return json.Unmarshal(data, d)
 }
 
-func (d *EventData) createSubject(data any) string {
+func (d *EventData) createSubject(command uint16) string {
 	prefix := ""
 	switch d.Type {
 	case OnInit:
@@ -99,11 +151,8 @@ func (d *EventData) createSubject(data any) string {
 		prefix = ReadSubjectPrefix
 	case OnWrite:
 		prefix = WriteSubjectPrefix
-	case OnNotice:
-		prefix = NoticeSubjectPrefix
-	case OnNoticeComplete:
-		prefix = NoticeCompleteSubjectPrefix
 	}
-	// 固定前缀-服务ID-手机号-自定义数据 （自定义数据 1-读到消息用指令 2-通知完成用uuid)
-	return fmt.Sprintf("%s.%s.%s.%v", prefix, d.ID, d.Key, data)
+	// 固定事件前缀.服务ID.手机号.报文类型
+	sim := d.JTMessage.Header.TerminalPhoneNo
+	return fmt.Sprintf("%s.%s.%s.%d", prefix, d.ID, sim, command)
 }

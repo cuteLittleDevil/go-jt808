@@ -1,6 +1,18 @@
 # web
 
-<h2 id="service"> service </h2>
+![架构图](./testdata/web架构图.jpg)
 
-- 输出详情 [代码参考](./service/main.go)
 - apifox文档 https://vsh9jdgg5d.apifox.cn/
+- nats参考 https://github.com/nats-io/nats-server/releases
+
+```
+./nats-service
+```
+
+运行
+```
+cd ./service && go build && ./service
+cd ./notice && go build && ./notice
+cd ./alarm && go build && ./alarm
+```
+

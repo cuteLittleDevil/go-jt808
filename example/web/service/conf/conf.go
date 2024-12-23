@@ -23,9 +23,11 @@ type (
 	}
 
 	FileConfig struct {
-		Address string `mapstructure:"addr" json:"addr"`
-		Dir     string `mapstructure:"dir" json:"dir"`
-		LogFile string `mapstructure:"logFile" json:"logFile"`
+		Address    string `mapstructure:"addr" json:"addr"`
+		Dir        string `mapstructure:"dir" json:"dir"`
+		LogFile    string `mapstructure:"logFile" json:"logFile"`
+		AttachIP   string `mapstructure:"attachIP" json:"attachIP"`
+		AttachPort int    `mapstructure:"attachPort" json:"attachPort"`
 	}
 
 	JTConfig struct {
@@ -33,6 +35,7 @@ type (
 		ID              string `mapstructure:"id" json:"id"`
 		CameraDir       string `mapstructure:"cameraDir" json:"cameraDir"`
 		CameraURLPrefix string `mapstructure:"cameraURLPrefix" json:"cameraURLPrefix"`
+		HttpPrefix      string `mapstructure:"httpPrefix" json:"httpPrefix"`
 	}
 )
 

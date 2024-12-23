@@ -9,7 +9,9 @@ import (
 	"github.com/cuteLittleDevil/go-jt808/attachment"
 	"github.com/cuteLittleDevil/go-jt808/service"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
+	"github.com/hertz-contrib/cors"
 	"github.com/hertz-contrib/pprof"
+	"github.com/natefinch/lumberjack"
 	"log/slog"
 	"net/http"
 	"os"
@@ -26,12 +28,19 @@ func init() {
 	if err := conf.InitConfig("./config.yaml"); err != nil {
 		panic(err)
 	}
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+	writeSyncer := &lumberjack.Logger{
+		Filename:   "./app.log",
+		MaxSize:    1,    // 单位是MB，日志文件最大为1MB
+		MaxBackups: 3,    // 最多保留3个旧文件
+		MaxAge:     28,   // 最大保存天数为28天
+		Compress:   true, // 是否压缩旧文件
+	}
+	handler := slog.NewTextHandler(writeSyncer, &slog.HandlerOptions{
 		AddSource:   true,
 		Level:       slog.LevelDebug,
 		ReplaceAttr: nil,
-	}))
-	slog.SetDefault(logger)
+	})
+	slog.SetDefault(slog.New(handler))
 	hlog.SetLevel(3)
 
 	if conf.GetData().NatsConfig.Open {
@@ -71,6 +80,13 @@ func main() {
 		server.WithHostPorts(conf.GetData().ServerConfig.Address),
 		server.WithHandleMethodNotAllowed(true),
 	)
+	h.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type"},
+		AllowCredentials: true,
+		MaxAge:           6 * time.Hour,
+	}))
 	pprof.Register(h)
 
 	{
@@ -80,7 +96,7 @@ func main() {
 			service.WithNetwork("tcp"),
 			service.WithCustomTerminalEventer(func() service.TerminalEventer {
 				// 自定义终端事件 终端进入 离开 读写报文事件
-				return custom.NewTerminalEvent(config.ID)
+				return custom.NewTerminalEvent()
 			}),
 			// 自定义key key和终端一一对应 默认使用手机号
 			service.WithKeyFunc(func(msg *service.Message) (string, bool) {
@@ -129,7 +145,7 @@ func appFS() *app.FS {
 		CacheDuration:        5 * time.Second,
 		IndexNames:           []string{"*index.html"},
 		Compress:             true,
-		CompressedFileSuffix: "hertz",
+		CompressedFileSuffix: "hertz-jt808-web",
 		AcceptByteRange:      true,
 	}
 }

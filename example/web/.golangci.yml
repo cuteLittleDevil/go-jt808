@@ -11,6 +11,7 @@ linters:
     - tagalign # tag标签对齐
     - mnd # 魔数
     - gochecknoinits # 不使用init函数
+    - tagliatelle # json命名
   fast: true
 
 linters-settings:

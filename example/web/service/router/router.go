@@ -12,29 +12,10 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+	"web/internal/shared"
 	"web/service/command"
 	"web/service/conf"
 	"web/service/record"
-)
-
-type (
-	PlatformHandler interface {
-		Encode() []byte
-		Protocol() consts.JT808CommandType
-		ReplyProtocol() consts.JT808CommandType
-	}
-
-	Request[T PlatformHandler] struct {
-		Key     string                  `json:"key" binding:"required"`
-		Command consts.JT808CommandType `json:"command" binding:"required"`
-		Data    T                       `json:"data" binding:"required"`
-	}
-
-	Response struct {
-		Code int    `json:"code"`
-		Msg  string `json:"msg"`
-		Data any    `json:"data"`
-	}
 )
 
 func Register(h *server.Hertz) {
@@ -48,21 +29,35 @@ func Register(h *server.Hertz) {
 	group.POST("/9202", p9202)
 	group.POST("/9205", p9205)
 	group.POST("/9206", p9206)
+	group.POST("/9208", p9208)
 	group.GET("/details", details)
 }
 
 func details(_ context.Context, c *app.RequestContext) {
-	c.JSON(http.StatusOK, Response{
+	c.JSON(http.StatusOK, shared.Response{
 		Code: http.StatusOK,
 		Msg:  "查询终端详情",
 		Data: record.Details(),
 	})
 }
 
-func p8801(_ context.Context, c *app.RequestContext) {
-	var req Request[*model.P0x8801]
+func p9208(_ context.Context, c *app.RequestContext) {
+	var req shared.Request[*model.P0x9208]
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, Response{
+		c.JSON(http.StatusOK, shared.Response{
+			Code: http.StatusBadRequest,
+			Msg:  "参数错误",
+			Data: err.Error(),
+		})
+		return
+	}
+	handleCommand(c, req.Key, req.Data)
+}
+
+func p8801(_ context.Context, c *app.RequestContext) {
+	var req shared.Request[*model.P0x8801]
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusOK, shared.Response{
 			Code: http.StatusBadRequest,
 			Msg:  "参数错误",
 			Data: err.Error(),
@@ -73,9 +68,9 @@ func p8801(_ context.Context, c *app.RequestContext) {
 }
 
 func p9206(_ context.Context, c *app.RequestContext) {
-	var req Request[*model.P0x9206]
+	var req shared.Request[*model.P0x9206]
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, Response{
+		c.JSON(http.StatusOK, shared.Response{
 			Code: http.StatusBadRequest,
 			Msg:  "参数错误",
 			Data: err.Error(),
@@ -86,9 +81,9 @@ func p9206(_ context.Context, c *app.RequestContext) {
 }
 
 func p9205(_ context.Context, c *app.RequestContext) {
-	var req Request[*model.P0x9205]
+	var req shared.Request[*model.P0x9205]
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, Response{
+		c.JSON(http.StatusOK, shared.Response{
 			Code: http.StatusBadRequest,
 			Msg:  "参数错误",
 			Data: err.Error(),
@@ -99,9 +94,9 @@ func p9205(_ context.Context, c *app.RequestContext) {
 }
 
 func p9202(_ context.Context, c *app.RequestContext) {
-	var req Request[*model.P0x9202]
+	var req shared.Request[*model.P0x9202]
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, Response{
+		c.JSON(http.StatusOK, shared.Response{
 			Code: http.StatusBadRequest,
 			Msg:  "参数错误",
 			Data: err.Error(),
@@ -112,9 +107,9 @@ func p9202(_ context.Context, c *app.RequestContext) {
 }
 
 func p9201(_ context.Context, c *app.RequestContext) {
-	var req Request[*model.P0x9201]
+	var req shared.Request[*model.P0x9201]
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, Response{
+		c.JSON(http.StatusOK, shared.Response{
 			Code: http.StatusBadRequest,
 			Msg:  "参数错误",
 			Data: err.Error(),
@@ -125,9 +120,9 @@ func p9201(_ context.Context, c *app.RequestContext) {
 }
 
 func p9102(_ context.Context, c *app.RequestContext) {
-	var req Request[*model.P0x9102]
+	var req shared.Request[*model.P0x9102]
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, Response{
+		c.JSON(http.StatusOK, shared.Response{
 			Code: http.StatusBadRequest,
 			Msg:  "参数错误",
 			Data: err.Error(),
@@ -138,9 +133,9 @@ func p9102(_ context.Context, c *app.RequestContext) {
 }
 
 func p9101(_ context.Context, c *app.RequestContext) {
-	var req Request[*model.P0x9101]
+	var req shared.Request[*model.P0x9101]
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, Response{
+		c.JSON(http.StatusOK, shared.Response{
 			Code: http.StatusBadRequest,
 			Msg:  "参数错误",
 			Data: err.Error(),
@@ -151,9 +146,9 @@ func p9101(_ context.Context, c *app.RequestContext) {
 }
 
 func p8103(_ context.Context, c *app.RequestContext) {
-	var req Request[*model.P0x8103]
+	var req shared.Request[*model.P0x8103]
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, Response{
+		c.JSON(http.StatusOK, shared.Response{
 			Code: http.StatusBadRequest,
 			Msg:  "参数错误",
 			Data: err.Error(),
@@ -164,9 +159,9 @@ func p8103(_ context.Context, c *app.RequestContext) {
 }
 
 func p8104(_ context.Context, c *app.RequestContext) {
-	var req Request[*model.P0x8104]
+	var req shared.Request[*model.P0x8104]
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, Response{
+		c.JSON(http.StatusOK, shared.Response{
 			Code: http.StatusBadRequest,
 			Msg:  "参数错误",
 			Data: err.Error(),
@@ -176,7 +171,7 @@ func p8104(_ context.Context, c *app.RequestContext) {
 	handleCommand(c, req.Key, req.Data)
 }
 
-func handleCommand(c *app.RequestContext, key string, handle PlatformHandler) {
+func handleCommand(c *app.RequestContext, key string, handle shared.PlatformHandler) {
 	if v, ok := c.Value(conf.GetData().JTConfig.ID).(*service.GoJT808); ok {
 		replyMsg := v.SendActiveMessage(&service.ActiveMessage{
 			Key:              key,
@@ -185,7 +180,7 @@ func handleCommand(c *app.RequestContext, key string, handle PlatformHandler) {
 			OverTimeDuration: 3 * time.Second,
 		})
 		if replyMsg.ExtensionFields.Err != nil {
-			c.JSON(http.StatusOK, Response{
+			c.JSON(http.StatusOK, shared.Response{
 				Code: http.StatusInternalServerError,
 				Msg:  replyMsg.ExtensionFields.Err.Error(),
 			})
@@ -196,7 +191,7 @@ func handleCommand(c *app.RequestContext, key string, handle PlatformHandler) {
 				slog.String("reality", replyMsg.Command.String()),
 				slog.String("expect", replyMsg.Command.String()))
 		}
-		c.JSON(http.StatusOK, Response{
+		c.JSON(http.StatusOK, shared.Response{
 			Code: http.StatusOK,
 			Msg:  "success",
 			Data: replyParse(handle.Protocol(), replyMsg.Command, replyMsg),
@@ -204,7 +199,7 @@ func handleCommand(c *app.RequestContext, key string, handle PlatformHandler) {
 		return
 	}
 
-	c.JSON(http.StatusOK, Response{
+	c.JSON(http.StatusOK, shared.Response{
 		Code: http.StatusInternalServerError,
 		Msg:  "jt808服务不存在",
 	})

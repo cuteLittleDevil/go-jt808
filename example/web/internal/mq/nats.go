@@ -2,11 +2,9 @@ package mq
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/nats-io/nats.go"
 	"log/slog"
-	"time"
 )
 
 var _natsManage *Manage
@@ -42,13 +40,8 @@ func (m *Manage) Run(handlers map[string]nats.MsgHandler) {
 	}
 }
 
-func (m *Manage) SubNoticeComplete(subject string, duration time.Duration) (data []byte, err error) {
-	ch := make(chan []byte)
-	ctx, cancel := context.WithTimeout(context.Background(), duration)
-	defer func() {
-		close(ch)
-		cancel()
-	}()
+func (m *Manage) SubNotice(ctx context.Context, subject string) (chan []byte, error) {
+	ch := make(chan []byte, 10)
 	sub, err := m.conn.Subscribe(subject, func(msg *nats.Msg) {
 		select {
 		case <-ctx.Done():
@@ -57,17 +50,12 @@ func (m *Manage) SubNoticeComplete(subject string, duration time.Duration) (data
 			ch <- msg.Data
 		}
 	})
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		_ = sub.Unsubscribe()
+	go func() {
+		select {
+		case <-ctx.Done():
+			_ = sub.Unsubscribe()
+			close(ch)
+		}
 	}()
-	select {
-	case tmp := <-ch:
-		data = tmp
-	case <-ctx.Done():
-		err = errors.New(fmt.Sprintf("timeout sub %s", subject))
-	}
-	return
+	return ch, err
 }

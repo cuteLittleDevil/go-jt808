@@ -6,6 +6,7 @@ import (
 	"github.com/cuteLittleDevil/go-jt808/service"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 	"log/slog"
+	"strings"
 	"web/internal/mq"
 	"web/internal/shared"
 	"web/service/conf"
@@ -13,12 +14,21 @@ import (
 )
 
 type terminalEvent struct {
-	id  string
-	key string
+	id         string
+	httpPrefix string
+	attachIP   string
+	attachPort int
+	key        string
 }
 
-func NewTerminalEvent(id string) service.TerminalEventer {
-	return &terminalEvent{id: id}
+func NewTerminalEvent() service.TerminalEventer {
+	return &terminalEvent{
+		id:         conf.GetData().JTConfig.ID,
+		httpPrefix: conf.GetData().JTConfig.HttpPrefix,
+		attachIP:   conf.GetData().FileConfig.AttachIP,
+		attachPort: conf.GetData().FileConfig.AttachPort,
+		key:        "",
+	}
 }
 
 func (t *terminalEvent) OnJoinEvent(msg *service.Message, key string, err error) {
@@ -26,7 +36,8 @@ func (t *terminalEvent) OnJoinEvent(msg *service.Message, key string, err error)
 		record.Join(*msg)
 		fmt.Println("加入", msg.Command.String(), key)
 		t.key = key
-		data := shared.NewEventData(t.id, shared.OnInit, key,
+		data := shared.NewEventData(shared.OnInit, key,
+			shared.WithIDAndAddress(t.id, t.httpPrefix),
 			shared.WithMessage(*msg))
 		t.pub(data)
 	}
@@ -36,7 +47,8 @@ func (t *terminalEvent) OnLeaveEvent(key string) {
 	fmt.Println("离开", key)
 	jtMsg := jt808.NewJTMessage()
 	jtMsg.Header.TerminalPhoneNo = key
-	data := shared.NewEventData(t.id, shared.OnLeave, key,
+	data := shared.NewEventData(shared.OnLeave, key,
+		shared.WithIDAndAddress(t.id, t.httpPrefix),
 		shared.WithMessage(service.Message{
 			JTMessage: jtMsg,
 		}))
@@ -45,26 +57,29 @@ func (t *terminalEvent) OnLeaveEvent(key string) {
 }
 
 func (t *terminalEvent) OnNotSupportedEvent(msg *service.Message) {
-	data := shared.NewEventData(t.id, shared.OnNotSupported, t.key,
+	data := shared.NewEventData(shared.OnNotSupported, t.key,
+		shared.WithIDAndAddress(t.id, t.httpPrefix),
 		shared.WithMessage(*msg))
 	t.pub(data)
 }
 
 func (t *terminalEvent) OnReadExecutionEvent(msg *service.Message) {
-	go record.AddMessage(*msg)
 	if msg.Command == consts.T0801MultimediaDataUpload {
 		// 直接保存在本地处理了 不需要传其他地方去
 		return
 	}
-	data := shared.NewEventData(t.id, shared.OnRead, t.key,
+	data := shared.NewEventData(shared.OnRead, t.key,
+		shared.WithIDAndAddress(t.id, t.httpPrefix),
+		shared.WithAttachIPAndPort(t.attachIP, t.attachPort),
 		shared.WithMessage(*msg))
-	fmt.Println(fmt.Sprintf("---- %x", msg.ExtensionFields.TerminalData))
 	t.pub(data)
 }
 
 func (t *terminalEvent) OnWriteExecutionEvent(msg service.Message) {
 	go record.AddMessage(msg)
-	data := shared.NewEventData(t.id, shared.OnWrite, t.key,
+	data := shared.NewEventData(shared.OnWrite, t.key,
+		shared.WithIDAndAddress(t.id, t.httpPrefix),
+		shared.WithAttachIPAndPort(t.attachIP, t.attachPort),
 		shared.WithMessage(msg))
 	t.pub(data)
 	if msg.ExtensionFields.ActiveSend {
@@ -84,7 +99,12 @@ func (t *terminalEvent) pub(data *shared.EventData) {
 	} else {
 		switch data.Type {
 		case shared.OnRead, shared.OnWrite:
-			//fmt.Println(fmt.Sprintf("主题[%s] 数据[%s]\n", sub, data.Message.JTMessage.Header.String()))
+			str := data.JTMessage.Header.String()
+			str = strings.ReplaceAll(str, "\t", "")
+			str = strings.ReplaceAll(str, "\n", "")
+			slog.Debug("pub",
+				slog.String("sub", sub),
+				slog.Any("data", str))
 		default:
 		}
 	}

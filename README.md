@@ -1,3 +1,7 @@
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/cuteLittleDevil/go-jt808?tab=MIT-1-ov-file)
+[![Doc](https://img.shields.io/badge/doc-go--jt808-blue.svg)](https://pkg.go.dev/github.com/cuteLittleDevil/go-jt808#section-directories)
+[![WEB](https://img.shields.io/badge/example-web-blue.svg)](https://github.com/cuteLittleDevil/go-jt808/tree/main/example/web)
+
 # go-jt808
 
 - 本项目已更好支持二次开发为目标 可通过各种自定义事件去完成相应功能
@@ -15,44 +19,39 @@
 | sky-java | java  | 需要部署后 HTTP请求 10秒内拉流 参考格式如下 <br/> http://222.244.144.181:7777/video/1001-1-0-0.live.mp4 | [详情点击](./example/jt1078/README.md#sky-java)  |
 | m7s | go  | 在线播放地址 http://49.234.235.7:8088/mp4/live/jt1078-295696659617-1.mp4 | [详情点击](https://github.com/cuteLittleDevil/m7s-jt1078)  |
 
-### 2. web服务 [apifox文档](https://vsh9jdgg5d.apifox.cn/) [web详情](./example/web/README.md)
-``` txt
-终端连接到web服务 通过http下发指令给终端
-```
-
-### 3. 兼容任意808服务 [详情](./example/adapter/README.md)
+### 2. 兼容任意808服务 [详情](./example/adapter/README.md)
 ``` txt
 真实设备连接到适配器 适配器产生多个模拟设备连接多个808服务
 ```
 
-### 4. 主动安全附件 [流程](./example/attachment/README.md#主动安全)
+### 3. 主动安全附件 [流程](./example/attachment/README.md#主动安全)
 ``` txt
 默认支持苏标 可自定义各事件扩展（开始、传输进度、补传情况、完成、退出等事件）
 ```
 
-### 5. 存储经纬度 [详情](./README.md#save)
+### 4. 存储经纬度 [详情](./README.md#save)
 ``` txt
 jt808服务端 模拟器 消息队列 数据库都运行在2核4G腾讯云服务器
 测试每秒保存5000条的情况 约5.5小时保存了近1亿的经纬度
 ```
 
-### 6. 分布式集群方案 [详情](./example/distributed_cluster/README.md)
+### 5. 分布式集群方案 [详情](./example/distributed_cluster/README.md)
 ``` txt
 使用nginx把终端分配到多个808服务上 下发数据使用广播
 存在则回复终端应答到新主题 不存在则忽略
 ```
 
-### 7. 平台下发指令给终端 [获取参数](./example/protocol/active_reply/main.go) [立即拍摄](./example/protocol/camera/main.go)
+### 6. 平台下发指令给终端 [获取参数](./example/protocol/active_reply/main.go) [立即拍摄](./example/protocol/camera/main.go)
 ``` txt
 主动下发给设备指令 获取应答的情况
 ```
 
-### 8. 协议交互详情 [代码参考](./example/protocol/register/main.go)
+### 7. 协议交互详情 [代码参考](./example/protocol/register/main.go)
 ``` txt
 使用自定义模拟器 可以轻松生成测试用的报文 有详情描述
 ```
 
-### 9. 自定义协议扩展 [代码参考](./example/protocol/custom_parse/main.go)
+### 8. 自定义协议扩展 [代码参考](./example/protocol/custom_parse/main.go)
 ``` txt
 自定义附加信息处理 获取想要的扩展内容
 ```
@@ -76,49 +75,49 @@ jt808服务端 模拟器 消息队列 数据库都运行在2核4G腾讯云服务
 package main
 
 import (
-	"github.com/cuteLittleDevil/go-jt808/attachment"
-	"github.com/cuteLittleDevil/go-jt808/service"
-	"github.com/cuteLittleDevil/go-jt808/shared/consts"
-	"log/slog"
-	"os"
+"github.com/cuteLittleDevil/go-jt808/attachment"
+"github.com/cuteLittleDevil/go-jt808/service"
+"github.com/cuteLittleDevil/go-jt808/shared/consts"
+"log/slog"
+"os"
 )
 
 var goJt808 *service.GoJT808
 
 func init() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		AddSource:   true,
-		Level:       slog.LevelDebug,
-		ReplaceAttr: nil,
-	}))
-	slog.SetDefault(logger)
+logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+AddSource:   true,
+Level:       slog.LevelDebug,
+ReplaceAttr: nil,
+}))
+slog.SetDefault(logger)
 
-	attach := attachment.New(
-		attachment.WithNetwork("tcp"),
-		attachment.WithHostPorts("0.0.0.0:10001"),
-		// 默认苏标 支持黑标 广东标 湖南标 四川标
-		attachment.WithActiveSafetyType(consts.ActiveSafetyJS),
-		attachment.WithFileEventerFunc(func() attachment.FileEventer {
-			return &meFileEvent{} // 自定义文件处理 开始 结束 当前进度 补传 完成等事件
-		}),
-	)
-	go attach.Run()
+attach := attachment.New(
+attachment.WithNetwork("tcp"),
+attachment.WithHostPorts("0.0.0.0:10001"),
+// 默认苏标 支持黑标 广东标 湖南标 四川标
+attachment.WithActiveSafetyType(consts.ActiveSafetyJS),
+attachment.WithFileEventerFunc(func() attachment.FileEventer {
+return &meFileEvent{} // 自定义文件处理 开始 结束 当前进度 补传 完成等事件
+}),
+)
+go attach.Run()
 }
 
 func main() {
-	goJt808 = service.New(
-		service.WithHostPorts("0.0.0.0:808"),
-		service.WithNetwork("tcp"),
-		service.WithCustomTerminalEventer(func() service.TerminalEventer {
-			return &meTerminal{} // 自定义终端事件 终端进入 离开 读写报文事件
-		}),
-		service.WithCustomHandleFunc(func() map[consts.JT808CommandType]service.Handler {
-			return map[consts.JT808CommandType]service.Handler{
-				consts.T0200LocationReport: &meLocation{}, // 自定义0x0200位置解析等
-			}
-		}),
-	)
-	goJt808.Run()
+goJt808 = service.New(
+service.WithHostPorts("0.0.0.0:808"),
+service.WithNetwork("tcp"),
+service.WithCustomTerminalEventer(func() service.TerminalEventer {
+return &meTerminal{} // 自定义终端事件 终端进入 离开 读写报文事件
+}),
+service.WithCustomHandleFunc(func() map[consts.JT808CommandType]service.Handler {
+return map[consts.JT808CommandType]service.Handler{
+consts.T0200LocationReport: &meLocation{}, // 自定义0x0200位置解析等
+}
+}),
+)
+goJt808.Run()
 }
 
 ```

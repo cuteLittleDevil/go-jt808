@@ -3,13 +3,16 @@ server:
   logDir: ./logs/
 file:
   addr: '0.0.0.0:18001'
+  attachIP: '49.234.235.7' # 告诉终端附件的外网IP
+  attachPort: 18001 # 告诉终端附件的外网端口
   dir: ./static/files/
   logFile: ./static/files/file.log
 jt808:
   addr: '0.0.0.0:808'
   id: "s1"
+  httpPrefix: http://127.0.0.1:18000 # 用于其他服务回调
   cameraDir: ./static/files/camera/ # 拍照录像的保存目录
   cameraURLPrefix: http://127.0.0.1:18000/files/camera/
 nats:
-  open: false # 不开启的话 默认打印在终端
-  addr: '0.0.0.0:4222'
+  open: true # 不开启的话 默认打印在终端
+  addr: '192.168.10.151:4222'
