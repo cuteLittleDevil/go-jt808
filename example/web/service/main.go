@@ -45,7 +45,7 @@ func init() {
 
 	if conf.GetData().NatsConfig.Open {
 		if err := mq.Init(conf.GetData().NatsConfig.Address); err != nil {
-			panic(err)
+			panic(fmt.Sprintf("也可以选择关闭nats模式 启动失败: %v", err))
 		}
 	}
 
@@ -126,6 +126,7 @@ func main() {
 
 	router.Register(h)
 	h.StaticFS("/", appFS())
+	h.StaticFile("/index.html", "tstrtvs.html")
 	h.Spin()
 }
 

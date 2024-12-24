@@ -4,6 +4,7 @@
 
 - apifox文档 https://vsh9jdgg5d.apifox.cn/
 - nats参考 https://github.com/nats-io/nats-server/releases
+- jt1078流媒体参考 https://github.com/cuteLittleDevil/go-jt808/tree/main/example/jt1078#-rtvs-
 
 ```
 ./nats-service

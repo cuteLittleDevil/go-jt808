@@ -82,7 +82,7 @@ func (t *terminalEvent) OnWriteExecutionEvent(msg service.Message) {
 		shared.WithAttachIPAndPort(t.attachIP, t.attachPort),
 		shared.WithMessage(msg))
 	t.pub(data)
-	if msg.ExtensionFields.ActiveSend {
+	if msg.ExtensionFields.ActiveSend && !conf.GetData().NatsConfig.Open {
 		fmt.Println(fmt.Sprintf("主动发送的数据: %x", msg.ExtensionFields.PlatformData))
 		fmt.Println(fmt.Sprintf("设备回复的数据: %x", msg.ExtensionFields.TerminalData))
 	}
