@@ -9,7 +9,7 @@ file:
   logFile: ./static/files/file.log
 jt808:
   addr: '0.0.0.0:808'
-  id: "s1"
+  id: "s1" # 默认消息队列主题是
   httpPrefix: http://127.0.0.1:18000 # 用于其他服务回调
   cameraDir: ./static/files/camera/ # 拍照录像的保存目录
   cameraURLPrefix: http://127.0.0.1:18000/files/camera/

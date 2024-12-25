@@ -50,7 +50,7 @@ func send9208(data shared.EventData, p9208AlarmSign model.P9208AlarmSign) {
 
 	client := resty.New()
 	client.SetTimeout(5 * time.Second)
-	url := data.Address + conf.GetData().ServerConfig.OnFileApi
+	url := data.HTTPPrefix + conf.GetData().ServerConfig.OnFileApi
 	var result shared.Response
 	_, err := client.R().
 		SetBody(shared.Request[*model.P0x9208]{

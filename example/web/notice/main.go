@@ -41,8 +41,8 @@ func main() {
 		address  string
 		natsAddr string
 	)
-	flag.StringVar(&address, "address", "0.0.0.0:18002", "server address")
-	flag.StringVar(&natsAddr, "nats", "192.168.10.151:4222", "nats address")
+	flag.StringVar(&address, "address", "0.0.0.0:18003", "server address")
+	flag.StringVar(&natsAddr, "nats", "127.0.0.1:4222", "nats address")
 	flag.Parse()
 
 	if err := mq.Init(natsAddr); err != nil {

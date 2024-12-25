@@ -37,7 +37,7 @@ func (t *terminalEvent) OnJoinEvent(msg *service.Message, key string, err error)
 		fmt.Println("加入", msg.Command.String(), key)
 		t.key = key
 		data := shared.NewEventData(shared.OnInit, key,
-			shared.WithIDAndAddress(t.id, t.httpPrefix),
+			shared.WithIDAndHTTPPrefix(t.id, t.httpPrefix),
 			shared.WithMessage(*msg))
 		t.pub(data)
 	}
@@ -48,7 +48,7 @@ func (t *terminalEvent) OnLeaveEvent(key string) {
 	jtMsg := jt808.NewJTMessage()
 	jtMsg.Header.TerminalPhoneNo = key
 	data := shared.NewEventData(shared.OnLeave, key,
-		shared.WithIDAndAddress(t.id, t.httpPrefix),
+		shared.WithIDAndHTTPPrefix(t.id, t.httpPrefix),
 		shared.WithMessage(service.Message{
 			JTMessage: jtMsg,
 		}))
@@ -58,7 +58,7 @@ func (t *terminalEvent) OnLeaveEvent(key string) {
 
 func (t *terminalEvent) OnNotSupportedEvent(msg *service.Message) {
 	data := shared.NewEventData(shared.OnNotSupported, t.key,
-		shared.WithIDAndAddress(t.id, t.httpPrefix),
+		shared.WithIDAndHTTPPrefix(t.id, t.httpPrefix),
 		shared.WithMessage(*msg))
 	t.pub(data)
 }
@@ -69,7 +69,7 @@ func (t *terminalEvent) OnReadExecutionEvent(msg *service.Message) {
 		return
 	}
 	data := shared.NewEventData(shared.OnRead, t.key,
-		shared.WithIDAndAddress(t.id, t.httpPrefix),
+		shared.WithIDAndHTTPPrefix(t.id, t.httpPrefix),
 		shared.WithAttachIPAndPort(t.attachIP, t.attachPort),
 		shared.WithMessage(*msg))
 	t.pub(data)
@@ -78,7 +78,7 @@ func (t *terminalEvent) OnReadExecutionEvent(msg *service.Message) {
 func (t *terminalEvent) OnWriteExecutionEvent(msg service.Message) {
 	go record.AddMessage(msg)
 	data := shared.NewEventData(shared.OnWrite, t.key,
-		shared.WithIDAndAddress(t.id, t.httpPrefix),
+		shared.WithIDAndHTTPPrefix(t.id, t.httpPrefix),
 		shared.WithAttachIPAndPort(t.attachIP, t.attachPort),
 		shared.WithMessage(msg))
 	t.pub(data)
