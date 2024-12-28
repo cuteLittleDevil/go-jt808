@@ -329,6 +329,13 @@ func TestReply(t *testing.T) {
 				msg2013: "7e921240190112345678901234567890ffff0d7777772e6a74743830382e636e0001010000000000000400f17e",
 			},
 		},
+		{
+			name: "P0x8300 平台-文件上传完成消息应答",
+			args: args{
+				Handler: &P0x8300{},
+				msg2013: "7e830000180123456789017fff09b2e2cad43132334034353623616263212e2e2ebde1caf8b17e",
+			},
+		},
 	}
 	checkReplyInfo := func(t *testing.T, msg string, handler Handler, expectedResult string) {
 		if msg == "" {

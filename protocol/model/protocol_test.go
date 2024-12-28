@@ -226,6 +226,12 @@ func TestReplyProtocol(t *testing.T) {
 			wantProtocol:      consts.P9212FileUploadCompleteRespond,
 			wantReplyProtocol: consts.T0001GeneralRespond,
 		},
+		{
+			name:              "P0x8300 平台-平台-文本信息下发",
+			args:              &P0x8300{},
+			wantProtocol:      consts.P8300TextInfoDistribution,
+			wantReplyProtocol: consts.T0001GeneralRespond,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
