@@ -1,6 +1,8 @@
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/cuteLittleDevil/go-jt808?tab=MIT-1-ov-file)
 [![Doc](https://img.shields.io/badge/doc-go--jt808-blue.svg)](https://pkg.go.dev/github.com/cuteLittleDevil/go-jt808#section-directories)
-[![WEB](https://img.shields.io/badge/example-web-blue.svg)](https://github.com/cuteLittleDevil/go-jt808/tree/main/example/web#web)
+[![Perf](https://img.shields.io/badge/perf-save-blue.svg)](https://github.com/cuteLittleDevil/go-jt808/blob/main/example/simulator/README.md)
+[![WEB](https://img.shields.io/badge/example-web-red.svg)](https://github.com/cuteLittleDevil/go-jt808/tree/main/example/web#web)
+[![API](https://img.shields.io/badge/debug-apifox-green.svg)](https://vsh9jdgg5d.apifox.cn/)
 
 # go-jt808
 

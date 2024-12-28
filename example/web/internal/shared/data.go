@@ -27,7 +27,7 @@ const (
 type (
 	EventData struct {
 		ID              string           `json:"id"`
-		Address         string           `json:"address"`
+		HTTPPrefix      string           `json:"HTTPPrefix"`
 		AttachIP        string           `json:"attachIP"`
 		AttachPort      int              `json:"attachPort"`
 		Type            int              `json:"type"`
@@ -115,10 +115,10 @@ func WithMessage(msg service.Message) EventDataOption {
 	}}
 }
 
-func WithIDAndAddress(id string, address string) EventDataOption {
+func WithIDAndHTTPPrefix(id string, httpPrefix string) EventDataOption {
 	return EventDataOption{F: func(o *EventData) {
 		o.ID = id
-		o.Address = address
+		o.HTTPPrefix = httpPrefix
 	}}
 }
 

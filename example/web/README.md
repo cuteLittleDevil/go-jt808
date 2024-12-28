@@ -10,10 +10,17 @@
 ./nats-service
 ```
 
+| 服务  |   默认IP   | 默认端口 | 描述 |
+| :---:   | :-------: | :--: | :--: |
+|  nats | 0.0.0.0 | 4222 | 消息队列 |
+|  service | 0.0.0.0 <br/> 0.0.0.0 <br/> 0.0.0.0 | 18000 <br/> 18001 <br/> 808 | web服务 <br/> 附件服务 <br> 808服务端 |
+|  alarm | 0.0.0.0 | 18002 | 处理轨迹报文 |
+|  notice | 0.0.0.0 | 18003 | 订阅车辆报文交互 |
+
 运行
 ```
 cd ./service && go build && ./service
-cd ./notice && go build && ./notice
 cd ./alarm && go build && ./alarm
+cd ./notice && go build && ./notice -address=0.0.0.0:18003 -nats=127.0.0.1:4222
 ```
 
