@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
 	"github.com/cuteLittleDevil/go-jt808/protocol/model"
 	"github.com/cuteLittleDevil/go-jt808/service"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
@@ -43,8 +42,18 @@ func (m *meTerminal) OnWriteExecutionEvent(msg service.Message) {
 	str += fmt.Sprintf(" %s: [%x]", msg.ExtensionFields.PlatformCommand, msg.ExtensionFields.PlatformData)
 	m.println(str)
 
-	if msg.Command == consts.T0200LocationReport {
-		go m.onAlarmEvent(msg.JTMessage)
+	switch msg.Command {
+	case consts.T0200LocationReport:
+		var location meLocation
+		if location.Parse(msg.JTMessage) == nil {
+			key := msg.JTMessage.Header.TerminalPhoneNo
+			fmt.Println(location.T0x0200.String())
+			go m.onAlarmEvent(key, location)
+		}
+	case consts.T0704LocationBatchUpload:
+		var batchLocations model.T0x0704
+		_ = batchLocations.Parse(msg.JTMessage)
+		fmt.Println(batchLocations.String())
 	}
 }
 
@@ -57,40 +66,37 @@ func (m *meTerminal) println(str string) {
 	}
 }
 
-func (m *meTerminal) onAlarmEvent(jtMsg *jt808.JTMessage) {
-	key := jtMsg.Header.TerminalPhoneNo
-	var location meLocation
-	if location.Parse(jtMsg) == nil {
-		if location.T0x0200AdditionExtension0x64.ParseSuccess {
-			str := fmt.Sprintf("0x64附件信息: %s", location.T0x0200AdditionExtension0x64.String())
-			m.println(str)
-			m.send9208("me_64", key, location.T0x0200AdditionExtension0x64.P9208AlarmSign)
-		}
-
-		if location.T0x0200AdditionExtension0x65.ParseSuccess {
-			str := fmt.Sprintf("0x65附件信息: %s", location.T0x0200AdditionExtension0x65.String())
-			m.println(str)
-			m.send9208("me_65", key, location.T0x0200AdditionExtension0x65.P9208AlarmSign)
-		}
-
-		if location.T0x0200AdditionExtension0x66.ParseSuccess {
-			str := fmt.Sprintf("0x66附件信息: %s", location.T0x0200AdditionExtension0x66.String())
-			m.println(str)
-			m.send9208("me_66", key, location.T0x0200AdditionExtension0x66.P9208AlarmSign)
-		}
-
-		if location.T0x0200AdditionExtension0x67.ParseSuccess {
-			str := fmt.Sprintf("0x67附件信息: %s", location.T0x0200AdditionExtension0x67.String())
-			m.println(str)
-			m.send9208("me_67", key, location.T0x0200AdditionExtension0x67.P9208AlarmSign)
-		}
-
-		if location.T0x0200AdditionExtension0x70.ParseSuccess {
-			str := fmt.Sprintf("0x70附件信息: %s", location.T0x0200AdditionExtension0x70.String())
-			m.println(str)
-			m.send9208("me_70", key, location.T0x0200AdditionExtension0x70.P9208AlarmSign)
-		}
+func (m *meTerminal) onAlarmEvent(key string, location meLocation) {
+	if location.T0x0200AdditionExtension0x64.ParseSuccess {
+		str := fmt.Sprintf("0x64附件信息: %s", location.T0x0200AdditionExtension0x64.String())
+		m.println(str)
+		m.send9208("me_64", key, location.T0x0200AdditionExtension0x64.P9208AlarmSign)
 	}
+
+	if location.T0x0200AdditionExtension0x65.ParseSuccess {
+		str := fmt.Sprintf("0x65附件信息: %s", location.T0x0200AdditionExtension0x65.String())
+		m.println(str)
+		m.send9208("me_65", key, location.T0x0200AdditionExtension0x65.P9208AlarmSign)
+	}
+
+	if location.T0x0200AdditionExtension0x66.ParseSuccess {
+		str := fmt.Sprintf("0x66附件信息: %s", location.T0x0200AdditionExtension0x66.String())
+		m.println(str)
+		m.send9208("me_66", key, location.T0x0200AdditionExtension0x66.P9208AlarmSign)
+	}
+
+	if location.T0x0200AdditionExtension0x67.ParseSuccess {
+		str := fmt.Sprintf("0x67附件信息: %s", location.T0x0200AdditionExtension0x67.String())
+		m.println(str)
+		m.send9208("me_67", key, location.T0x0200AdditionExtension0x67.P9208AlarmSign)
+	}
+
+	if location.T0x0200AdditionExtension0x70.ParseSuccess {
+		str := fmt.Sprintf("0x70附件信息: %s", location.T0x0200AdditionExtension0x70.String())
+		m.println(str)
+		m.send9208("me_70", key, location.T0x0200AdditionExtension0x70.P9208AlarmSign)
+	}
+
 }
 
 func (m *meTerminal) send9208(alarmID string, key string, p9208AlarmSign model.P9208AlarmSign) {
