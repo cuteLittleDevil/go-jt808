@@ -336,6 +336,20 @@ func TestReply(t *testing.T) {
 				msg2013: "7e830000180123456789017fff09b2e2cad43132334034353623616263212e2e2ebde1caf8b17e",
 			},
 		},
+		{
+			name: "P0x8302 平台-提问下发",
+			args: args{
+				Handler: &P0x8302{},
+				msg2013: "7e8302000e001256256927001cff03313233010002414102000142327e",
+			},
+		},
+		{
+			name: "T0x0302 终端-提问应答",
+			args: args{
+				Handler: &T0x0302{},
+				msg2013: "7e030200030123456789017fffef447fde7e",
+			},
+		},
 	}
 	checkReplyInfo := func(t *testing.T, msg string, handler Handler, expectedResult string) {
 		if msg == "" {

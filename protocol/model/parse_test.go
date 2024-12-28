@@ -1088,6 +1088,53 @@ func TestParse(t *testing.T) {
 				Text: "abc1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111112222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222" + "aaaaa",
 			},
 		},
+		{
+			name: "P0x8302 平台-提问下发",
+			args: args{
+				msg:      "7e8302000e001256256927001cff03313233010002414102000142327e",
+				Handler:  &P0x8302{},
+				bodyLens: []int{1, 5, 9},
+			},
+			fields: &P0x8302{
+				Flag:               0, // 使用0的话 会根据详情生成标志 相当于写了255
+				QuestionContentLen: 3,
+				QuestionContent:    "123",
+				AnswerList: []P0x8302Answer{
+					{
+						AnswerID:         1,
+						AnswerContentLen: 2,
+						AnswerContent:    "AA",
+					},
+					{
+						AnswerID:         2,
+						AnswerContentLen: 1,
+						AnswerContent:    "B",
+					},
+				},
+				P0x8302TextFlagDetails: P0x8302TextFlagDetails{
+					Urgent:            true,
+					Bit1Reserve:       true,
+					Bit2Reserve:       true,
+					TTS:               true,
+					AdvertisingScreen: true,
+					Bit5Reserve:       true,
+					Bit6Reserve:       true,
+					Bit7Reserve:       true,
+				},
+			},
+		},
+		{
+			name: "T0x0302 平台-回复下发",
+			args: args{
+				msg:      "7e030200030123456789017fffef447fde7e",
+				Handler:  &T0x0302{},
+				bodyLens: []int{1},
+			},
+			fields: &T0x0302{
+				SerialNumber: 61252,
+				AnswerID:     127,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1103,13 +1150,13 @@ func TestParse(t *testing.T) {
 			}
 			//fmt.Println(tt.args.Handler.String())
 			if tt.args.Handler.String() != tt.fields.String() {
-				t.Errorf("Parse() want: \n%v\nactual:\n%v", tt.args, tt.fields)
+				t.Errorf("Parse() got: \n%v\nwant:\n%v", tt.args, tt.fields)
 				return
 			}
 			if gotBody := tt.args.Handler.Encode(); gotBody == nil && len(jtMsg.Body) > 0 {
 				t.Log("暂未实现的Encode()")
 			} else if fmt.Sprintf("%x", jtMsg.Body) != fmt.Sprintf("%x", gotBody) {
-				t.Errorf("Encode() want: \n%x\nactual:\n%x", jtMsg.Body, gotBody)
+				t.Errorf("Encode() got: \n%x\nwant:\n%x", jtMsg.Body, gotBody)
 				return
 			}
 

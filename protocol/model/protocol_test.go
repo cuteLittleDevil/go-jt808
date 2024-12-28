@@ -232,6 +232,12 @@ func TestReplyProtocol(t *testing.T) {
 			wantProtocol:      consts.P8300TextInfoDistribution,
 			wantReplyProtocol: consts.T0001GeneralRespond,
 		},
+		{
+			name:              "P0x8302 平台-提问下发",
+			args:              &P0x8302{},
+			wantProtocol:      consts.P8302QuestionDistribution,
+			wantReplyProtocol: consts.T0302QuestionAnswer,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
