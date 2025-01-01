@@ -14,6 +14,10 @@ func Register(h *server.Hertz) {
 	{
 		group.POST("/8103", p8103)
 		group.POST("/8104", p8104)
+		group.POST("/8201", p8201)
+		group.POST("/8202", p8202)
+		group.POST("/8300", p8300)
+		group.POST("/8302", p8302)
 		group.POST("/8801", p8801)
 		group.POST("/9101", p9101)
 		group.POST("/9102", p9102)

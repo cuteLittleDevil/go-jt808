@@ -42,6 +42,58 @@ func p8801(_ context.Context, c *app.RequestContext) {
 	handleCommand(c, req.Key, req.Data)
 }
 
+func p8201(_ context.Context, c *app.RequestContext) {
+	var req shared.Request[*model.P0x8201]
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusOK, shared.Response{
+			Code: http.StatusBadRequest,
+			Msg:  "参数错误",
+			Data: err.Error(),
+		})
+		return
+	}
+	handleCommand(c, req.Key, req.Data)
+}
+
+func p8202(_ context.Context, c *app.RequestContext) {
+	var req shared.Request[*model.P0x8202]
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusOK, shared.Response{
+			Code: http.StatusBadRequest,
+			Msg:  "参数错误",
+			Data: err.Error(),
+		})
+		return
+	}
+	handleCommand(c, req.Key, req.Data)
+}
+
+func p8300(_ context.Context, c *app.RequestContext) {
+	var req shared.Request[*model.P0x8300]
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusOK, shared.Response{
+			Code: http.StatusBadRequest,
+			Msg:  "参数错误",
+			Data: err.Error(),
+		})
+		return
+	}
+	handleCommand(c, req.Key, req.Data)
+}
+
+func p8302(_ context.Context, c *app.RequestContext) {
+	var req shared.Request[*model.P0x8302]
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusOK, shared.Response{
+			Code: http.StatusBadRequest,
+			Msg:  "参数错误",
+			Data: err.Error(),
+		})
+		return
+	}
+	handleCommand(c, req.Key, req.Data)
+}
+
 func p9206(_ context.Context, c *app.RequestContext) {
 	var req shared.Request[*model.P0x9206]
 	if err := c.BindJSON(&req); err != nil {
@@ -205,6 +257,8 @@ func replyParse(commandType, replyCommandType consts.JT808CommandType, msg *serv
 		handle = &model.T0x0001{}
 	case consts.T0104QueryParameter:
 		handle = &model.T0x0104{}
+	case consts.T0201QueryLocation:
+		handle = &model.T0x0201{}
 	case consts.T1003UploadAudioVideoAttr:
 		handle = &model.T0x1003{}
 	case consts.T1205UploadAudioVideoResourceList:
