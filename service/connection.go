@@ -314,6 +314,18 @@ func (c *connection) onActiveRespondEvent(record map[uint16]*ActiveMessage, msg 
 		tmp.HasRespondFunc = func(_ uint16) bool {
 			return true
 		}
+	case consts.T0201QueryLocation:
+		t0x0201 := &model.T0x0201{}
+		tmp.JT808Handler = t0x0201
+		tmp.HasRespondFunc = func(seq uint16) bool {
+			return seq == t0x0201.RespondSerialNumber
+		}
+	case consts.T0302QuestionAnswer:
+		t0x0302 := &model.T0x0302{}
+		tmp.JT808Handler = t0x0302
+		tmp.HasRespondFunc = func(seq uint16) bool {
+			return seq == t0x0302.SerialNumber
+		}
 	case consts.T1205UploadAudioVideoResourceList:
 		t0x1205 := &model.T0x1205{}
 		tmp.JT808Handler = t0x1205

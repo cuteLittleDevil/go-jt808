@@ -65,12 +65,14 @@ func (g *GoJT808) SendActiveMessage(activeMsg *ActiveMessage) *Message {
 
 func (g *GoJT808) createDefaultHandle() map[consts.JT808CommandType]Handler {
 	return map[consts.JT808CommandType]Handler{
-		// 终端自动上传的
+		// 终端上传的
 		consts.T0001GeneralRespond:            newDefaultHandle(&model.T0x0001{}),
 		consts.T0100Register:                  newDefaultHandle(&model.T0x0100{}),
 		consts.T0102RegisterAuth:              newDefaultHandle(&model.T0x0102{}),
 		consts.T0002HeartBeat:                 newDefaultHandle(&model.T0x0002{}),
 		consts.T0200LocationReport:            newDefaultHandle(&model.T0x0200{}),
+		consts.T0201QueryLocation:             newDefaultHandle(&model.T0x0201{}),
+		consts.T0302QuestionAnswer:            newDefaultHandle(&model.T0x0302{}),
 		consts.T0704LocationBatchUpload:       newDefaultHandle(&model.T0x0704{}),
 		consts.T0104QueryParameter:            newDefaultHandle(&model.T0x0104{}),
 		consts.T0805CameraShootImmediately:    newDefaultHandle(&model.T0x0805{}),
@@ -81,6 +83,10 @@ func (g *GoJT808) createDefaultHandle() map[consts.JT808CommandType]Handler {
 		consts.P8003ReissueSubcontractingRequest: newDefaultHandle(&model.P0x8003{}),
 		consts.P8103SetTerminalParams:            newDefaultHandle(&model.P0x8103{}),
 		consts.P8104QueryTerminalParams:          newDefaultHandle(&model.P0x8104{}),
+		consts.P8201QueryLocation:                newDefaultHandle(&model.P0x8201{}),
+		consts.P8202TmpLocationTrack:             newDefaultHandle(&model.P0x8202{}),
+		consts.P8300TextInfoDistribution:         newDefaultHandle(&model.P0x8300{}),
+		consts.P8302QuestionDistribution:         newDefaultHandle(&model.P0x8302{}),
 		consts.P8801CameraShootImmediateCommand:  newDefaultHandle(&model.P0x8801{}),
 
 		// JT1078相关的
