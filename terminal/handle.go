@@ -73,6 +73,8 @@ func defaultProtocolHandles(protocolVersion consts.ProtocolVersionType) map[cons
 		consts.T0100Register:                          newT0x0100(protocolVersion),
 		consts.T0102RegisterAuth:                      newT0x0102(protocolVersion),
 		consts.T0200LocationReport:                    newT0x0200(item),
+		consts.T0201QueryLocation:                     newT0x0201(item),
+		consts.T0302QuestionAnswer:                    newT0x0302(),
 		consts.T0704LocationBatchUpload:               newT0x0704(item),
 		consts.T1003UploadAudioVideoAttr:              newT0x1003(),
 		consts.T1205UploadAudioVideoResourceList:      newT0x1205(),
@@ -81,6 +83,10 @@ func defaultProtocolHandles(protocolVersion consts.ProtocolVersionType) map[cons
 		consts.P8003ReissueSubcontractingRequest:      newDefaultHandle(consts.P8003ReissueSubcontractingRequest),
 		consts.P8100RegisterRespond:                   newDefaultHandle(consts.P8100RegisterRespond),
 		consts.P8104QueryTerminalParams:               &model.P0x8104{},
+		consts.P8201QueryLocation:                     &model.P0x8201{},
+		consts.P8202TmpLocationTrack:                  newP0x8202(),
+		consts.P8300TextInfoDistribution:              newP0x8300(),
+		consts.P8302QuestionDistribution:              newP0x8302(),
 		consts.P8801CameraShootImmediateCommand:       newP0x8801(),
 		consts.P9003QueryTerminalAudioVideoProperties: &model.P0x9003{},
 		consts.P9101RealTimeAudioVideoRequest:         newP0x9101(),
@@ -95,7 +101,7 @@ func defaultProtocolHandles(protocolVersion consts.ProtocolVersionType) map[cons
 	}
 }
 
-func newP0x1212() Handler {
+func newP0x1212() *model.T0x1212 {
 	return &model.T0x1212{
 		T0x1211: model.T0x1211{
 			FileNameLen: byte(len("123_aaa.jpg")),
@@ -106,7 +112,7 @@ func newP0x1212() Handler {
 	}
 }
 
-func newP0x1211() Handler {
+func newP0x1211() *model.T0x1211 {
 	return &model.T0x1211{
 		FileNameLen: byte(len("123_aaa.jpg")),
 		FileName:    "123_aaa.jpg",
@@ -142,7 +148,52 @@ func newP0x1210() Handler {
 	}
 }
 
-func newP0x8801() Handler {
+func newP0x8202() *model.P0x8202 {
+	return &model.P0x8202{
+		TimeInterval:  1,
+		TrackValidity: 30,
+	}
+}
+
+func newP0x8300() *model.P0x8300 {
+	return &model.P0x8300{
+		BaseHandle: model.BaseHandle{},
+		Flag:       255,
+		Text:       "abc123测试..",
+	}
+}
+
+func newP0x8302() *model.P0x8302 {
+	return &model.P0x8302{
+		Flag:               0, // 使用0的话 会根据详情生成标志 相当于写了255
+		QuestionContentLen: 3,
+		QuestionContent:    "123",
+		AnswerList: []model.P0x8302Answer{
+			{
+				AnswerID:         1,
+				AnswerContentLen: 2,
+				AnswerContent:    "AA",
+			},
+			{
+				AnswerID:         2,
+				AnswerContentLen: 1,
+				AnswerContent:    "B",
+			},
+		},
+		P0x8302TextFlagDetails: model.P0x8302TextFlagDetails{
+			Urgent:            true,
+			Bit1Reserve:       true,
+			Bit2Reserve:       true,
+			TTS:               true,
+			AdvertisingScreen: true,
+			Bit5Reserve:       true,
+			Bit6Reserve:       true,
+			Bit7Reserve:       true,
+		},
+	}
+}
+
+func newP0x8801() *model.P0x8801 {
 	return &model.P0x8801{
 		ChannelID:                1,
 		ShootCommand:             2,
@@ -191,6 +242,20 @@ func newT0x0102(protocolVersion consts.ProtocolVersionType) *model.T0x0102 {
 func newT0x0200(item model.T0x0200LocationItem) *model.T0x0200 {
 	return &model.T0x0200{
 		T0x0200LocationItem: item,
+	}
+}
+
+func newT0x0201(item model.T0x0200LocationItem) *model.T0x0201 {
+	return &model.T0x0201{
+		RespondSerialNumber: 0,
+		T0x0200LocationItem: item,
+	}
+}
+
+func newT0x0302() *model.T0x0302 {
+	return &model.T0x0302{
+		SerialNumber: 0,
+		AnswerID:     0,
 	}
 }
 
