@@ -364,6 +364,13 @@ func TestReply(t *testing.T) {
 				msg2013: "7e0201001e0123456789017fff686200002a5a000074280000a3e50000db4fbc732711012c2005121212595b7e",
 			},
 		},
+		{
+			name: "P0x8202 平台-临时位置跟踪",
+			args: args{
+				Handler: &P0x8202{},
+				msg2013: "7e820200060123456789017fff000500000258d17e",
+			},
+		},
 	}
 	checkReplyInfo := func(t *testing.T, msg string, handler Handler, expectedResult string) {
 		if msg == "" {

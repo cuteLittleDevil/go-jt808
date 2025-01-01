@@ -1166,6 +1166,18 @@ func TestParse(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "P0x8202 平台-临时位置跟踪",
+			args: args{
+				msg:      "7e820200060123456789017fff000500000258d17e",
+				Handler:  &P0x8202{},
+				bodyLens: []int{1},
+			},
+			fields: &P0x8202{
+				TimeInterval:  5,
+				TrackValidity: 600,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
