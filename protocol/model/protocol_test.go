@@ -238,6 +238,12 @@ func TestReplyProtocol(t *testing.T) {
 			wantProtocol:      consts.P8302QuestionDistribution,
 			wantReplyProtocol: consts.T0302QuestionAnswer,
 		},
+		{
+			name:              "P0x8201 平台-查询位置",
+			args:              &P0x8201{},
+			wantProtocol:      consts.P8201QueryLocation,
+			wantReplyProtocol: consts.T0201QueryLocation,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -25,8 +25,8 @@ func TestParse(t *testing.T) {
 	}
 	tests := []struct {
 		name   string
-		fields Handler
 		args   args
+		fields Handler
 	}{
 		{
 			name: "T0x0001 终端-通用应答",
@@ -1133,6 +1133,37 @@ func TestParse(t *testing.T) {
 			fields: &T0x0302{
 				SerialNumber: 61252,
 				AnswerID:     127,
+			},
+		},
+		{
+			name: "P0x8201 平台-查询位置",
+			args: args{
+				msg:     "7e82010000001256256927000fa37e",
+				Handler: &P0x8201{},
+			},
+			fields: &P0x8201{},
+		},
+		{
+			name: "T0x0201 终端-查询位置",
+			args: args{
+				msg:      "7e0201001e0123456789017fff686200002a5a000074280000a3e50000db4fbc732711012c2005121212595b7e",
+				Handler:  &T0x0201{},
+				bodyLens: []int{1},
+			},
+			fields: &T0x0201{
+				RespondSerialNumber: 26722,
+				T0x0200LocationItem: T0x0200LocationItem{
+					AlarmSign:         10842,
+					StatusSign:        29736,
+					Latitude:          41957,
+					Longitude:         56143,
+					Altitude:          48243,
+					Speed:             10001,
+					Direction:         300,
+					DateTime:          "2020-05-12 12:12:59",
+					AlarmSignDetails:  AlarmSignDetails{},
+					StatusSignDetails: StatusSignDetails{},
+				},
 			},
 		},
 	}
