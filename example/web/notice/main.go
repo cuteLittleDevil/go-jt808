@@ -8,12 +8,16 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/cloudwego/hertz/pkg/common/hlog"
+	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
+	"github.com/cuteLittleDevil/go-jt808/protocol/model"
+	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 	"github.com/cuteLittleDevil/go-jt808/terminal"
 	"github.com/hertz-contrib/cors"
 	"github.com/hertz-contrib/websocket"
 	"github.com/natefinch/lumberjack"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 	"web/internal/mq"
 	"web/internal/shared"
@@ -73,6 +77,7 @@ func main() {
 	group := h.Group("/api/v1/notice")
 	group.GET("/", ws)
 	group.POST("/parse", parse)
+	group.POST("/parse-details", parseDetails)
 	h.Spin()
 }
 
@@ -154,4 +159,84 @@ func parse(_ context.Context, c *app.RequestContext) {
 	c.String(http.StatusOK, "[终端]%s \n\n[平台]%s",
 		t.ProtocolDetails(notice.TerminalData),
 		t.ProtocolDetails(notice.PlatformData))
+}
+
+func parseDetails(_ context.Context, c *app.RequestContext) {
+	type Request struct {
+		Message string `json:"message" query:"message"`
+	}
+	var req Request
+	if err := c.BindAndValidate(&req); err != nil {
+		c.JSON(http.StatusOK, shared.Response{
+			Code: http.StatusBadRequest,
+			Msg:  "参数错误",
+			Data: err.Error(),
+		})
+		return
+	}
+	t := terminal.New(terminal.WithCustomProtocolHandleFunc(func() map[consts.JT808CommandType]terminal.Handler {
+		return map[consts.JT808CommandType]terminal.Handler{
+			consts.T0200LocationReport: &location{},
+		}
+	}))
+	c.String(http.StatusOK, "[终端]%s \n",
+		t.ProtocolDetails(req.Message))
+}
+
+type location struct {
+	model.T0x0200
+	model.T0x0200AdditionExtension0x64
+	model.T0x0200AdditionExtension0x65
+	model.T0x0200AdditionExtension0x66
+	model.T0x0200AdditionExtension0x67
+	model.T0x0200AdditionExtension0x70
+}
+
+func (l *location) Parse(jtMsg *jt808.JTMessage) error {
+	l.T0x0200.CustomAdditionContentFunc = func(id uint8, content []byte) (model.AdditionContent, bool) {
+		switch id {
+		case 0x64:
+			return l.T0x0200AdditionExtension0x64.Parse(id, content)
+		case 0x65:
+			return l.T0x0200AdditionExtension0x65.Parse(id, content)
+		case 0x66:
+			return l.T0x0200AdditionExtension0x66.Parse(id, content)
+		case 0x67:
+			return l.T0x0200AdditionExtension0x67.Parse(id, content)
+		case 0x70:
+			return l.T0x0200AdditionExtension0x70.Parse(id, content)
+		}
+		return model.AdditionContent{}, false
+	}
+	return l.T0x0200.Parse(jtMsg)
+}
+
+func (l *location) String() string {
+	body := l.Encode()
+	str := "苏标信息:\n"
+	if l.T0x0200AdditionExtension0x64.ParseSuccess {
+		str += "\t0x64:" + l.T0x0200AdditionExtension0x64.String() + "\n"
+	}
+	if l.T0x0200AdditionExtension0x65.ParseSuccess {
+		str += "\t0x65:" + l.T0x0200AdditionExtension0x65.String() + "\n"
+	}
+	if l.T0x0200AdditionExtension0x66.ParseSuccess {
+		str += "\t0x66:" + l.T0x0200AdditionExtension0x66.String() + "\n"
+	}
+	if l.T0x0200AdditionExtension0x67.ParseSuccess {
+		str += "\t0x67:" + l.T0x0200AdditionExtension0x67.String() + "\n"
+	}
+	if l.T0x0200AdditionExtension0x70.ParseSuccess {
+		str += "\t0x70:" + l.T0x0200AdditionExtension0x70.String() + "\n"
+	}
+	return strings.Join([]string{
+		"数据体对象:{",
+		fmt.Sprintf("\t%s:[%x]", l.Protocol(), body),
+		l.T0x0200LocationItem.String(),
+		l.AlarmSignDetails.String(),
+		l.StatusSignDetails.String(),
+		l.T0x0200AdditionDetails.String(),
+		str,
+		"}",
+	}, "\n")
 }
