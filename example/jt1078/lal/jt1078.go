@@ -15,9 +15,10 @@ import (
 type Lal1078 struct {
 	lalServer logic.ILalServer
 	addr      string
+	ip        string
 }
 
-func newLal1078(addr string, filePath string) *Lal1078 {
+func newLal1078(addr string, ip string, filePath string) *Lal1078 {
 	if filePath == "" {
 		filePath = "./conf/lalserver.conf.json"
 	}
@@ -30,6 +31,7 @@ func newLal1078(addr string, filePath string) *Lal1078 {
 	return &Lal1078{
 		lalServer: lalServer,
 		addr:      addr,
+		ip:        ip,
 	}
 }
 
@@ -89,7 +91,7 @@ func (j *Lal1078) handle(conn net.Conn) {
 					name := fmt.Sprintf("%s_%d", tmp.Sim, tmp.LogicChannel)
 					fmt.Println("name is ", name)
 					// http://49.234.235.7:8080/live/295696659617_1.flv
-					fmt.Println("flv is", fmt.Sprintf("http://%s:8080/live/%s.flv", _ip, name))
+					fmt.Println("flv is", fmt.Sprintf("http://%s:8080/live/%s.flv", j.ip, name))
 					streamCh := j.createStream(name)
 					ch = streamCh
 				})
@@ -127,7 +129,6 @@ func (j *Lal1078) createStream(name string) chan<- *jt1078.Packet {
 			startTs int64
 		)
 		record := make(map[jt1078.DataType][]byte)
-		sum := int64(1) // 测试是循环播放的 所以手动增加
 		for v := range ch {
 			isComplete := false
 			switch v.SubcontractType {
@@ -156,9 +157,6 @@ func (j *Lal1078) createStream(name string) chan<- *jt1078.Packet {
 					Pts:         int64(v.Timestamp) - startTs,
 					Payload:     data,
 				}
-				tmp.Timestamp = sum
-				tmp.Pts = sum
-				sum += 50
 				switch v.Flag.PT {
 				case jt1078.PTG711A:
 					tmp.PayloadType = base.AvPacketPtG711A
