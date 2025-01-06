@@ -4,10 +4,10 @@ go 1.23.2
 
 require (
 	github.com/cloudwego/hertz v0.9.3
-	github.com/cuteLittleDevil/go-jt808/protocol v1.12.0
-	github.com/cuteLittleDevil/go-jt808/service v1.5.1
-	github.com/cuteLittleDevil/go-jt808/shared v1.5.0
-	github.com/cuteLittleDevil/go-jt808/terminal v0.2.0
+	github.com/cuteLittleDevil/go-jt808/protocol v1.14.0
+	github.com/cuteLittleDevil/go-jt808/service v1.9.0
+	github.com/cuteLittleDevil/go-jt808/shared v1.6.0
+	github.com/cuteLittleDevil/go-jt808/terminal v1.2.0
 	github.com/hertz-contrib/cors v0.1.0
 	github.com/q191201771/lal v0.37.4
 )

@@ -208,10 +208,12 @@ func rtvs2jt1078Pack(content string) (*service.ActiveMessage, error) {
 }
 
 func rtvsContent2Data(content string) []byte {
+	content = strings.ToLower(content)
+	effectiveBody, _ := hex.DecodeString(content)
+	code := utils.CreateVerifyCode(effectiveBody)
 	content = strings.ReplaceAll(content, "7d", "7d01")
 	content = strings.ReplaceAll(content, "7e", "7d02")
 	body, _ := hex.DecodeString(content)
-	code := utils.CreateVerifyCode(body)
 	data := make([]byte, 0, 20)
 	data = append(data, 0x7e)
 	data = append(data, body...)

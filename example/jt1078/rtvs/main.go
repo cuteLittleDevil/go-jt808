@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
@@ -23,7 +24,11 @@ import (
 	"time"
 )
 
-var goJt808 *service.GoJT808
+var (
+	goJt808    *service.GoJT808
+	address    string
+	webAddress string
+)
 
 func init() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
@@ -32,20 +37,24 @@ func init() {
 		ReplaceAttr: nil,
 	}))
 	slog.SetDefault(logger)
+}
+
+func main() {
+	flag.StringVar(&address, "address", "0.0.0.0:8082", "address")
+	flag.StringVar(&webAddress, "webAddress", "0.0.0.0:17001", "gatewayAddress")
+	flag.Parse()
 
 	goJt808 = service.New(
-		service.WithHostPorts("0.0.0.0:8082"),
+		service.WithHostPorts(address),
 		service.WithNetwork("tcp"),
 		service.WithCustomTerminalEventer(func() service.TerminalEventer {
 			return &help.LogTerminal{}
 		}),
 	)
 	go goJt808.Run()
-}
 
-func main() {
 	h := server.Default(
-		server.WithHostPorts("0.0.0.0:17001"),
+		server.WithHostPorts(webAddress),
 	)
 	h.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
@@ -64,6 +73,7 @@ func main() {
 		c.Redirect(http.StatusMovedPermanently, []byte("index.html"))
 	})
 	h.StaticFile("/index.html", "tstrtvs.html")
+	fmt.Println("访问页面", fmt.Sprintf("http://127.0.0.1:%s%s", strings.Split(webAddress, ":")[1], "/index.html"))
 	h.Spin()
 }
 
@@ -253,10 +263,12 @@ func rtvs2jt1078Pack(content string) (*service.ActiveMessage, error) {
 }
 
 func rtvsContent2Data(content string) []byte {
+	content = strings.ToLower(content)
+	effectiveBody, _ := hex.DecodeString(content)
+	code := utils.CreateVerifyCode(effectiveBody)
 	content = strings.ReplaceAll(content, "7d", "7d01")
 	content = strings.ReplaceAll(content, "7e", "7d02")
 	body, _ := hex.DecodeString(content)
-	code := utils.CreateVerifyCode(body)
 	data := make([]byte, 0, 20)
 	data = append(data, 0x7e)
 	data = append(data, body...)

@@ -16,6 +16,11 @@ docker run --restart always -p 5288:80 -d vanjoge/rtvsdevice
 - [部署文档参考](https://blog.csdn.net/vanjoge/article/details/108319078)
 - [代码参考](./rtvs/main.go)
 
+address是设备连接的地址 webAddress是页面的
+```  go
+./rtvs -address 0.0.0.0:8082 -webAddress 0.0.0.0:17001
+```
+
 1. 测试部署网页 http://49.234.235.7:17001
 2. 让终端(模拟器)默认连接到了49.234.235.7:8082地址
 3. 根据测试部署网页进行测试 如点击9101观看在线视频
