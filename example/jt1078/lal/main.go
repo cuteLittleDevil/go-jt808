@@ -44,8 +44,9 @@ func main() {
 			service.WithNetwork("tcp"),
 			service.WithCustomTerminalEventer(func() service.TerminalEventer {
 				return &meTerminal{
-					goJt808: goJt808,
-					ip:      ip,
+					goJt808:   goJt808,
+					ip:        ip,
+					videoPort: videoPort,
 				}
 			}),
 		)
@@ -61,8 +62,9 @@ func main() {
 }
 
 type meTerminal struct {
-	goJt808 *service.GoJT808
-	ip      string
+	goJt808   *service.GoJT808
+	ip        string
+	videoPort int
 }
 
 func (t *meTerminal) OnJoinEvent(_ *service.Message, key string, _ error) {
@@ -72,7 +74,7 @@ func (t *meTerminal) OnJoinEvent(_ *service.Message, key string, _ error) {
 		p9101 := model.P0x9101{
 			ServerIPLen:  byte(len(t.ip)),
 			ServerIPAddr: t.ip,
-			TcpPort:      1078,
+			TcpPort:      uint16(t.videoPort),
 			UdpPort:      0,
 			ChannelNo:    1,
 			DataType:     0, // 音视频
@@ -103,11 +105,13 @@ func (t *meTerminal) OnJoinEvent(_ *service.Message, key string, _ error) {
 }
 
 func (t *meTerminal) OnLeaveEvent(key string) {
-	fmt.Println("退出终端", key)
+	fmt.Println("退出", key)
 }
 
-func (t *meTerminal) OnNotSupportedEvent(msg *service.Message) {}
+func (t *meTerminal) OnNotSupportedEvent(msg *service.Message) {
+	fmt.Println("未实现的报文", fmt.Sprintf("%x", msg.ExtensionFields.TerminalData))
+}
 
-func (t *meTerminal) OnReadExecutionEvent(msg *service.Message) {}
+func (t *meTerminal) OnReadExecutionEvent(_ *service.Message) {}
 
-func (t *meTerminal) OnWriteExecutionEvent(msg service.Message) {}
+func (t *meTerminal) OnWriteExecutionEvent(_ service.Message) {}

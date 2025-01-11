@@ -13,6 +13,7 @@ jt808:
   httpPrefix: http://127.0.0.1:18000 # 用于其他服务回调
   cameraDir: ./static/files/camera/ # 拍照录像的保存目录
   cameraURLPrefix: http://127.0.0.1:18000/files/camera/
+  verify: true # 是否开启认证 部分设备第一次注册后 后续就永远用这个鉴权码了
 nats:
   open: true # 不开启的话 默认打印在终端
   addr: '127.0.0.1:4222'

@@ -11,6 +11,8 @@ linters:
   fast: true
 
 linters-settings:
+  cyclop:
+    max-complexity: 20
   nestif:
     min-complexity: 15 # if语句复杂度
   mnd:

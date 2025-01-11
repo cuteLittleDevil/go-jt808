@@ -36,6 +36,7 @@ type (
 		CameraDir       string `mapstructure:"cameraDir" json:"cameraDir"`
 		CameraURLPrefix string `mapstructure:"cameraURLPrefix" json:"cameraURLPrefix"`
 		HttpPrefix      string `mapstructure:"httpPrefix" json:"httpPrefix"`
+		Verify          bool   `mapstructure:"verify" json:"verify"`
 	}
 )
 

@@ -1,7 +1,14 @@
 server:
   addr: '0.0.0.0:18002'
   logDir: ./logs/
-  onFileApi: "/api/v1/jt808/9208"
 nats:
   addr: '127.0.0.1:4222'
-
+alarm:
+  enable: true
+  onFileApi: "/api/v1/jt808/9208"
+tdengine:
+  enable: false
+  dsn: "root:taosdata@ws(127.0.0.1:6041)/information_schema?tz=Shanghai&parseTime=true&loc=Local"
+mongodb:
+  enable: false
+  dsn: "mongodb://127.0.0.1:27017"

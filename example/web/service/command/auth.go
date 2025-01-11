@@ -4,18 +4,27 @@ import (
 	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
 	"github.com/cuteLittleDevil/go-jt808/protocol/model"
 	"github.com/cuteLittleDevil/go-jt808/service"
+	"web/service/conf"
 )
 
 type (
 	Auth struct {
 		model.T0x0102
-		*AuthInfo
+		*VerifyInfo
 	}
 
-	AuthInfo struct {
-		Code string
+	VerifyInfo struct {
+		Code   string
+		Verify bool
 	}
 )
+
+func NewVerifyInfo() *VerifyInfo {
+	return &VerifyInfo{
+		Code:   "",
+		Verify: conf.GetData().JTConfig.Verify,
+	}
+}
 
 func (a *Auth) OnReadExecutionEvent(_ *service.Message) {}
 
@@ -26,7 +35,10 @@ func (a *Auth) ReplyBody(jtMsg *jt808.JTMessage) ([]byte, error) {
 		return nil, err
 	}
 	result := byte(2)
-	if a.AuthCode == a.AuthInfo.Code {
+	if a.AuthCode == a.VerifyInfo.Code {
+		result = 0
+	}
+	if !a.VerifyInfo.Verify { // 不校验验证码
 		result = 0
 	}
 	//fmt.Println("鉴权", a.AuthInfo.Code, result)

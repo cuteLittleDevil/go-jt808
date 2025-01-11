@@ -5,6 +5,8 @@ import (
 	"github.com/nats-io/nats.go"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
 	"web/alarm/command"
 	"web/alarm/conf"
 	"web/alarm/file"
@@ -34,6 +36,11 @@ func main() {
 		return
 	}
 
+	var (
+		isAlarm    = conf.GetData().AlarmConfig.Enable
+		isTdengine = conf.GetData().TdengineConfig.Enable
+		isMongodb  = conf.GetData().MongodbConfig.Enable
+	)
 	mq.Default().Run(map[string]nats.MsgHandler{
 		shared.ReadSubjectPrefix + ".*.*.1796": func(msg *nats.Msg) {
 			var data shared.EventData
@@ -45,9 +52,19 @@ func main() {
 					//	fmt.Println(fmt.Sprintf("0x0704保存经纬度 id[%s] sim[%s] %s",
 					//		data.ID, data.Key, item.T0x0200LocationItem.String()))
 					//}
-					for _, location := range t0x0704.AlarmLocations {
-						// 附件处理
-						go file.OnAlarmEvent(data, location)
+					if isTdengine {
+
+					}
+
+					if isMongodb {
+
+					}
+
+					if isAlarm {
+						for _, location := range t0x0704.AlarmLocations {
+							// 附件处理
+							go file.OnAlarmEvent(data, location)
+						}
 					}
 				}
 			}
@@ -62,10 +79,15 @@ func main() {
 					//fmt.Println(fmt.Sprintf("保存经纬度 id[%s] sim[%s] %s",
 					//	data.ID, data.Key, t0x0200.String()))
 					// 附件处理
-					go file.OnAlarmEvent(data, t0x0200)
+					if isAlarm {
+						go file.OnAlarmEvent(data, t0x0200)
+					}
 				}
 			}
 		},
 	})
-	select {}
+
+	quit := make(chan os.Signal)
+	signal.Notify(quit, syscall.SIGINT) // kill -2
+	<-quit
 }

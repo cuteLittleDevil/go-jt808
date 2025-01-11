@@ -8,7 +8,7 @@ import (
 
 type Register struct {
 	model.T0x0100
-	*AuthInfo
+	*VerifyInfo
 }
 
 func (r *Register) OnReadExecutionEvent(_ *service.Message) {}
@@ -23,6 +23,6 @@ func (r *Register) ReplyBody(jtMsg *jt808.JTMessage) ([]byte, error) {
 		Result:              0,
 		AuthCode:            code,
 	}
-	r.AuthInfo.Code = code
+	r.VerifyInfo.Code = code
 	return p8100.Encode(), nil
 }

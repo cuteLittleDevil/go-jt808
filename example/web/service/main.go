@@ -17,6 +17,7 @@ import (
 	"os"
 	"time"
 	"web/internal/mq"
+	"web/internal/shared"
 	"web/service/command"
 	"web/service/conf"
 	"web/service/custom"
@@ -103,17 +104,17 @@ func main() {
 				if msg.Command == consts.T0100Register {
 					var register command.Register
 					_ = register.Parse(msg.JTMessage)
-					fmt.Println(register.String())
+					fmt.Println("注册", register.String())
 					return msg.JTMessage.Header.TerminalPhoneNo, true
 				}
 				return "", false
 			}),
 			service.WithCustomHandleFunc(func() map[consts.JT808CommandType]service.Handler {
-				authInfo := command.AuthInfo{Code: ""}
+				verifyInfo := command.NewVerifyInfo()
 				return map[consts.JT808CommandType]service.Handler{
-					consts.T0100Register: &command.Register{AuthInfo: &authInfo},
+					consts.T0100Register: &command.Register{VerifyInfo: verifyInfo},
 					// 如果没有注册过的终端鉴权拒绝 让他触发一次注册报文
-					consts.T0102RegisterAuth:         &command.Auth{AuthInfo: &authInfo},
+					consts.T0102RegisterAuth:         &command.Auth{VerifyInfo: verifyInfo},
 					consts.T0801MultimediaDataUpload: &command.Camera{Dir: config.CameraDir},
 				}
 			}),
@@ -136,11 +137,10 @@ func appFS() *app.FS {
 		Root:        "./static/",
 		PathRewrite: app.NewPathSlashesStripper(0),
 		PathNotFound: func(_ context.Context, c *app.RequestContext) {
-			type Response struct {
-				Code int `json:"code"`
-			}
-			c.JSON(http.StatusOK, Response{
+			c.JSON(http.StatusOK, shared.Response{
 				Code: http.StatusNotFound,
+				Msg:  "找不到路由",
+				Data: string(c.Request.URI().Path()),
 			})
 		},
 		CacheDuration:        5 * time.Second,

@@ -6,7 +6,6 @@ import (
 	"github.com/cuteLittleDevil/go-jt808/service"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 	"log/slog"
-	"strings"
 	"web/internal/mq"
 	"web/internal/shared"
 	"web/service/conf"
@@ -98,13 +97,12 @@ func (t *terminalEvent) pub(data *shared.EventData) {
 		}
 	} else {
 		switch data.Type {
-		case shared.OnRead, shared.OnWrite:
-			str := data.JTMessage.Header.String()
-			str = strings.ReplaceAll(str, "\t", "")
-			str = strings.ReplaceAll(str, "\n", "")
+		case shared.OnWrite:
 			slog.Debug("pub",
 				slog.String("sub", sub),
-				slog.Any("data", str))
+				slog.String("read", fmt.Sprintf("%x", data.ExtensionFields.TerminalData)),
+				slog.String("write", fmt.Sprintf("%x", data.ExtensionFields.PlatformData)),
+				slog.String("describe", consts.JT808CommandType(data.JTMessage.Header.ID).String()))
 		default:
 		}
 	}

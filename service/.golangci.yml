@@ -11,8 +11,10 @@ linters:
   fast: true
 
 linters-settings:
+  cyclop:
+    max-complexity: 20
   gocognit: #圈复杂度 // https://golangci-lint.run/usage/linters#gocognit
-    min-complexity: 30
+    min-complexity: 35
     ignore-tests: true # 忽略测试函数
   lll:
     line-length: 130 # 一行最多多少个单词

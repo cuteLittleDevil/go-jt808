@@ -10,6 +10,7 @@ linters:
     - wsl # 部分语句需要换行
     - mnd # 魔数检测
     - tagliatelle # 标签检测
+    - cyclop
   fast: true
 
 linters-settings:

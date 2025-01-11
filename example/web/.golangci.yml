@@ -15,7 +15,12 @@ linters:
   fast: true
 
 linters-settings:
-
+  cyclop:
+    max-complexity: 20
+  nestif:
+    min-complexity: 10 # if语句复杂度
+  gocognit: #函数认知复杂度
+    min-complexity: 40
 
 issues:
   exclude-files: # 那些文件不用检查
