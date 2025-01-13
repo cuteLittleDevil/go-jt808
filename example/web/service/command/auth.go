@@ -19,6 +19,10 @@ type (
 	}
 )
 
+func NewAuth(verifyInfo *VerifyInfo) *Auth {
+	return &Auth{VerifyInfo: verifyInfo}
+}
+
 func NewVerifyInfo() *VerifyInfo {
 	return &VerifyInfo{
 		Code:   "",

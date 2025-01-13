@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
+	"github.com/cuteLittleDevil/go-jt808/protocol/model"
 	"github.com/cuteLittleDevil/go-jt808/service"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 )
@@ -14,6 +15,7 @@ const (
 	NotSupportedSubjectPrefix = "not-supported"
 	ReadSubjectPrefix         = "read"
 	WriteSubjectPrefix        = "write"
+	CustomSubjectPrefix       = "custom"
 )
 
 const (
@@ -22,6 +24,7 @@ const (
 	OnNotSupported
 	OnRead
 	OnWrite
+	OnCustom
 )
 
 type (
@@ -56,6 +59,17 @@ type (
 			// Err 异常情况
 			Err error `json:"err,omitempty"`
 		}
+		// CustomData 自定义数据
+		CustomData any `json:"customData"`
+	}
+
+	T0x0801File struct {
+		// MinioURL 保存的图片minio地址
+		MinioURL string `json:"minioURL"`
+		// Name 文件名
+		Name string `json:"name"`
+		// T0x0200LocationItem 位置信息
+		model.T0x0200LocationItem
 	}
 )
 
@@ -129,6 +143,12 @@ func WithAttachIPAndPort(attachIP string, attachPort int) EventDataOption {
 	}}
 }
 
+func WithCustomData(data any) EventDataOption {
+	return EventDataOption{F: func(o *EventData) {
+		o.CustomData = data
+	}}
+}
+
 func (d *EventData) ToBytes() []byte {
 	b, _ := json.Marshal(d)
 	return b
@@ -151,6 +171,8 @@ func (d *EventData) createSubject(command uint16) string {
 		prefix = ReadSubjectPrefix
 	case OnWrite:
 		prefix = WriteSubjectPrefix
+	case OnCustom:
+		prefix = CustomSubjectPrefix
 	}
 	// 固定事件前缀.服务ID.手机号.报文类型
 	sim := d.JTMessage.Header.TerminalPhoneNo

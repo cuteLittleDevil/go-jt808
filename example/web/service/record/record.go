@@ -15,6 +15,7 @@ type (
 
 	terminalInfo struct {
 		images     []string
+		minioUrls  []string
 		joinTime   time.Time
 		leaveTime  time.Time
 		updateTime time.Time
@@ -121,10 +122,22 @@ func PutImageURL(sim string, savePath string) {
 	<-ch
 }
 
+func PutMinioURL(sim string, url string) {
+	ch := make(chan struct{})
+	operationFuncChan <- func(record *manager) {
+		defer close(ch)
+		if v, ok := record.terminals[sim]; ok {
+			v.minioUrls = append(v.minioUrls, url)
+		}
+	}
+	<-ch
+}
+
 func Details() any {
 	type Response struct {
 		Sim        string        `json:"sim"`
 		Images     []string      `json:"images"`
+		MinioUrls  []string      `json:"minioUrls"`
 		JoinTime   string        `json:"joinTime"`
 		LeaveTime  string        `json:"leaveTime"`
 		UpdateTime string        `json:"updateTime"`
@@ -148,6 +161,7 @@ func Details() any {
 			list = append(list, Response{
 				Sim:        k,
 				Images:     v.images,
+				MinioUrls:  v.minioUrls,
 				JoinTime:   v.joinTime.Format(time.DateTime),
 				LeaveTime:  v.leaveTime.Format(time.DateTime),
 				UpdateTime: v.updateTime.Format(time.DateTime),

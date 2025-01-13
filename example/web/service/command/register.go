@@ -11,6 +11,10 @@ type Register struct {
 	*VerifyInfo
 }
 
+func NewRegister(verifyInfo *VerifyInfo) *Register {
+	return &Register{VerifyInfo: verifyInfo}
+}
+
 func (r *Register) OnReadExecutionEvent(_ *service.Message) {}
 
 func (r *Register) OnWriteExecutionEvent(_ service.Message) {}

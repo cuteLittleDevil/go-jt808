@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"time"
+	"web/internal/file"
 	"web/internal/mq"
 	"web/internal/shared"
 	"web/service/command"
@@ -50,14 +51,19 @@ func init() {
 		}
 	}
 
+	if minio := conf.GetData().FileConfig.CameraConfig.MinioConfig; minio.Enable {
+		if err := file.Init(minio.Endpoint, minio.AppKey, minio.AppSecret, minio.Bucket); err != nil {
+			panic(err)
+		}
+	}
+
 	dirs := []string{
-		conf.GetData().FileConfig.Dir,
-		conf.GetData().JTConfig.CameraDir,
+		conf.GetData().FileConfig.AttachConfig.Dir,
+		conf.GetData().FileConfig.CameraConfig.Dir,
 	}
 	for _, dir := range dirs {
 		_ = os.MkdirAll(dir, os.ModePerm)
 	}
-
 	go record.Run()
 
 	{
@@ -68,7 +74,7 @@ func init() {
 			attachment.WithActiveSafetyType(consts.ActiveSafetyJS), // 默认苏标 支持黑标 广东标 湖南标 四川标
 			attachment.WithFileEventerFunc(func() attachment.FileEventer {
 				// 自定义文件处理 开始 结束 当前进度 补传 完成等事件
-				return custom.NewFileEvent(config.Dir, config.LogFile)
+				return custom.NewFileEvent(config.AttachConfig.Dir, config.AttachConfig.LogFile)
 			}),
 		)
 		go attach.Run()
@@ -107,15 +113,18 @@ func main() {
 					fmt.Println("注册", register.String())
 					return msg.JTMessage.Header.TerminalPhoneNo, true
 				}
+				if !conf.GetData().JTConfig.Verify { // 不校验的话 任意一个指令过来就加入
+					return msg.JTMessage.Header.TerminalPhoneNo, true
+				}
 				return "", false
 			}),
 			service.WithCustomHandleFunc(func() map[consts.JT808CommandType]service.Handler {
 				verifyInfo := command.NewVerifyInfo()
 				return map[consts.JT808CommandType]service.Handler{
-					consts.T0100Register: &command.Register{VerifyInfo: verifyInfo},
+					consts.T0100Register: command.NewRegister(verifyInfo),
 					// 如果没有注册过的终端鉴权拒绝 让他触发一次注册报文
-					consts.T0102RegisterAuth:         &command.Auth{VerifyInfo: verifyInfo},
-					consts.T0801MultimediaDataUpload: &command.Camera{Dir: config.CameraDir},
+					consts.T0102RegisterAuth:         command.NewAuth(verifyInfo),
+					consts.T0801MultimediaDataUpload: command.NewCamera(),
 				}
 			}),
 		)

@@ -23,20 +23,39 @@ type (
 	}
 
 	FileConfig struct {
-		Address    string `mapstructure:"addr" json:"addr"`
-		Dir        string `mapstructure:"dir" json:"dir"`
-		LogFile    string `mapstructure:"logFile" json:"logFile"`
-		AttachIP   string `mapstructure:"attachIP" json:"attachIP"`
-		AttachPort int    `mapstructure:"attachPort" json:"attachPort"`
+		Address      string       `mapstructure:"addr" json:"addr"`
+		AttachConfig AttachConfig `mapstructure:"attach" json:"attach"`
+		CameraConfig CameraConfig `mapstructure:"camera" json:"camera"`
+	}
+
+	AttachConfig struct {
+		IP      string `mapstructure:"ip" json:"ip"`
+		Port    int    `mapstructure:"port" json:"port"`
+		Enable  bool   `mapstructure:"enable" json:"enable"`
+		Dir     string `mapstructure:"dir" json:"dir"`
+		LogFile string `mapstructure:"logFile" json:"logFile"`
+	}
+
+	CameraConfig struct {
+		Enable      bool        `mapstructure:"enable" json:"enable"`
+		Dir         string      `mapstructure:"dir" json:"dir"`
+		URLPrefix   string      `mapstructure:"urlPrefix" json:"urlPrefix"`
+		MinioConfig MinioConfig `mapstructure:"minio" json:"minio"`
+	}
+
+	MinioConfig struct {
+		Enable    bool   `mapstructure:"enable" json:"enable"`
+		Endpoint  string `mapstructure:"endpoint" json:"endpoint"`
+		AppKey    string `mapstructure:"appKey" json:"appKey"`
+		AppSecret string `mapstructure:"appSecret" json:"appSecret"`
+		Bucket    string `mapstructure:"bucket" json:"bucket"`
 	}
 
 	JTConfig struct {
-		Address         string `mapstructure:"addr" json:"addr"`
-		ID              string `mapstructure:"id" json:"id"`
-		CameraDir       string `mapstructure:"cameraDir" json:"cameraDir"`
-		CameraURLPrefix string `mapstructure:"cameraURLPrefix" json:"cameraURLPrefix"`
-		HttpPrefix      string `mapstructure:"httpPrefix" json:"httpPrefix"`
-		Verify          bool   `mapstructure:"verify" json:"verify"`
+		Address    string `mapstructure:"addr" json:"addr"`
+		ID         string `mapstructure:"id" json:"id"`
+		Verify     bool   `mapstructure:"verify" json:"verify"`
+		HTTPPrefix string `mapstructure:"httpPrefix" json:"httpPrefix"`
 	}
 )
 

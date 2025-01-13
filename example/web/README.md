@@ -2,7 +2,7 @@
 
 ![架构图](./testdata/web架构图.jpg)
 
-- apifox文档 https://vsh9jdgg5d.apifox.cn/
+- apifox文档 https://vsh9jdgg5d.apifox.cn/ ![导出数据](./testdata/JT808协议.apifox.json)
 - nats参考 https://github.com/nats-io/nats-server/releases
 - jt1078流媒体参考 https://github.com/cuteLittleDevil/go-jt808/tree/main/example/jt1078#-rtvs-
 

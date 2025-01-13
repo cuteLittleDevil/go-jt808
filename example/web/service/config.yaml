@@ -3,17 +3,29 @@ server:
   logDir: ./logs/
 file:
   addr: '0.0.0.0:18001'
-  attachIP: '49.234.235.7' # 告诉终端附件的外网IP
-  attachPort: 18001 # 告诉终端附件的外网端口
-  dir: ./static/files/
-  logFile: ./static/files/file.log
+  attach:
+    ip:  '49.234.235.7' # 告诉终端附件的外网IP
+    port: 18001 # 告诉终端附件的外网端口
+    enable: true # 保存附件到file.attach.dir目录
+    dir: ./static/files/attach/
+    logFile: ./static/files/file.log
+
+  camera:
+    enable: true # 保存0801信息到file.camera.dir目录
+    dir: ./static/files/camera/ # 拍照录像的保存目录
+    URLPrefix: http://127.0.0.1:18000/files/camera/
+    minio:
+      enable: false #
+      endpoint: '127.0.0.1:9000'
+      accessKey: 'minioadmin'
+      secretKey: 'minioadmin'
+      bucket: 'jt808' # 保存拍照图片 格式/日期/sim_id.jpg 如/20250101/1001_512.jpg
+
 jt808:
   addr: '0.0.0.0:808'
   id: "s1" # 默认消息队列主题是
   httpPrefix: http://127.0.0.1:18000 # 用于其他服务回调
-  cameraDir: ./static/files/camera/ # 拍照录像的保存目录
-  cameraURLPrefix: http://127.0.0.1:18000/files/camera/
-  verify: true # 是否开启认证 部分设备第一次注册后 后续就永远用这个鉴权码了
+  verify: true # 是否开启认证 (部分设备第一次注册后 后续就永远用这个鉴权码了 所以不能校验)
 nats:
   open: true # 不开启的话 默认打印在终端
   addr: '127.0.0.1:4222'

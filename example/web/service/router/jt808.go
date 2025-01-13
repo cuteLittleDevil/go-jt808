@@ -228,7 +228,7 @@ func handleCommand(c *app.RequestContext, key string, handle shared.PlatformHand
 
 	c.JSON(http.StatusOK, shared.Response{
 		Code: http.StatusInternalServerError,
-		Msg:  "jt808服务不存在",
+		Msg:  "终端不存在",
 	})
 }
 

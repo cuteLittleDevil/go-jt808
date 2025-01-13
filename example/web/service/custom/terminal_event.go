@@ -6,6 +6,7 @@ import (
 	"github.com/cuteLittleDevil/go-jt808/service"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 	"log/slog"
+	"time"
 	"web/internal/mq"
 	"web/internal/shared"
 	"web/service/conf"
@@ -23,9 +24,9 @@ type terminalEvent struct {
 func NewTerminalEvent() service.TerminalEventer {
 	return &terminalEvent{
 		id:         conf.GetData().JTConfig.ID,
-		httpPrefix: conf.GetData().JTConfig.HttpPrefix,
-		attachIP:   conf.GetData().FileConfig.AttachIP,
-		attachPort: conf.GetData().FileConfig.AttachPort,
+		httpPrefix: conf.GetData().JTConfig.HTTPPrefix,
+		attachIP:   conf.GetData().FileConfig.AttachConfig.IP,
+		attachPort: conf.GetData().FileConfig.AttachConfig.Port,
 		key:        "",
 	}
 }
@@ -33,7 +34,7 @@ func NewTerminalEvent() service.TerminalEventer {
 func (t *terminalEvent) OnJoinEvent(msg *service.Message, key string, err error) {
 	if err == nil {
 		record.Join(*msg)
-		fmt.Println("加入", msg.Command.String(), key)
+		fmt.Println("加入", time.Now().Format(time.DateTime), msg.Command.String(), key)
 		t.key = key
 		data := shared.NewEventData(shared.OnInit, key,
 			shared.WithIDAndHTTPPrefix(t.id, t.httpPrefix),
@@ -43,7 +44,7 @@ func (t *terminalEvent) OnJoinEvent(msg *service.Message, key string, err error)
 }
 
 func (t *terminalEvent) OnLeaveEvent(key string) {
-	fmt.Println("离开", key)
+	fmt.Println("离开", time.Now().Format(time.DateTime), key)
 	jtMsg := jt808.NewJTMessage()
 	jtMsg.Header.TerminalPhoneNo = key
 	data := shared.NewEventData(shared.OnLeave, key,
@@ -63,8 +64,7 @@ func (t *terminalEvent) OnNotSupportedEvent(msg *service.Message) {
 }
 
 func (t *terminalEvent) OnReadExecutionEvent(msg *service.Message) {
-	if msg.Command == consts.T0801MultimediaDataUpload {
-		// 直接保存在本地处理了 不需要传其他地方去
+	if t.hasHandle(msg.Command) {
 		return
 	}
 	data := shared.NewEventData(shared.OnRead, t.key,
@@ -75,6 +75,9 @@ func (t *terminalEvent) OnReadExecutionEvent(msg *service.Message) {
 }
 
 func (t *terminalEvent) OnWriteExecutionEvent(msg service.Message) {
+	if t.hasHandle(msg.Command) {
+		return
+	}
 	go record.AddMessage(msg)
 	data := shared.NewEventData(shared.OnWrite, t.key,
 		shared.WithIDAndHTTPPrefix(t.id, t.httpPrefix),
@@ -106,4 +109,8 @@ func (t *terminalEvent) pub(data *shared.EventData) {
 		default:
 		}
 	}
+}
+
+func (t *terminalEvent) hasHandle(command consts.JT808CommandType) bool {
+	return command == consts.T0801MultimediaDataUpload
 }
