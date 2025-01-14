@@ -64,6 +64,8 @@ type (
 	}
 
 	T0x0801File struct {
+		// LocalFileURL 保存的图片本地地址
+		LocalFileURL string `json:"localFileURL,omitempty"`
 		// MinioURL 保存的图片minio地址
 		MinioURL string `json:"minioURL"`
 		// Name 文件名

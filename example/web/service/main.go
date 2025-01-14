@@ -107,8 +107,7 @@ func main() {
 				return map[consts.JT808CommandType]service.Handler{
 					consts.T0100Register: command.NewRegister(verifyInfo),
 					// 如果没有注册过的终端鉴权拒绝 让他触发一次注册报文
-					consts.T0102RegisterAuth:         command.NewAuth(verifyInfo),
-					consts.T0801MultimediaDataUpload: command.NewCamera(),
+					consts.T0102RegisterAuth: command.NewAuth(verifyInfo),
 				}
 			}),
 		)

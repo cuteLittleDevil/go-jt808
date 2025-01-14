@@ -266,7 +266,9 @@ func replyParse(commandType, replyCommandType consts.JT808CommandType, msg *serv
 	case consts.T1206FileUploadCompleteNotice:
 		handle = &model.T0x1206{}
 	case consts.T0805CameraShootImmediately:
-		handle = &command.CameraShootImmediately{}
+		handle = &command.CameraShootImmediately{
+			CustomData: msg.ExtensionFields.CustomData,
+		}
 	}
 	if handle == nil {
 		reply.ErrDescribe = fmt.Sprintf("暂未支持的命令 %s", commandType.String())

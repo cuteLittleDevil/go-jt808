@@ -5,7 +5,11 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"web/internal/shared"
+	"web/service/conf"
 	"web/service/record"
 )
 
@@ -27,6 +31,7 @@ func Register(h *server.Hertz) {
 		group.POST("/9206", p9206)
 		group.POST("/9208", p9208)
 		group.GET("/details", details)
+		group.GET("/images", images)
 	}
 
 	apiRtvsV1 := h.Group("/api/")
@@ -41,5 +46,55 @@ func details(_ context.Context, c *app.RequestContext) {
 		Code: http.StatusOK,
 		Msg:  "查询终端详情",
 		Data: record.Details(),
+	})
+}
+
+func images(_ context.Context, ctx *app.RequestContext) {
+	name := ctx.DefaultQuery("name", "")
+	type Response struct {
+		IsLocal  bool   `json:"isLocal"`
+		LocalURL string `json:"localURL"`
+		IsMinio  bool   `json:"isMinio"`
+		MinioURL string `json:"minioURL"`
+	}
+	cameraConfig := conf.GetData().FileConfig.CameraConfig
+	response := Response{
+		IsLocal:  cameraConfig.Enable,
+		LocalURL: "",
+		IsMinio:  cameraConfig.MinioConfig.Enable,
+		MinioURL: "",
+	}
+	sum := 0
+	if response.IsLocal {
+		sum++
+	}
+	if response.IsMinio {
+		sum++
+	}
+	if sum > 0 {
+		_ = filepath.WalkDir(cameraConfig.Dir, func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if strings.Index(d.Name(), name) >= 0 {
+				if strings.HasSuffix(d.Name(), ".txt") {
+					b, _ := os.ReadFile(path)
+					response.MinioURL = string(b)
+				} else {
+					response.LocalURL = cameraConfig.URLPrefix + d.Name()
+				}
+				sum--
+				if sum == 0 {
+					return filepath.SkipAll
+				}
+			}
+			return nil
+		})
+	}
+
+	ctx.JSON(http.StatusOK, shared.Response{
+		Code: http.StatusOK,
+		Msg:  "查询终端图片",
+		Data: response,
 	})
 }

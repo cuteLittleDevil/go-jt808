@@ -176,7 +176,9 @@ func parseDetails(_ context.Context, c *app.RequestContext) {
 	}
 	t := terminal.New(terminal.WithCustomProtocolHandleFunc(func() map[consts.JT808CommandType]terminal.Handler {
 		return map[consts.JT808CommandType]terminal.Handler{
-			consts.T0200LocationReport: &location{},
+			consts.T0200LocationReport:         &location{},
+			consts.T0805CameraShootImmediately: &model.T0x0805{},
+			consts.T0801MultimediaDataUpload:   &model.T0x0801{},
 		}
 	}))
 	c.String(http.StatusOK, "[终端]%s \n",

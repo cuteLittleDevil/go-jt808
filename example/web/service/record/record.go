@@ -111,23 +111,13 @@ func AddMessage(msg service.Message) {
 	<-ch
 }
 
-func PutImageURL(sim string, savePath string) {
+func PutImageURL(sim string, localUrl string, minioUrl string) {
 	ch := make(chan struct{})
 	operationFuncChan <- func(record *manager) {
 		defer close(ch)
 		if v, ok := record.terminals[sim]; ok {
-			v.images = append(v.images, savePath)
-		}
-	}
-	<-ch
-}
-
-func PutMinioURL(sim string, url string) {
-	ch := make(chan struct{})
-	operationFuncChan <- func(record *manager) {
-		defer close(ch)
-		if v, ok := record.terminals[sim]; ok {
-			v.minioUrls = append(v.minioUrls, url)
+			v.images = append(v.images, localUrl)
+			v.minioUrls = append(v.minioUrls, minioUrl)
 		}
 	}
 	<-ch

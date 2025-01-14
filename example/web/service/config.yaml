@@ -13,8 +13,8 @@ file:
     minio:
       enable: false #
       endpoint: '127.0.0.1:9000'
-      accessKey: 'minioadmin'
-      secretKey: 'minioadmin'
+      appKey: 'minioadmin'
+      appSecret: 'minioadmin'
       bucket: 'jt808' # 保存拍照图片 格式/日期/time_sim_id.jpg 如20250101/181756_1001_512.jpg
 
 jt808:

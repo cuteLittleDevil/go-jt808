@@ -3,7 +3,6 @@ package command
 import (
 	"fmt"
 	"github.com/cuteLittleDevil/go-jt808/protocol/model"
-	"github.com/cuteLittleDevil/go-jt808/service"
 	"log/slog"
 	"os"
 	"time"
@@ -11,6 +10,7 @@ import (
 	"web/internal/mq"
 	"web/internal/shared"
 	"web/service/conf"
+	"web/service/record"
 )
 
 type Camera struct {
@@ -18,7 +18,8 @@ type Camera struct {
 	saveLocal bool
 	saveMinio bool
 	model.T0x0801
-	openNats bool
+	openNats  bool
+	urlPrefix string
 }
 
 func NewCamera() *Camera {
@@ -27,19 +28,31 @@ func NewCamera() *Camera {
 		dir:       cameraConfig.Dir,
 		saveLocal: cameraConfig.Enable,
 		saveMinio: cameraConfig.MinioConfig.Enable,
+		urlPrefix: cameraConfig.URLPrefix,
 		openNats:  conf.GetData().NatsConfig.Open,
 	}
 }
 
-func (c *Camera) OnReadExecutionEvent(msg *service.Message) {
-	_ = c.T0x0801.Parse(msg.JTMessage)
-	name := c.saveName(msg.Header.TerminalPhoneNo)
+func (c *Camera) SaveData(name string, key string, phone string) {
+	name = name + c.getDataType()
+	data := shared.T0x0801File{
+		LocalFileURL:        "",
+		MinioURL:            "",
+		Name:                name,
+		T0x0200LocationItem: c.T0x0200LocationItem,
+	}
 	if c.saveLocal {
-		_ = os.WriteFile(c.dir+name, c.T0x0801.MultimediaPackage, os.ModePerm)
+		if err := os.WriteFile(c.dir+name, c.T0x0801.MultimediaPackage, os.ModePerm); err != nil {
+			slog.Warn("local save fail",
+				slog.String("path", c.dir+name),
+				slog.String("err", err.Error()))
+			return
+		}
+		data.LocalFileURL = c.urlPrefix + name
 	}
 	if c.saveMinio {
 		date := time.Now().Format("20060102")
-		path := fmt.Sprintf("%s/%s_%s", date, time.Now().Format("150405"), name)
+		path := fmt.Sprintf("%s/%s", date, name)
 		// 简单一点 把路径保存到txt中 也可以把name当key保存到redis 另一边获取路径
 		minioUrl, err := file.Default().Upload(path, c.T0x0801.MultimediaPackage)
 		if err != nil {
@@ -48,18 +61,22 @@ func (c *Camera) OnReadExecutionEvent(msg *service.Message) {
 				slog.String("err", err.Error()))
 			return
 		}
-		_ = os.WriteFile(c.dir+name+".txt", []byte(minioUrl), os.ModePerm)
+		if err := os.WriteFile(c.dir+name+".txt", []byte(minioUrl), os.ModePerm); err != nil {
+			slog.Warn("local save fail",
+				slog.String("path", c.dir+name+".txt"),
+				slog.String("err", err.Error()))
+			return
+		}
+		data.MinioURL = minioUrl
 		if c.openNats {
-			phone := msg.JTMessage.Header.TerminalPhoneNo
-			c.pub(shared.NewEventData(shared.OnCustom, phone,
-				shared.WithCustomData(phone, uint16(c.T0x0801.Protocol()), minioUrl)))
+			c.pub(shared.NewEventData(shared.OnCustom, key,
+				shared.WithCustomData(phone, uint16(c.T0x0801.Protocol()), data)))
 		}
 	}
+	record.PutImageURL(phone, data.LocalFileURL, data.MinioURL)
 }
 
-func (c *Camera) OnWriteExecutionEvent(_ service.Message) {}
-
-func (c *Camera) saveName(sim string) string {
+func (c *Camera) getDataType() string {
 	format := ".jpg"
 	switch c.MultimediaFormatEncode {
 	case 0:
@@ -73,7 +90,7 @@ func (c *Camera) saveName(sim string) string {
 	case 4:
 		format = ".wmv"
 	}
-	return fmt.Sprintf("%s_%d%s", sim, c.MultimediaID, format)
+	return format
 }
 
 func (c *Camera) pub(data *shared.EventData) {

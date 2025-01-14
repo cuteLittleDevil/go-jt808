@@ -6,7 +6,7 @@ require (
 	github.com/cloudwego/hertz v0.9.4
 	github.com/cuteLittleDevil/go-jt808/attachment v0.3.0
 	github.com/cuteLittleDevil/go-jt808/protocol v1.14.0
-	github.com/cuteLittleDevil/go-jt808/service v1.9.0
+	github.com/cuteLittleDevil/go-jt808/service v1.11.0
 	github.com/cuteLittleDevil/go-jt808/shared v1.6.0
 	github.com/cuteLittleDevil/go-jt808/terminal v1.2.0
 	github.com/go-resty/resty/v2 v2.16.2
@@ -18,6 +18,7 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/nats-io/nats.go v1.38.0
 	github.com/spf13/viper v1.19.0
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
 require (
@@ -67,6 +68,5 @@ require (
 	golang.org/x/text v0.21.0 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
-	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
