@@ -8,6 +8,8 @@ import (
 type Message struct {
 	*jt808.JTMessage
 	Handler `json:"-"`
+	// Key 唯一标识符 默认手机号 终端未加入的时候为空
+	Key string `json:"key"`
 	// Command 当前的指令类型
 	Command         consts.JT808CommandType `json:"command"`
 	ExtensionFields struct {
@@ -27,6 +29,8 @@ type Message struct {
 		TerminalCommand consts.JT808CommandType `json:"terminalCommand,omitempty"`
 		// PlatformCommand 平台的指令
 		PlatformCommand consts.JT808CommandType `json:"platformCommand,omitempty"`
+		// CustomData 自定义数据
+		CustomData []byte `json:"customData,omitempty"`
 		// Err 异常情况
 		Err error `json:"err,omitempty"`
 	}
@@ -45,6 +49,7 @@ func newTerminalMessage(jtMsg *jt808.JTMessage, terminalData []byte) *Message {
 			SubcontractComplete bool                    `json:"subcontractComplete,omitempty"`
 			TerminalCommand     consts.JT808CommandType `json:"terminalCommand,omitempty"`
 			PlatformCommand     consts.JT808CommandType `json:"platformCommand,omitempty"`
+			CustomData          []byte                  `json:"customData,omitempty"`
 			Err                 error                   `json:"err,omitempty"`
 		}{
 			TerminalData:    terminalData,
@@ -69,6 +74,7 @@ func newActiveMessage(seq uint16, command consts.JT808CommandType, platformData 
 			SubcontractComplete bool                    `json:"subcontractComplete,omitempty"`
 			TerminalCommand     consts.JT808CommandType `json:"terminalCommand,omitempty"`
 			PlatformCommand     consts.JT808CommandType `json:"platformCommand,omitempty"`
+			CustomData          []byte                  `json:"customData,omitempty"`
 			Err                 error                   `json:"err,omitempty"`
 		}{
 			PlatformSeq:     seq,
@@ -90,6 +96,7 @@ func newErrMessage(err error) *Message {
 		SubcontractComplete bool                    `json:"subcontractComplete,omitempty"`
 		TerminalCommand     consts.JT808CommandType `json:"terminalCommand,omitempty"`
 		PlatformCommand     consts.JT808CommandType `json:"platformCommand,omitempty"`
+		CustomData          []byte                  `json:"customData,omitempty"`
 		Err                 error                   `json:"err,omitempty"`
 	}{
 		Err: err,

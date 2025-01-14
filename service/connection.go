@@ -128,6 +128,7 @@ func (c *connection) joinHandle(msg *Message) error {
 
 func (c *connection) handleMessages(msgs []*Message) {
 	for _, msg := range msgs {
+		msg.Key = c.key
 		if handler, ok := c.handles[msg.Command]; ok {
 			msg.Handler = handler
 			if msg.Command == consts.P8003ReissueSubcontractingRequest {
