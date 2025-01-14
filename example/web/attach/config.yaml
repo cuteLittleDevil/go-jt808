@@ -1,0 +1,11 @@
+addr: '0.0.0.0:18001'
+attach:
+  enable: true # 保存附件到attach.dir目录
+  dir: ./static/files/attach/
+  logFile: ./static/files/file.log
+  minio:
+    enable: false
+    endpoint: '127.0.0.1:9000'
+    appKey: 'minioadmin'
+    appSecret: 'minioadmin'
+    bucket: 'attach808' # 保存附件格式 格式: /sim卡号/xxx.jpg 如/1001/00_65_6503_0_me_65.jpg

@@ -6,7 +6,6 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/cloudwego/hertz/pkg/common/hlog"
-	"github.com/cuteLittleDevil/go-jt808/attachment"
 	"github.com/cuteLittleDevil/go-jt808/service"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 	"github.com/hertz-contrib/cors"
@@ -58,27 +57,12 @@ func init() {
 	}
 
 	dirs := []string{
-		conf.GetData().FileConfig.AttachConfig.Dir,
 		conf.GetData().FileConfig.CameraConfig.Dir,
 	}
 	for _, dir := range dirs {
 		_ = os.MkdirAll(dir, os.ModePerm)
 	}
 	go record.Run()
-
-	{
-		config := conf.GetData().FileConfig
-		attach := attachment.New(
-			attachment.WithNetwork("tcp"),
-			attachment.WithHostPorts(config.Address),
-			attachment.WithActiveSafetyType(consts.ActiveSafetyJS), // 默认苏标 支持黑标 广东标 湖南标 四川标
-			attachment.WithFileEventerFunc(func() attachment.FileEventer {
-				// 自定义文件处理 开始 结束 当前进度 补传 完成等事件
-				return custom.NewFileEvent(config.AttachConfig.Dir, config.AttachConfig.LogFile)
-			}),
-		)
-		go attach.Run()
-	}
 }
 
 func main() {

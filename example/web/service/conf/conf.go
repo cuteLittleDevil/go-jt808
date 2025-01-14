@@ -29,11 +29,8 @@ type (
 	}
 
 	AttachConfig struct {
-		IP      string `mapstructure:"ip" json:"ip"`
-		Port    int    `mapstructure:"port" json:"port"`
-		Enable  bool   `mapstructure:"enable" json:"enable"`
-		Dir     string `mapstructure:"dir" json:"dir"`
-		LogFile string `mapstructure:"logFile" json:"logFile"`
+		IP   string `mapstructure:"ip" json:"ip"`
+		Port int    `mapstructure:"port" json:"port"`
 	}
 
 	CameraConfig struct {
@@ -69,7 +66,7 @@ func InitConfig(path string) error {
 	if err := v.Unmarshal(&globalConfig); err != nil {
 		return err
 	}
-	SetData(&globalConfig)
+	setData(&globalConfig)
 	globalConfig.Show()
 	return nil
 }
