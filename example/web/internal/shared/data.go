@@ -125,7 +125,8 @@ func WithMessage(msg service.Message) EventDataOption {
 			PlatformCommand:     ex.PlatformCommand,
 			Err:                 ex.Err,
 		}
-		o.Subject = o.createSubject(uint16(msg.Command))
+		sim := msg.JTMessage.Header.TerminalPhoneNo
+		o.Subject = o.createSubject(sim, uint16(msg.Command))
 	}}
 }
 
@@ -143,9 +144,10 @@ func WithAttachIPAndPort(attachIP string, attachPort int) EventDataOption {
 	}}
 }
 
-func WithCustomData(data any) EventDataOption {
+func WithCustomData(sim string, command uint16, data any) EventDataOption {
 	return EventDataOption{F: func(o *EventData) {
 		o.CustomData = data
+		o.Subject = o.createSubject(sim, command)
 	}}
 }
 
@@ -158,7 +160,7 @@ func (d *EventData) Parse(data []byte) error {
 	return json.Unmarshal(data, d)
 }
 
-func (d *EventData) createSubject(command uint16) string {
+func (d *EventData) createSubject(sim string, command uint16) string {
 	prefix := ""
 	switch d.Type {
 	case OnInit:
@@ -175,6 +177,5 @@ func (d *EventData) createSubject(command uint16) string {
 		prefix = CustomSubjectPrefix
 	}
 	// 固定事件前缀.服务ID.手机号.报文类型
-	sim := d.JTMessage.Header.TerminalPhoneNo
 	return fmt.Sprintf("%s.%s.%s.%d", prefix, d.ID, sim, command)
 }

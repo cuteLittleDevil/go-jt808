@@ -8,6 +8,8 @@ import (
 	"os"
 	"time"
 	"web/internal/file"
+	"web/internal/mq"
+	"web/internal/shared"
 	"web/service/conf"
 )
 
@@ -16,6 +18,7 @@ type Camera struct {
 	saveLocal bool
 	saveMinio bool
 	model.T0x0801
+	openNats bool
 }
 
 func NewCamera() *Camera {
@@ -24,6 +27,7 @@ func NewCamera() *Camera {
 		dir:       cameraConfig.Dir,
 		saveLocal: cameraConfig.Enable,
 		saveMinio: cameraConfig.MinioConfig.Enable,
+		openNats:  conf.GetData().NatsConfig.Open,
 	}
 }
 
@@ -35,7 +39,7 @@ func (c *Camera) OnReadExecutionEvent(msg *service.Message) {
 	}
 	if c.saveMinio {
 		date := time.Now().Format("20060102")
-		path := fmt.Sprintf("/%s/%s", date, name)
+		path := fmt.Sprintf("%s/%s_%s", date, time.Now().Format("150405"), name)
 		// 简单一点 把路径保存到txt中 也可以把name当key保存到redis 另一边获取路径
 		minioUrl, err := file.Default().Upload(path, c.T0x0801.MultimediaPackage)
 		if err != nil {
@@ -45,6 +49,11 @@ func (c *Camera) OnReadExecutionEvent(msg *service.Message) {
 			return
 		}
 		_ = os.WriteFile(c.dir+name+".txt", []byte(minioUrl), os.ModePerm)
+		if c.openNats {
+			phone := msg.JTMessage.Header.TerminalPhoneNo
+			c.pub(shared.NewEventData(shared.OnCustom, phone,
+				shared.WithCustomData(phone, uint16(c.T0x0801.Protocol()), minioUrl)))
+		}
 	}
 }
 
@@ -65,4 +74,13 @@ func (c *Camera) saveName(sim string) string {
 		format = ".wmv"
 	}
 	return fmt.Sprintf("%s_%d%s", sim, c.MultimediaID, format)
+}
+
+func (c *Camera) pub(data *shared.EventData) {
+	sub := data.Subject
+	if err := mq.Default().Pub(sub, data.ToBytes()); err != nil {
+		slog.Error("pub fail",
+			slog.String("sub", sub),
+			slog.String("err", err.Error()))
+	}
 }

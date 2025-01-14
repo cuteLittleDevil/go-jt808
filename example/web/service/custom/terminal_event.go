@@ -19,6 +19,7 @@ type terminalEvent struct {
 	attachIP   string
 	attachPort int
 	key        string
+	openNats   bool
 }
 
 func NewTerminalEvent() service.TerminalEventer {
@@ -28,6 +29,7 @@ func NewTerminalEvent() service.TerminalEventer {
 		attachIP:   conf.GetData().FileConfig.AttachConfig.IP,
 		attachPort: conf.GetData().FileConfig.AttachConfig.Port,
 		key:        "",
+		openNats:   conf.GetData().NatsConfig.Open,
 	}
 }
 
@@ -92,7 +94,7 @@ func (t *terminalEvent) OnWriteExecutionEvent(msg service.Message) {
 
 func (t *terminalEvent) pub(data *shared.EventData) {
 	sub := data.Subject
-	if conf.GetData().NatsConfig.Open {
+	if t.openNats {
 		if err := mq.Default().Pub(sub, data.ToBytes()); err != nil {
 			slog.Error("pub fail",
 				slog.String("sub", sub),

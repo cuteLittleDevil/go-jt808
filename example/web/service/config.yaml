@@ -9,13 +9,13 @@ file:
   camera:
     enable: true # 保存0801信息到file.camera.dir目录
     dir: ./static/files/camera/ # 拍照录像的保存目录
-    URLPrefix: http://127.0.0.1:18000/files/camera/
+    URLPrefix: http://127.0.0.1:18000/static/files/camera/
     minio:
       enable: false #
       endpoint: '127.0.0.1:9000'
       accessKey: 'minioadmin'
       secretKey: 'minioadmin'
-      bucket: 'jt808' # 保存拍照图片 格式/日期/sim_id.jpg 如/20250101/1001_512.jpg
+      bucket: 'jt808' # 保存拍照图片 格式/日期/time_sim_id.jpg 如20250101/181756_1001_512.jpg
 
 jt808:
   addr: '0.0.0.0:808'

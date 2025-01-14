@@ -119,7 +119,7 @@ func main() {
 	}
 
 	router.Register(h)
-	h.StaticFS("/", appFS())
+	h.StaticFS("/static", appFS())
 	h.StaticFile("/index.html", "tstrtvs.html")
 	h.Spin()
 }
@@ -127,7 +127,7 @@ func main() {
 func appFS() *app.FS {
 	_ = os.MkdirAll("./static/", os.ModePerm)
 	return &app.FS{
-		Root:        "./static/",
+		Root:        "./",
 		PathRewrite: app.NewPathSlashesStripper(0),
 		PathNotFound: func(_ context.Context, c *app.RequestContext) {
 			c.JSON(http.StatusOK, shared.Response{
