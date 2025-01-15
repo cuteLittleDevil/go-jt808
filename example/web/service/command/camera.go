@@ -3,6 +3,7 @@ package command
 import (
 	"fmt"
 	"github.com/cuteLittleDevil/go-jt808/protocol/model"
+	"github.com/cuteLittleDevil/go-jt808/service"
 	"log/slog"
 	"os"
 	"time"
@@ -15,6 +16,7 @@ import (
 
 type Camera struct {
 	dir       string
+	minioDir  string
 	saveLocal bool
 	saveMinio bool
 	model.T0x0801
@@ -26,12 +28,27 @@ func NewCamera() *Camera {
 	cameraConfig := conf.GetData().FileConfig.CameraConfig
 	return &Camera{
 		dir:       cameraConfig.Dir,
+		minioDir:  cameraConfig.MinioDir,
 		saveLocal: cameraConfig.Enable,
 		saveMinio: cameraConfig.MinioConfig.Enable,
 		urlPrefix: cameraConfig.URLPrefix,
 		openNats:  conf.GetData().NatsConfig.Open,
 	}
 }
+
+func (c *Camera) OnReadExecutionEvent(msg *service.Message) {
+	if err := c.Parse(msg.JTMessage); err == nil {
+		const timing = 1
+		if c.T0x0801.EventItemEncode == timing {
+			phone := msg.Header.TerminalPhoneNo
+			now := time.Now().Format("150405")
+			name := fmt.Sprintf("%s_%s_%d", now, phone, c.MultimediaID)
+			go c.SaveData(name, msg.Key, phone)
+		}
+	}
+}
+
+func (c *Camera) OnWriteExecutionEvent(_ service.Message) {}
 
 func (c *Camera) SaveData(name string, key string, phone string) {
 	name = name + c.getDataType()
@@ -41,6 +58,7 @@ func (c *Camera) SaveData(name string, key string, phone string) {
 		Name:                name,
 		T0x0200LocationItem: c.T0x0200LocationItem,
 	}
+
 	if c.saveLocal {
 		if err := os.WriteFile(c.dir+name, c.T0x0801.MultimediaPackage, os.ModePerm); err != nil {
 			slog.Warn("local save fail",
@@ -50,6 +68,7 @@ func (c *Camera) SaveData(name string, key string, phone string) {
 		}
 		data.LocalFileURL = c.urlPrefix + name
 	}
+
 	if c.saveMinio {
 		date := time.Now().Format("20060102")
 		path := fmt.Sprintf("%s/%s", date, name)
@@ -61,17 +80,22 @@ func (c *Camera) SaveData(name string, key string, phone string) {
 				slog.String("err", err.Error()))
 			return
 		}
-		if err := os.WriteFile(c.dir+name+".txt", []byte(minioUrl), os.ModePerm); err != nil {
-			slog.Warn("local save fail",
-				slog.String("path", c.dir+name+".txt"),
-				slog.String("err", err.Error()))
-			return
+		if c.minioDir != "" {
+			if err := os.WriteFile(c.minioDir+name+".txt", []byte(minioUrl), os.ModePerm); err != nil {
+				slog.Warn("local save fail",
+					slog.String("path", c.minioDir+name+".txt"),
+					slog.String("err", err.Error()))
+				return
+			}
 		}
 		data.MinioURL = minioUrl
-		if c.openNats {
-			c.pub(shared.NewEventData(shared.OnCustom, key,
-				shared.WithCustomData(phone, uint16(c.T0x0801.Protocol()), data)))
-		}
+	}
+	if c.openNats {
+		c.pub(shared.NewEventData(shared.OnCustom, key,
+			shared.WithCustomData(phone, uint16(c.T0x0801.Protocol()), data)))
+	} else {
+		slog.Debug("pub custom",
+			slog.String("0801", c.String()))
 	}
 	record.PutImageURL(phone, data.LocalFileURL, data.MinioURL)
 }

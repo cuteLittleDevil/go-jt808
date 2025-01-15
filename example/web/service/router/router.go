@@ -64,29 +64,29 @@ func images(_ context.Context, ctx *app.RequestContext) {
 		IsMinio:  cameraConfig.MinioConfig.Enable,
 		MinioURL: "",
 	}
-	sum := 0
+
 	if response.IsLocal {
-		sum++
-	}
-	if response.IsMinio {
-		sum++
-	}
-	if sum > 0 {
 		_ = filepath.WalkDir(cameraConfig.Dir, func(path string, d os.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
-			if strings.Index(d.Name(), name) >= 0 {
-				if strings.HasSuffix(d.Name(), ".txt") {
-					b, _ := os.ReadFile(path)
-					response.MinioURL = string(b)
-				} else {
-					response.LocalURL = cameraConfig.URLPrefix + d.Name()
-				}
-				sum--
-				if sum == 0 {
-					return filepath.SkipAll
-				}
+			if strings.Index(d.Name(), name) >= 0 && strings.Index(d.Name(), ".txt") < 0 {
+				response.LocalURL = cameraConfig.URLPrefix + d.Name()
+				return filepath.SkipAll
+			}
+			return nil
+		})
+	}
+
+	if response.IsMinio {
+		_ = filepath.WalkDir(cameraConfig.MinioDir, func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if strings.Index(d.Name(), name) >= 0 && strings.HasSuffix(d.Name(), ".txt") {
+				b, _ := os.ReadFile(path)
+				response.MinioURL = string(b)
+				return filepath.SkipAll
 			}
 			return nil
 		})

@@ -9,9 +9,10 @@ file:
   camera:
     enable: true # 保存0801信息到file.camera.dir目录
     dir: ./static/files/camera/ # 拍照录像的保存目录
+    minioDir: ./static/files/minio/ # 拍照录像的辅助目录 生成txt里面保存minio访问的限时路径 如果是空的就不保存txt文件了
     URLPrefix: http://127.0.0.1:18000/static/files/camera/
     minio:
-      enable: false #
+      enable: false
       endpoint: '127.0.0.1:9000'
       appKey: 'minioadmin'
       appSecret: 'minioadmin'

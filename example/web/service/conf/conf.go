@@ -36,6 +36,7 @@ type (
 	CameraConfig struct {
 		Enable      bool        `mapstructure:"enable" json:"enable"`
 		Dir         string      `mapstructure:"dir" json:"dir"`
+		MinioDir    string      `mapstructure:"minioDir" json:"minioDir"`
 		URLPrefix   string      `mapstructure:"urlPrefix" json:"urlPrefix"`
 		MinioConfig MinioConfig `mapstructure:"minio" json:"minio"`
 	}

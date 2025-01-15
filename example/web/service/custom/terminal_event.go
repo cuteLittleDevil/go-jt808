@@ -79,6 +79,7 @@ func (t *terminalEvent) OnReadExecutionEvent(msg *service.Message) {
 				t0801.SaveData(name, t.key, t.phone)
 			}
 		}
+		//fmt.Println(t0801.String())
 	case consts.T0805CameraShootImmediately:
 		// 根据0805指令分配好名字 在根据xxx接口查询目前上传的情况
 		var t0805 model.T0x0805
@@ -86,7 +87,7 @@ func (t *terminalEvent) OnReadExecutionEvent(msg *service.Message) {
 			names := map[uint32]string{}
 			now := time.Now().Format("150405")
 			for _, id := range t0805.MultimediaIDList {
-				names[id] = fmt.Sprintf("%s_%s_%d", now, t.phone, id)
+				names[id] = fmt.Sprintf("8801_%s_%s_%d", now, t.phone, id)
 			}
 			msg.ExtensionFields.CustomData = names
 			t.names = names
