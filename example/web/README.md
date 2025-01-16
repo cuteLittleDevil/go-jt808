@@ -64,4 +64,19 @@ cd ./notice && go build && ./notice -address=0.0.0.0:18003 -nats=127.0.0.1:4222
 ```
 目前定时任务的事件项编码是0 正确为1
 0-平台下发指令 1-定时动作
+临时修改 在./alarm/camera.go中 可以去掉定时判断
+```
+
+``` go
+func (c *Camera) OnReadExecutionEvent(msg *service.Message) {
+	if err := c.Parse(msg.JTMessage); err == nil {
+		const timing = 1
+		if c.T0x0801.EventItemEncode == timing { // 这个判断去了就可以保存了
+			phone := msg.Header.TerminalPhoneNo
+			now := time.Now().Format("150405")
+			name := fmt.Sprintf("%s_%s_%d", now, phone, c.MultimediaID)
+			go c.SaveData(name, msg.Key, phone)
+		}
+	}
+}
 ```
