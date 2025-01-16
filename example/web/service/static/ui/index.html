@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+
+        #inputContainer {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        input,
+        button {
+            margin: 10px;
+            padding: 10px;
+        }
+
+        input {
+            width: 400px;
+        }
+
+        #messageBox {
+            width: 80%;
+            height: 300px;
+            border: 1px solid #ccc;
+            overflow-y: scroll;
+            padding: 10px;
+        }
+
+        #responseBoxContainer {
+            display: flex;
+            flex-direction: row;
+            width: 85%;
+            margin-top: 10px;
+        }
+
+        #responseBoxLeft,
+        #responseBoxRight {
+            width: 50%;
+            height: 500px;
+            border: 1px solid #ccc;
+            overflow-y: scroll;
+            padding: 10px;
+            margin: 0 0.5%;
+        }
+
+        a + a {
+            margin-left: 20px;
+        }
+
+        .input-label {
+            margin-right: 20px; /* 可根据需要修改此值，改变 span 与文本框的间距 */
+            text-align: left;
+        }
+
+    </style>
+</head>
+
+<body>
+<div id="inputContainer">
+    <span id="inputLabel" class="input-label"></span>
+    <label for="wsUrl"></label><input type="text" id="wsUrl" placeholder="使用自己的sim卡号">
+    <button id="connectButton">确定</button>
+    <a id="sendCommandLink" target="_blank">向设备发送指令</a>
+    <a id="streamingLink" target="_blank">设备流媒体相关</a>
+</div>
+<div id="messageBox"></div>
+<div id="responseBoxContainer">
+    <div id="responseBoxLeft"></div>
+    <div id="responseBoxRight"></div>
+</div>
+
+<script>
+    // 获取页面元素
+    const wsUrlInput = document.getElementById('wsUrl');
+    const connectButton = document.getElementById('connectButton');
+    const messageBox = document.getElementById('messageBox');
+    const responseBoxLeft = document.getElementById('responseBoxLeft');
+    const responseBoxRight = document.getElementById('responseBoxRight');
+    const inputLabel = document.getElementById('inputLabel');
+
+    // 读取配置文件
+    async function readConfig() {
+        try {
+            const response = await fetch('config.json');
+            return await response.json();
+        } catch (error) {
+            console.error('Error reading config.json:', error);
+            return {};
+        }
+    }
+
+    // 初始化配置
+    async function initConfig() {
+        const config = await readConfig();
+        if (config.wsUrl) {
+            wsUrlInput.value = config.wsUrl;
+        }
+        if (config.apiUrl) {
+            window.apiUrl = config.apiUrl;
+        }
+        if (config.sendCommandUrl) {
+            const sendCommandLink = document.getElementById('sendCommandLink');
+            sendCommandLink.href = config.sendCommandUrl;
+            sendCommandLink.onclick = function (event) {
+                event.preventDefault();
+                window.open(config.sendCommandUrl, '_blank');
+            };
+        }
+        if (config.streamingUrl) {
+            const streamingLink = document.getElementById('streamingLink');
+            streamingLink.href = config.streamingUrl;
+            streamingLink.onclick = function (event) {
+                event.preventDefault();
+                window.open(config.streamingUrl, '_blank');
+            };
+        }
+        if (config.inputLabelText) {
+            inputLabel.textContent = config.inputLabelText;
+        }
+    }
+
+    // Check if the browser supports WebSocket
+    if (!window.WebSocket) {
+        appendMessage("Your browser does not support WebSocket.",'received');
+        connectButton.disabled = true;
+    }
+    let socket;
+
+    // 点击按钮时建立 WebSocket 连接
+    connectButton.onclick = function () {
+        // 先断开已有的连接
+        if (socket && socket.readyState!== WebSocket.CLOSED) {
+            socket.close();
+        }
+        const url = wsUrlInput.value;
+        if (url) {
+            try {
+                // 打印出 URL 确认输入正确
+                console.log("Attempting to connect to: ", url);
+
+                socket = new WebSocket(url);
+
+                // 连接成功时的处理
+                socket.onopen = function () {
+                    appendMessage('Connected to '+ url,'received');
+                };
+
+                // 接收到消息时的处理
+                socket.onmessage = function (event) {
+                    appendMessage(event.data,'received');
+                    callApi(event.data);
+                };
+
+                // 发生错误时的处理
+                socket.onerror = function (event) {
+                    // 捕获事件的详细信息
+                    appendMessage('WebSocket Error: '+ (event? JSON.stringify(event) : 'Unknown error'),'received');
+                    console.error("WebSocket error: ", event);
+                };
+
+                // 连接关闭时的处理
+                socket.onclose = function (event) {
+                    appendMessage('Connection closed: '+ event.reason,'received');
+                    console.log("Connection closed ", event);
+                };
+            } catch (e) {
+                appendMessage('Failed to connect:'+ e.message,'received');
+                console.error("WebSocket connection failed: ", e);
+            }
+        } else {
+            appendMessage("Please enter a valid WebSocket URL.",'received');
+        }
+    };
+
+    // 向消息框添加消息
+    function appendMessage(message, type ='sent') {
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('message', type);
+        const bubble = document.createElement('div');
+        bubble.classList.add('bubble');
+        bubble.textContent = message;
+        // 将 -\u003e 还原为 ->
+        bubble.textContent = message.replace('\\u003e', '>');
+        console.log( bubble.textContent)
+
+        messageElement.appendChild(bubble);
+        messageBox.appendChild(messageElement);
+        messageBox.scrollTop = messageBox.scrollHeight;
+    }
+
+    // 调用接口并显示返回值
+    function callApi(data) {
+        // 这里从全局变量获取apiUrl
+        const apiUrl = window.apiUrl;
+        fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: data
+        })
+            .then(response => response.text())
+            .then(responseData => {
+                splitAndAppendResponseMessage(responseData);
+            })
+            .catch(error => {
+                appendResponseMessage('API Error:'+ error.message);
+            });
+    }
+
+    // 将内容根据 \n\n 切成两份并分别添加到左右文本框
+    function splitAndAppendResponseMessage(message) {
+        const parts = message.split('[---]');
+        if (parts.length === 2) {
+            appendResponseMessage(parts[0] + '\n', responseBoxLeft);
+            appendResponseMessage(parts[1], responseBoxRight);
+        } else if (parts.length === 1) {
+            appendResponseMessage(parts[0], responseBoxLeft);
+        }
+    }
+
+    // 向响应框添加消息
+    function appendResponseMessage(message, targetBox) {
+        // 将 \n 替换为 <br> 标签
+        message = message.replace(/\n/g, '<br>');
+        // 将 \t 替换为 &emsp; 或多个 &nbsp;
+        message = message.replace(/\t/g, '&emsp;');
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('message','received');
+        const bubble = document.createElement('div');
+        bubble.classList.add('bubble');
+        bubble.innerHTML = message;
+        messageElement.appendChild(bubble);
+        targetBox.appendChild(messageElement);
+        targetBox.scrollTop = targetBox.scrollHeight;
+    }
+
+    // 初始化配置
+    initConfig();
+</script>
+</body>
+
+</html>

@@ -60,13 +60,6 @@ func main() {
 		server.WithHostPorts(address),
 		server.WithHandleMethodNotAllowed(true),
 	)
-	h.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type"},
-		AllowCredentials: true,
-		MaxAge:           6 * time.Hour,
-	}))
 	h.NoRoute(func(ctx context.Context, c *app.RequestContext) {
 		fmt.Println(c.Request.URI().String(), string(c.Request.Body()))
 		c.JSON(http.StatusOK, shared.Response{
@@ -74,15 +67,33 @@ func main() {
 			Msg:  "未找到的路由",
 		})
 	})
+	h.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type"},
+		AllowCredentials: true,
+		MaxAge:           6 * time.Hour,
+	}))
 	group := h.Group("/api/v1/notice")
-	group.GET("/", ws)
+	group.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type"},
+		AllowCredentials: true,
+		MaxAge:           6 * time.Hour,
+	}))
+	group.GET("/ws", ws)
 	group.POST("/parse", parse)
 	group.POST("/parse-details", parseDetails)
 	h.Spin()
 }
 
 func ws(_ context.Context, c *app.RequestContext) {
-	var upGrader = websocket.HertzUpgrader{}
+	var upGrader = websocket.HertzUpgrader{
+		CheckOrigin: func(_ *app.RequestContext) bool {
+			return true
+		},
+	}
 	sim := c.DefaultQuery("sim", "")
 	// 检查这个sim卡号有没有在线 -> 目前懒得弄 可以HTTP查询service服务
 	err := upGrader.Upgrade(c, func(hc *websocket.Conn) {
@@ -156,7 +167,7 @@ func parse(_ context.Context, c *app.RequestContext) {
 		return
 	}
 	t := terminal.New()
-	c.String(http.StatusOK, "[终端]%s \n\n[平台]%s",
+	c.String(http.StatusOK, "[终端] %s \n[---]\n [平台] %s",
 		t.ProtocolDetails(notice.TerminalData),
 		t.ProtocolDetails(notice.PlatformData))
 }

@@ -1,0 +1,7 @@
+{
+  "wsUrl": "ws://127.0.0.1:18003/api/v1/notice/ws?sim=14419999999",
+  "apiUrl": "http://127.0.0.1:18003/api/v1/notice/parse",
+  "sendCommandUrl": "http://127.0.0.1:18000/static/ui/JT808协议.html",
+  "streamingUrl": "http://127.0.0.1:18000/static/ui/tstrtvs.html",
+  "inputLabelText": "把设备连接到 127.0.0.1:10808"
+}

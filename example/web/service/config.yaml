@@ -4,7 +4,7 @@ server:
 
 file:
   attach:
-    ip:  '49.234.235.7' # 告诉终端附件的外网IP
+    ip:  '124.221.30.46' # 告诉终端附件的外网IP
     port: 18001 # 告诉终端附件的外网端口
   camera:
     enable: true # 保存0801信息到file.camera.dir目录
@@ -16,10 +16,10 @@ file:
       endpoint: '127.0.0.1:9000'
       appKey: 'minioadmin'
       appSecret: 'minioadmin'
-      bucket: 'jt808' # 保存拍照图片 格式/日期/time_sim_id.jpg 如20250101/181756_1001_512.jpg
+      bucket: 'jt808' # 保存拍照图片 格式日期/time_sim_id.jpg 如20250101/181756_1001_512.jpg
 
 jt808:
-  addr: '0.0.0.0:808'
+  addr: '0.0.0.0:10808'
   id: "s1" # 默认消息队列主题是
   httpPrefix: http://127.0.0.1:18000 # 用于其他服务回调
   verify: true # 是否开启认证 (部分设备第一次注册后 后续就永远用这个鉴权码了 所以不能校验)

@@ -121,7 +121,10 @@ func main() {
 
 	router.Register(h)
 	h.StaticFS("/static", appFS())
-	h.StaticFile("/index.html", "tstrtvs.html")
+	h.GET("/", func(_ context.Context, c *app.RequestContext) {
+		c.Redirect(http.StatusMovedPermanently, []byte("/static/ui/index.html"))
+	})
+	fmt.Println("服务已启动 默认首页:", conf.GetData().JTConfig.HTTPPrefix)
 	h.Spin()
 }
 
