@@ -8,7 +8,12 @@ alarm:
   onFileApi: "/api/v1/jt808/9208"
 tdengine:
   enable: false
+  database: "power" # 数据库 默认保存72小时
+  superTable: "meters" # 超级表
+  # 默认子表为T+手机号 如T1001
   dsn: "root:taosdata@ws(127.0.0.1:6041)/information_schema?tz=Shanghai&parseTime=true&loc=Local"
 mongodb:
   enable: false
-  dsn: "mongodb://127.0.0.1:27017"
+  database: "jt808" # 数据库 默认时序设置 按小时划分
+  collection: "alarm" # 集合名称
+  dsn: "mongodb://username:password@127.0.0.1:27017"

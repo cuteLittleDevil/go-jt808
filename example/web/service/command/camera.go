@@ -20,19 +20,23 @@ type Camera struct {
 	saveLocal bool
 	saveMinio bool
 	model.T0x0801
-	openNats  bool
-	urlPrefix string
+	openNats   bool
+	urlPrefix  string
+	id         string
+	httpPrefix string
 }
 
 func NewCamera() *Camera {
 	cameraConfig := conf.GetData().FileConfig.CameraConfig
 	return &Camera{
-		dir:       cameraConfig.Dir,
-		minioDir:  cameraConfig.MinioDir,
-		saveLocal: cameraConfig.Enable,
-		saveMinio: cameraConfig.MinioConfig.Enable,
-		urlPrefix: cameraConfig.URLPrefix,
-		openNats:  conf.GetData().NatsConfig.Open,
+		dir:        cameraConfig.Dir,
+		minioDir:   cameraConfig.MinioDir,
+		saveLocal:  cameraConfig.Enable,
+		saveMinio:  cameraConfig.MinioConfig.Enable,
+		urlPrefix:  cameraConfig.URLPrefix,
+		openNats:   conf.GetData().NatsConfig.Open,
+		id:         conf.GetData().JTConfig.ID,
+		httpPrefix: conf.GetData().JTConfig.HTTPPrefix,
 	}
 }
 
@@ -56,7 +60,9 @@ func (c *Camera) SaveData(name string, key string, phone string) {
 		LocalFileURL:        "",
 		MinioURL:            "",
 		Name:                name,
+		ObjectName:          "",
 		T0x0200LocationItem: c.T0x0200LocationItem,
+		Phone:               phone,
 	}
 
 	if c.saveLocal {
@@ -71,12 +77,12 @@ func (c *Camera) SaveData(name string, key string, phone string) {
 
 	if c.saveMinio {
 		date := time.Now().Format("20060102")
-		path := fmt.Sprintf("%s/%s", date, name)
+		objName := fmt.Sprintf("%s/%s", date, name)
 		// 简单一点 把路径保存到txt中 也可以把name当key保存到redis 另一边获取路径
-		minioUrl, err := file.Default().Upload(path, c.T0x0801.MultimediaPackage)
+		minioUrl, err := file.Default().Upload(objName, c.T0x0801.MultimediaPackage)
 		if err != nil {
 			slog.Warn("minio upload fail",
-				slog.String("path", path),
+				slog.String("name", objName),
 				slog.String("err", err.Error()))
 			return
 		}
@@ -89,9 +95,11 @@ func (c *Camera) SaveData(name string, key string, phone string) {
 			}
 		}
 		data.MinioURL = minioUrl
+		data.ObjectName = objName
 	}
 	if c.openNats {
 		c.pub(shared.NewEventData(shared.OnCustom, key,
+			shared.WithIDAndHTTPPrefix(c.id, c.httpPrefix),
 			shared.WithCustomData(phone, uint16(c.T0x0801.Protocol()), data)))
 	} else {
 		slog.Debug("pub custom",

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/nats-io/nats.go"
 	"log/slog"
+	"web/internal/shared"
 )
 
 var _natsManage *Manage
@@ -30,9 +31,18 @@ func (m *Manage) Pub(subject string, data []byte) error {
 	return m.conn.Publish(subject, data)
 }
 
-func (m *Manage) Run(handlers map[string]nats.MsgHandler) {
-	for sub, msgHandler := range handlers {
-		if _, err := m.conn.Subscribe(sub, msgHandler); err != nil {
+func (m *Manage) Run(handlers map[string]func(data shared.EventData)) {
+	for sub, handle := range handlers {
+		if _, err := m.conn.Subscribe(sub, func(msg *nats.Msg) {
+			var data shared.EventData
+			if err := data.Parse(msg.Data); err == nil {
+				handle(data)
+			} else {
+				slog.Error("parse fail",
+					slog.String("sub", sub),
+					slog.String("err", err.Error()))
+			}
+		}); err != nil {
 			slog.Error("nats sub fail",
 				slog.String("sub", sub),
 				slog.String("err", err.Error()))

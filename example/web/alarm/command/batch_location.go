@@ -8,12 +8,14 @@ import (
 type BatchLocation struct {
 	model.T0x0704
 	AlarmLocations []Location
+	Phone          string
 }
 
 func (bl *BatchLocation) Parse(jtMsg *jt808.JTMessage) error {
 	if err := bl.T0x0704.Parse(jtMsg); err != nil {
 		return err
 	}
+	bl.Phone = jtMsg.Header.TerminalPhoneNo
 	for _, item := range bl.T0x0704.Items {
 		for additionType, addition := range item.T0x0200AdditionDetails.Additions {
 			var (

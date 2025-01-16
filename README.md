@@ -30,7 +30,7 @@
 ### 1. 真实项目对接 [apifox文档](https://vsh9jdgg5d.apifox.cn/) [web详情](./example/web/README.md)
 ``` txt
 终端连接到web服务 通过http下发指令给终端
-真实案例 根据壹品信息技术有限公司对接设备修改
+真实案例 根据壹品信息技术有限公司对接中农云设备修改
 ```
 
 ### 2. jt1078视频 [详情](./example/jt1078/README.md)

@@ -66,10 +66,14 @@ type (
 	T0x0801File struct {
 		// LocalFileURL 保存的图片本地地址
 		LocalFileURL string `json:"localFileURL,omitempty"`
-		// MinioURL 保存的图片minio地址
+		// MinioURL 保存的图片minio临时地址
 		MinioURL string `json:"minioURL"`
 		// Name 文件名
 		Name string `json:"name"`
+		// ObjectName minio文件名
+		ObjectName string `json:"objectName"`
+		// Phone 终端手机号
+		Phone string `json:"phone"`
 		// T0x0200LocationItem 位置信息
 		model.T0x0200LocationItem
 	}
@@ -150,6 +154,7 @@ func WithCustomData(sim string, command uint16, data any) EventDataOption {
 	return EventDataOption{F: func(o *EventData) {
 		o.CustomData = data
 		o.Subject = o.createSubject(sim, command)
+		fmt.Println("sub", o.Subject)
 	}}
 }
 

@@ -29,13 +29,17 @@ type (
 	}
 
 	TdengineConfig struct {
-		Enable bool   `mapstructure:"enable" json:"enable"`
-		Dsn    string `mapstructure:"dsn" json:"dsn"`
+		Enable     bool   `mapstructure:"enable" json:"enable"`
+		Database   string `mapstructure:"database" json:"database"`
+		SuperTable string `mapstructure:"superTable" json:"superTable"`
+		Dsn        string `mapstructure:"dsn" json:"dsn"`
 	}
 
 	MongodbConfig struct {
-		Enable bool   `mapstructure:"enable" json:"enable"`
-		Dsn    string `mapstructure:"dsn" json:"dsn"`
+		Enable     bool   `mapstructure:"enable" json:"enable"`
+		Database   string `mapstructure:"database" json:"database"`
+		Collection string `mapstructure:"collection" json:"collection"`
+		Dsn        string `mapstructure:"dsn" json:"dsn"`
 	}
 )
 

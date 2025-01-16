@@ -12,6 +12,7 @@ type Location struct {
 	model.T0x0200AdditionExtension0x66
 	model.T0x0200AdditionExtension0x67
 	model.T0x0200AdditionExtension0x70
+	Phone string
 }
 
 func (l *Location) Parse(jtMsg *jt808.JTMessage) error {
@@ -30,6 +31,7 @@ func (l *Location) Parse(jtMsg *jt808.JTMessage) error {
 		}
 		return model.AdditionContent{}, false
 	}
+	l.Phone = jtMsg.Header.TerminalPhoneNo
 	return l.T0x0200.Parse(jtMsg)
 }
 
