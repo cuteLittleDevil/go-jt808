@@ -10,8 +10,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -23,11 +21,11 @@ jobs:
         run: |
           cd ./protocol
           go test -coverprofile=coverage.txt ./jt808 ./model ./utils ./jt1078
+          cd ../
 
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: true # optional (default = false)
           flags: unittests # optional
           verbose: true # optional (default = false)
