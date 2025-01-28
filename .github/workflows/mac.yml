@@ -1,0 +1,74 @@
+name: release-macos
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build-macos: #https://github.com/softprops/action-gh-release
+    name: Build on macOS
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build
+        run: | 
+          echo ${{ github.sha }} > Release.txt
+          mkdir release
+          cp Release.txt LICENSE release/
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.23'
+
+      - name: Download NATS
+        run: |
+          # 下载 macOS 版本的 NATS 服务器
+          curl -L -o nats-server-v2.10.25-darwin-arm64.zip https://github.com/nats-io/nats-server/releases/download/v2.10.25/nats-server-v2.10.25-darwin-arm64.zip
+
+      - name: Unzip NATS
+        run: |
+          mkdir -p release/nats
+          unzip nats-server-v2.10.25-darwin-arm64.zip -d release/nats
+
+      - name: Go Build
+        run: |
+          cd ./example/web/service
+          go build -o service || exit 1
+          cd ../notice
+          go build -o notice || exit 1
+          cd ../alarm
+          go build -o alarm || exit 1
+          cd ../attach
+          go build -o attach || exit 1
+
+      - name: Package Files
+        run: |
+          cp -r ./example/web/shell/mac/* release/
+          mkdir -p release/service
+          cp -r ./example/web/testdata/ release/testdata
+          cp ./example/web/README.md release/README.md
+          cp ./example/web/service/service release/service/
+          cp ./example/web/service/config.yaml release/service/
+          cp -r ./example/web/service/static/ release/service/static
+          mkdir -p release/notice
+          cp ./example/web/notice/notice release/notice/
+          mkdir -p release/alarm
+          cp ./example/web/alarm/alarm release/alarm/
+          cp ./example/web/alarm/config.yaml release/alarm/  
+          mkdir -p release/attach
+          cp ./example/web/attach/attach release/attach/
+          cp ./example/web/attach/config.yaml release/attach/  
+          zip -r release-darwin-arm64.zip release
+
+      - name: Test
+        run: cat Release.txt
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: release-darwin-arm64.zip

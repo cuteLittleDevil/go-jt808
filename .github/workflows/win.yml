@@ -1,0 +1,73 @@
+name: release-windows
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build-windows: #https://github.com/softprops/action-gh-release
+    name: Build on Windows
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build
+        run: |
+          echo ${{ github.sha }} > Release.txt
+          New-Item -ItemType Directory -Force -Path release
+          Copy-Item Release.txt, LICENSE -Destination release
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.23'
+
+      - name: Download NATS
+        run: |
+          Invoke-WebRequest -Uri https://github.com/nats-io/nats-server/releases/download/v2.10.25/nats-server-v2.10.25-windows-amd64.zip -OutFile nats-server-v2.10.25-windows-amd64.zip
+
+      - name: Unzip NATS
+        run: |
+          New-Item -ItemType Directory -Force -Path release\nats
+          Expand-Archive -Path nats-server-v2.10.25-windows-amd64.zip -DestinationPath release\nats
+
+      - name: Go Build
+        run: |
+          cd .\example\web\service
+          go build -o service.exe || exit 1
+          cd ..\notice
+          go build -o notice.exe || exit 1
+          cd ..\alarm
+          go build -o alarm.exe || exit 1
+          cd ..\attach
+          go build -o attach.exe || exit 1
+
+      - name: Package Files
+        run: |
+          Copy-Item -Recurse .\example\web\shell\windows\* release
+          New-Item -ItemType Directory -Force -Path release\service
+          Copy-Item -Recurse .\example\web\testdata\ release\testdata
+          Copy-Item .\example\web\README.md release\README.md
+          Copy-Item .\example\web\service\service.exe release\service\
+          Copy-Item .\example\web\service\config.yaml release\service\
+          Copy-Item -Recurse .\example\web\service\static release\service\static
+          New-Item -ItemType Directory -Force -Path release\notice
+          Copy-Item .\example\web\notice\notice.exe release\notice\
+          New-Item -ItemType Directory -Force -Path release\alarm
+          Copy-Item .\example\web\alarm\alarm.exe release\alarm\
+          Copy-Item .\example\web\alarm\config.yaml release\alarm\
+          New-Item -ItemType Directory -Force -Path release\attach
+          Copy-Item .\example\web\attach\attach.exe release\attach\
+          Copy-Item .\example\web\attach\config.yaml release\attach\
+          Compress-Archive -Path release -DestinationPath release-windows-amd64.zip
+
+      - name: Test
+        run: Get-Content Release.txt
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: release-windows-amd64.zip

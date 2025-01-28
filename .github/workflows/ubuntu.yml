@@ -1,0 +1,87 @@
+name: release-ubuntu
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build-ubuntu:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build
+        run: |
+          echo ${{ github.sha }} > Release.txt
+          mkdir release
+          cp Release.txt LICENSE release/
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.23'
+
+      - name: Download NATS
+        run: |
+          if [ "${{ matrix.arch }}" == "amd64" ]; then
+            wget https://github.com/nats-io/nats-server/releases/download/v2.10.25/nats-server-v2.10.25-linux-amd64.zip
+          else
+            wget https://github.com/nats-io/nats-server/releases/download/v2.10.25/nats-server-v2.10.25-linux-arm64.zip
+          fi
+
+      - name: Unzip NATS
+        run: |
+          mkdir -p release/nats
+          if [ "${{ matrix.arch }}" == "amd64" ]; then
+            unzip nats-server-v2.10.25-linux-amd64.zip -d release/nats
+          else
+            unzip nats-server-v2.10.25-linux-arm64.zip -d release/nats
+          fi
+
+      - name: Set GOARCH
+        run: |
+          echo "GOARCH=${{ matrix.arch }}" >> $GITHUB_ENV
+
+      - name: Go Build
+        run: |
+          cd ./example/web/service
+          go build -o service || exit 1
+          cd ../notice
+          go build -o notice || exit 1
+          cd ../alarm
+          go build -o alarm || exit 1
+          cd ../attach
+          go build -o attach || exit 1
+
+      - name: Package Files
+        run: |
+          cp -r ./example/web/shell/ubuntu/* release/
+          mkdir -p release/service
+          cp -r ./example/web/testdata/ release/testdata
+          cp ./example/web/README.md release/README.md
+          cp ./example/web/service/service release/service/
+          cp ./example/web/service/config.yaml release/service/
+          cp -r ./example/web/service/static release/service/static
+          mkdir -p release/notice
+          cp ./example/web/notice/notice release/notice/
+          mkdir -p release/alarm
+          cp ./example/web/alarm/alarm release/alarm/
+          cp ./example/web/alarm/config.yaml release/alarm/  
+          mkdir -p release/attach
+          cp ./example/web/attach/attach release/attach/
+          cp ./example/web/attach/config.yaml release/attach/  
+          zip -r release-ubuntu-${{ matrix.arch }}.zip release
+
+      - name: Test
+        run: cat Release.txt
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: release-ubuntu-${{ matrix.arch }}.zip

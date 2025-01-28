@@ -1,0 +1,34 @@
+按以下顺序启动exe
+nats-server.exe
+service.exe
+notice.exe
+alarm.exe
+attach.exe
+首页的默认页面: http://127.0.0.1:18000/
+
+├── LICENSE
+├── README.md
+├── Release.txt
+├── alarm
+│       ├── alarm.exe
+│       └── config.yaml
+├── attach
+│       ├── attach.exe
+│       └── config.yaml
+├── nats
+│       └── nats-server-v2.10.25-darwin-arm64
+│           ├── LICENSE
+│           ├── README.md
+│           └── nats-server.exe
+├── notice
+│       └── notice.exe
+├── service
+│       ├── config.yaml
+│       ├── service.exe
+│       └── static
+|
+├── testdata
+└── 说明.txt
+
+
+
