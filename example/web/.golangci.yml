@@ -29,6 +29,9 @@ issues:
     - linters:
         - funlen
       source: "OnEvent"
+    - linters:
+        - funlen
+      source: "ws"
 
 output:
   # See the dedicated "output" documentation section.
