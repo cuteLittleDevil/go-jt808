@@ -3,6 +3,7 @@
 [![Perf](https://img.shields.io/badge/perf-save-blue.svg)](https://github.com/cuteLittleDevil/go-jt808/blob/main/example/simulator/README.md)
 [![WEB](https://img.shields.io/badge/example-web-red.svg)](https://github.com/cuteLittleDevil/go-jt808/tree/main/example/web#web)
 [![API](https://img.shields.io/badge/debug-apifox-green.svg)](https://vsh9jdgg5d.apifox.cn/)
+[![codecov](https://codecov.io/github/cuteLittleDevil/go-jt808/graph/badge.svg?token=KZXKKIJUSA)](https://codecov.io/github/cuteLittleDevil/go-jt808)
 
 # go-jt808
 
@@ -29,7 +30,7 @@
 
 ## 常见案例
 
-### 1. 真实项目对接 [apifox文档](https://vsh9jdgg5d.apifox.cn/) [web详情](./example/web/README.md)
+### 1. 真实项目对接 [apifox文档](https://vsh9jdgg5d.apifox.cn/) [web详情](./example/web/README.md) [releases下载](https://github.com/cuteLittleDevil/go-jt808/releases)
 ``` txt
 终端连接到web服务 通过http下发指令给终端
 真实案例 根据壹品信息技术有限公司对接中农云设备修改

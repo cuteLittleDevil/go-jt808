@@ -85,3 +85,4 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: release-ubuntu-${{ matrix.arch }}.zip
+          update_latest_release: true

@@ -72,3 +72,4 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: release-darwin-arm64.zip
+          update_latest_release: true

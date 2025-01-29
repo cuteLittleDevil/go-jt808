@@ -1,32 +1,35 @@
 打包的是web例子
 
-按以下顺序启动exe
-nats-server.exe
-service.exe
-notice.exe
-alarm.exe (默认不保存到db 支持tdengine和MongoDB)
-attach.exe
+按以下顺序启动
+nats-server
+service
+notice
+alarm (默认不保存到db 支持tdengine和MongoDB)
+attach
 首页的默认页面: http://127.0.0.1:18000/
+
+./start.sh 脚本启动
+./stop.sh 脚本关闭
 
 ├── LICENSE
 ├── README.md
 ├── Release.txt
 ├── alarm
-│       ├── alarm.exe
+│       ├── alarm
 │       └── config.yaml
 ├── attach
-│       ├── attach.exe
+│       ├── attach
 │       └── config.yaml
 ├── nats
 │       └── nats-server-v2.10.25-darwin-arm64
 │           ├── LICENSE
 │           ├── README.md
-│           └── nats-server.exe
+│           └── nats-server
 ├── notice
-│       └── notice.exe
+│       └── notice
 ├── service
 │       ├── config.yaml
-│       ├── service.exe
+│       ├── service
 │       └── static
 |
 ├── testdata
