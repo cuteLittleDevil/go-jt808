@@ -6,17 +6,24 @@ import (
 	"github.com/cuteLittleDevil/go-jt808/service"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 	"os"
+	"sync"
 	"time"
 )
 
 type meTerminal struct {
 	file *os.File
+	once sync.Once
 }
 
 func (m *meTerminal) OnJoinEvent(_ *service.Message, key string, err error) {
 	str := fmt.Sprintf("终端加入: %s err[%v]", key, err)
 	m.println(str)
-	m.file, _ = os.OpenFile("terminal.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, os.ModePerm)
+	m.once.Do(func() {
+		m.file, err = os.OpenFile("terminal.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, os.ModePerm)
+		if err != nil {
+			panic(err)
+		}
+	})
 }
 
 func (m *meTerminal) OnLeaveEvent(key string) {

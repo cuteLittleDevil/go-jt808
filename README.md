@@ -1,9 +1,10 @@
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/cuteLittleDevil/go-jt808?tab=MIT-1-ov-file)
-[![Doc](https://img.shields.io/badge/doc-go--jt808-blue.svg)](https://pkg.go.dev/github.com/cuteLittleDevil/go-jt808#section-directories)
+[![Go Doc](https://godoc.org/github.com/cuteLittleDevil/go-jt808?status.svg)](https://pkg.go.dev/github.com/cuteLittleDevil/go-jt808#section-directories)
 [![Perf](https://img.shields.io/badge/perf-save-blue.svg)](https://github.com/cuteLittleDevil/go-jt808/blob/main/example/simulator/README.md)
 [![WEB](https://img.shields.io/badge/example-web-red.svg)](https://github.com/cuteLittleDevil/go-jt808/tree/main/example/web#web)
-[![API](https://img.shields.io/badge/debug-apifox-green.svg)](https://vsh9jdgg5d.apifox.cn/)
+[![API](https://img.shields.io/badge/web%20doc-apifox-red.svg)](https://vsh9jdgg5d.apifox.cn/)
 [![codecov](https://codecov.io/github/cuteLittleDevil/go-jt808/graph/badge.svg?token=KZXKKIJUSA)](https://codecov.io/github/cuteLittleDevil/go-jt808)
+[![Go Report Card](https://goreportcard.com/badge/github.com/cuteLittleDevil/go-jt808/protocol)](https://goreportcard.com/report/github.com/cuteLittleDevil/go-jt808/protocol)
 
 # go-jt808
 
@@ -25,6 +26,15 @@
 |  安全可靠 | 核心协议部分测试覆盖率100% 纯原生go实现(不依赖任何库)  |
 |  简洁优雅 | 核心代码不到1000行 不使用任何锁 仅使用channel完成  |
 |  易于扩展 | 方便二次开发 有适配任意jt808服务 分布式集群等案例  |
+
+| 服务名 |      描述       | Go Report Card |
+|----------|--------------------|-----|
+| shared | jt808和1078指令常量 | [![Go Report Card](https://goreportcard.com/badge/github.com/cuteLittleDevil/go-jt808/shared)](https://goreportcard.com/report/github.com/cuteLittleDevil/go-jt808/shared) |
+| protocol | jt808和1078协议实现 | [![Go Report Card](https://goreportcard.com/badge/github.com/cuteLittleDevil/go-jt808/protocol)](https://goreportcard.com/report/github.com/cuteLittleDevil/go-jt808/protocol) |
+| service | jt808服务端 | [![Go Report Card](https://goreportcard.com/badge/github.com/cuteLittleDevil/go-jt808/service)](https://goreportcard.com/report/github.com/cuteLittleDevil/go-jt808/service) |
+| adapter | jt808适配器 | [![Go Report Card](https://goreportcard.com/badge/github.com/cuteLittleDevil/go-jt808/adapter)](https://goreportcard.com/report/github.com/cuteLittleDevil/go-jt808/adapter) |
+| attachment | jt808附件服务 | [![Go Report Card](https://goreportcard.com/badge/github.com/cuteLittleDevil/go-jt808/attachment)](https://goreportcard.com/report/github.com/cuteLittleDevil/go-jt808/attachment) |
+| terminal | jt808客户端模拟器 | [![Go Report Card](https://goreportcard.com/badge/github.com/cuteLittleDevil/go-jt808/terminal)](https://goreportcard.com/report/github.com/cuteLittleDevil/go-jt808/terminal) |
 
 ---
 
