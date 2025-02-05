@@ -8,7 +8,7 @@
 
 # go-jt808
 
-在线网页 http://124.221.30.46:18000/
+web例子在线网页 http://124.221.30.46:18000/
 
 ``` txt
  本项目已更好支持二次开发为目标 可通过各种自定义事件去完成相应功能
@@ -27,7 +27,7 @@
 |  简洁优雅 | 核心代码不到1000行 不使用任何锁 仅使用channel完成  |
 |  易于扩展 | 方便二次开发 有适配任意jt808服务 分布式集群等案例  |
 
-| 服务名 |      描述       | Go Report Card |
+| 包名 |      描述       | Go Report Card |
 |----------|--------------------|-----|
 | shared | jt808和1078指令常量 | [![Go Report Card](https://goreportcard.com/badge/github.com/cuteLittleDevil/go-jt808/shared)](https://goreportcard.com/report/github.com/cuteLittleDevil/go-jt808/shared) |
 | protocol | jt808和1078协议实现 | [![Go Report Card](https://goreportcard.com/badge/github.com/cuteLittleDevil/go-jt808/protocol)](https://goreportcard.com/report/github.com/cuteLittleDevil/go-jt808/protocol) |
@@ -93,6 +93,11 @@ jt808服务端 模拟器 消息队列 数据库都运行在2核4G腾讯云服务
 ### 9. 自定义协议扩展 [代码参考](./example/protocol/custom_parse/main.go)
 ``` txt
 自定义附加信息处理 获取想要的扩展内容
+```
+
+### 10. ftp例子 [详情](./example/ftp/README.md)
+``` txt
+把atop_cpu.png传输到ftp目录 (需要ftp服务)
 ```
 
 [快速开始](./example/quick_start/README.md) [完整项目例子](./example/web/README.md)
