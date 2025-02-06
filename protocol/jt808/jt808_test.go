@@ -1,16 +1,18 @@
 package jt808
 
 import (
+	"bytes"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/cuteLittleDevil/go-jt808/protocol"
+	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 	"os"
 	"reflect"
 	"testing"
 )
 
-func TestJTMessage_Decode(t *testing.T) {
+func TestJTMessageDecode(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    string
@@ -107,6 +109,55 @@ func TestEncode(t *testing.T) {
 			got := fmt.Sprintf("%x", data)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Encode() = %s\n want %s", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestEncode2(t *testing.T) {
+	type args struct {
+		name    string
+		command uint16
+		seq     uint16
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "0x1205 指令分包",
+			args: args{
+				name:    "./testdata/0x1205_src.txt",
+				command: uint16(consts.T1205UploadAudioVideoResourceList),
+				seq:     17148,
+			},
+			want: "./testdata/0x1205_dst.txt",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			msg := "7e0002400001000000000172998417380000027e"
+			jtMsg := NewJTMessage()
+			data, _ := hex.DecodeString(msg)
+			_ = jtMsg.Decode(data)
+
+			src, err := os.ReadFile(tt.args.name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			srcData, _ := hex.DecodeString(string(src))
+			jtMsg.Header.ReplyID = tt.args.command
+			jtMsg.Header.PlatformSerialNumber = tt.args.seq
+			got := jtMsg.Header.Encode(srcData)
+			dst, err := os.ReadFile(tt.want)
+			if err != nil {
+				t.Fatal(err)
+			}
+			dst = bytes.ReplaceAll(dst, []byte("\n"), []byte(""))
+			dstData, _ := hex.DecodeString(string(dst))
+			if !reflect.DeepEqual(got, dstData) {
+				t.Errorf("Encode() \ngot = %x\nwant= %x", got, dstData)
 			}
 		})
 	}

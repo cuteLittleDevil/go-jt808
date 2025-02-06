@@ -9,6 +9,9 @@ import (
 	"strings"
 )
 
+// maxBodyLength 平台下发给设备单个包 body最大长度.
+const maxBodyLength = 1000
+
 type (
 	Header struct {
 		// ID 消息ID
@@ -140,27 +143,61 @@ func (h *Header) decode(data []byte) error {
 }
 
 func (h *Header) Encode(body []byte) []byte {
-	data := make([]byte, 4, 30)
+	if len(body) < maxBodyLength {
+		return h.createPackage(body, 0, 0)
+	} else {
+		return h.subPackageStatistics(body)
+	}
+}
+
+func (h *Header) subPackageStatistics(body []byte) []byte {
+	bodyLen := len(body)
+	data := make([]byte, 0, bodyLen+maxBodyLength)
+	fullGroups := bodyLen / maxBodyLength
+	remaining := bodyLen % maxBodyLength
+	sum := fullGroups
+	if remaining > 0 {
+		sum++
+	}
+	for i := 0; i < fullGroups; i++ {
+		start := i * maxBodyLength
+		end := start + maxBodyLength
+		data = append(data, h.createPackage(body[start:end], uint16(i+1), uint16(sum))...)
+	}
+	if remaining > 0 {
+		start := fullGroups * maxBodyLength
+		data = append(data, h.createPackage(body[start:], uint16(sum), uint16(sum))...)
+	}
+	return data
+}
+
+func (h *Header) createPackage(body []byte, num, sum uint16) []byte {
+	data := make([]byte, 4, len(body)+25) // 2019版最大固定部分是21 考虑到转义部分 设置25
 	id := h.ReplyID
 	if id == 0 {
 		id = h.ID
 	}
-	binary.BigEndian.PutUint16(data[:2], id)
+	binary.BigEndian.PutUint16(data[:2], id)   // 写消息ID
 	h.Property.BodyDayaLen = uint16(len(body)) // 消息的长度改为回复的body长度
-	if len(body) < 1000 {
-		h.Property.PacketFragmented = 0 // 不分包
-	} else {
-		//  需要把这个内容分多个包 ???目前感觉没必要 暂时不实现 因为下发的包都比较小
+	h.Property.PacketFragmented = 0            // 不分包
+	if sum > 0 {
+		h.Property.PacketFragmented = 1 // 分包
 	}
-	binary.BigEndian.PutUint16(data[2:4], h.Property.encode())
+	binary.BigEndian.PutUint16(data[2:4], h.Property.encode()) // 写消息属性
 	if h.ProtocolVersion == consts.JT808Protocol2019 {
 		// 2019版本的标识
 		data = append(data, 0x01)
 	}
-	data = append(data, h.bcdTerminalPhoneNo...)                                            // 写终端手机号
-	data = append(data, byte(h.PlatformSerialNumber>>8), byte(h.PlatformSerialNumber&0xFF)) // 写流水号 平台回复的流水号
-	data = append(data, body...)                                                            // 写消息体
-	code := utils.CreateVerifyCode(data)                                                    // 校验码
+	data = append(data, h.bcdTerminalPhoneNo...) // 写终端手机号
+	if sum > 0 {
+		data = binary.BigEndian.AppendUint16(data, h.PlatformSerialNumber+num-1) // 写流水号 平台回复的流水号
+		data = binary.BigEndian.AppendUint16(data, sum)                          // 写总包数
+		data = binary.BigEndian.AppendUint16(data, num)                          // 写当前包
+	} else {
+		data = binary.BigEndian.AppendUint16(data, h.PlatformSerialNumber) // 写流水号 平台回复的流水号
+	}
+	data = append(data, body...)         // 写消息体
+	code := utils.CreateVerifyCode(data) // 校验码
 	data = append(data, code)
 	return escape(data) // 转义
 }

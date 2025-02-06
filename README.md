@@ -1,5 +1,5 @@
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/cuteLittleDevil/go-jt808?tab=MIT-1-ov-file)
-[![Go Doc](https://godoc.org/github.com/cuteLittleDevil/go-jt808?status.svg)](https://pkg.go.dev/github.com/cuteLittleDevil/go-jt808#section-directories)
+[![Go Doc](https://godoc.org/github.com/cuteLittleDevil/go-jt808?status.svg)](https://pkg.go.dev/github.com/cuteLittleDevil/go-jt808#readme-jt808)
 [![Perf](https://img.shields.io/badge/perf-save-blue.svg)](https://github.com/cuteLittleDevil/go-jt808/blob/main/example/simulator/README.md)
 [![WEB](https://img.shields.io/badge/example-web-red.svg)](https://github.com/cuteLittleDevil/go-jt808/tree/main/example/web#web)
 [![API](https://img.shields.io/badge/web%20doc-apifox-red.svg)](https://vsh9jdgg5d.apifox.cn/)
@@ -51,10 +51,10 @@ web例子在线网页 http://124.221.30.46:18000/
 ``` txt
 平台下发0x9101等指令 模拟器开始推流等动作
 ```
-| 流媒体服务 | 语言 | 描述       | 说明 |
+| 流媒体 | 语言 | 描述       | 说明 |
 |----------|-----|-------------------|-----|
-| RTVS | 不开源<br/> 可使用  | 在线测试页面 http://49.234.235.7:17001 <br/> 点击实时视频(0x9101)按钮播放| [详情点击](./example/jt1078/README.md#rtvs)  |
-| LAL | go  | 在线播放地址 http://49.234.235.7:8080/live/1001_1.flv | [详情点击](./example/jt1078/README.md#lal)  |
+| rtvs | 不开源<br/> 可使用  | 在线测试页面 http://49.234.235.7:17001 <br/> 点击实时视频(0x9101)按钮播放| [详情点击](./example/jt1078/README.md#rtvs)  |
+| lal | go  | 在线播放地址 http://49.234.235.7:8080/live/1001_1.flv | [详情点击](./example/jt1078/README.md#lal)  |
 | sky-java | java  | 需要部署后 HTTP请求 10秒内拉流 参考格式如下 <br/> http://222.244.144.181:7777/video/1001-1-0-0.live.mp4 | [详情点击](./example/jt1078/README.md#sky-java)  |
 | m7s | go  | 在线播放地址 http://49.234.235.7:8088/mp4/live/jt1078-295696659617-1.mp4 | [详情点击](https://github.com/cuteLittleDevil/m7s-jt1078)  |
 
@@ -125,7 +125,8 @@ func init() {
 	attach := attachment.New(
 		attachment.WithNetwork("tcp"),
 		attachment.WithHostPorts("0.0.0.0:10001"),
-		attachment.WithActiveSafetyType(consts.ActiveSafetyJS), // 默认苏标 支持黑标 广东标 湖南标 四川标
+		// 默认苏标 支持黑标 广东标 湖南标 四川标
+		attachment.WithActiveSafetyType(consts.ActiveSafetyJS),
 		attachment.WithFileEventerFunc(func() attachment.FileEventer {
 			return &meFileEvent{} // 自定义文件处理 开始 结束 当前进度 补传 完成等事件
 		}),

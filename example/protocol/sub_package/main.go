@@ -38,8 +38,11 @@ func main() {
 	)
 	go goJt808.Run()
 
-	phone := "17299841738"
-	go client(phone)
+	go func() {
+		time.Sleep(1 * time.Second)
+		phone := "17299841738"
+		client(phone)
+	}()
 	time.Sleep(100 * time.Second)
 }
 
