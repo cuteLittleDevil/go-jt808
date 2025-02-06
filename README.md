@@ -5,6 +5,7 @@
 [![API](https://img.shields.io/badge/web%20doc-apifox-red.svg)](https://vsh9jdgg5d.apifox.cn/)
 [![codecov](https://codecov.io/github/cuteLittleDevil/go-jt808/graph/badge.svg?token=KZXKKIJUSA)](https://codecov.io/github/cuteLittleDevil/go-jt808)
 [![Go Report Card](https://goreportcard.com/badge/github.com/cuteLittleDevil/go-jt808/protocol)](https://goreportcard.com/report/github.com/cuteLittleDevil/go-jt808/protocol)
+[![build status](https://github.com/cuteLittleDevil/go-jt808/actions/workflows/ci.yml/badge.svg)](https://github.com/cuteLittleDevil/go-jt808/actions/workflows/ci.yml)
 
 # go-jt808
 
@@ -40,7 +41,7 @@ web例子在线网页 http://124.221.30.46:18000/
 
 ## 常见案例
 
-### 1. 真实项目对接 [apifox文档](https://vsh9jdgg5d.apifox.cn/) [web详情](./example/web/README.md) [releases下载](https://github.com/cuteLittleDevil/go-jt808/releases)
+### 1. 真实项目对接 [apifox文档](https://vsh9jdgg5d.apifox.cn/) [web详情](./example/web) [releases下载](https://github.com/cuteLittleDevil/go-jt808/releases)
 ``` txt
 终端连接到web服务 通过http下发指令给终端
 真实案例 根据壹品信息技术有限公司对接中农云设备修改
@@ -56,7 +57,7 @@ web例子在线网页 http://124.221.30.46:18000/
 | rtvs | 不开源<br/> 可使用  | 在线测试页面 http://49.234.235.7:17001 <br/> 点击实时视频(0x9101)按钮播放| [详情点击](./example/jt1078/README.md#rtvs)  |
 | lal | go  | 在线播放地址 http://49.234.235.7:8080/live/1001_1.flv | [详情点击](./example/jt1078/README.md#lal)  |
 | sky-java | java  | 需要部署后 HTTP请求 10秒内拉流 参考格式如下 <br/> http://222.244.144.181:7777/video/1001-1-0-0.live.mp4 | [详情点击](./example/jt1078/README.md#sky-java)  |
-| m7s | go  | 在线播放地址 http://49.234.235.7:8088/mp4/live/jt1078-295696659617-1.mp4 | [详情点击](https://github.com/cuteLittleDevil/m7s-jt1078)  |
+| m7s | go  | http://49.234.235.7:8088/mp4/live/jt1078-295696659617-1.mp4 | [详情点击](https://github.com/cuteLittleDevil/m7s-jt1078)  |
 
 ### 3. 兼容任意808服务 [详情](./example/adapter/README.md)
 ``` txt
@@ -100,7 +101,7 @@ jt808服务端 模拟器 消息队列 数据库都运行在2核4G腾讯云服务
 把atop_cpu.png传输到ftp目录 (需要ftp服务)
 ```
 
-[快速开始](./example/quick_start/README.md) [完整项目例子](./example/web/README.md)
+[快速开始](./example/quick_start) [完整项目例子](./example/web)
 ``` go
 package main
 
@@ -179,7 +180,7 @@ func main() {
 
 | 服务端版本  |   场景   | 并发数 |  服务器配置  | 服务器使用资源情况 |  描述  |
 | :---:   | :-------: | :--: | :------: | :-------------- | :----------------------------: |
-|  v0.3.0 | 连接数测试  | 10w+ |  2核4G | 120%+cpu 1.7G内存  | 10.0.16.5上开启服务端和模拟器  <br/> 10.0.16.14机器上开启模拟器 |
+|  v0.3.0 | 连接数测试  | 10w+ |  2核4G | 120%+cpu 1.7G内存  | 10.0.16.5: 服务端和模拟器  <br/> 10.0.16.14: 模拟器 |
 
 <h3 id="save"> 模拟经纬度存储测试 </h3>
 
