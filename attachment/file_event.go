@@ -12,7 +12,7 @@ type fileEvent struct {
 }
 
 func newFileEvent() *fileEvent {
-	f, _ := os.OpenFile("file.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, os.ModePerm)
+	f, _ := os.OpenFile("file.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o666)
 	return &fileEvent{
 		file: f,
 	}
@@ -48,11 +48,11 @@ func (f *fileEvent) OnEvent(progress *PackageProgress) {
 		}, "\n")
 	case ProgressStageStreamData:
 		curPack := extension.CurrentPackage
-		str += fmt.Sprintf(" 文件传输中[%s] 进度[%d/%d] 偏移[%d]", curPack.FileName,
+		str += fmt.Sprintf(" 文件传输中[%s] 进度[%d/%d] 偏移[%d]\n", curPack.FileName,
 			curPack.CurrentSize, curPack.FileSize, curPack.Offset)
 	case ProgressStageSupplementary:
 		curPack := extension.CurrentPackage
-		str += fmt.Sprintf(" 文件补传传输中[%s] 进度[%d/%d] 偏移[%d]", curPack.FileName,
+		str += fmt.Sprintf(" 文件补传传输中[%s] 进度[%d/%d] 偏移[%d]\n", curPack.FileName,
 			curPack.CurrentSize, curPack.FileSize, curPack.Offset)
 	case ProgressStageStreamDataComplete:
 		str += " 目前传输文件整体进度:\n"
