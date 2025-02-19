@@ -28,7 +28,7 @@ func newBaseStreamDataHandle() *baseStreamDataHandle {
 }
 
 func (s *baseStreamDataHandle) HasStreamData(data []byte) bool {
-	return bytes.Contains(data, []byte{0x30, 0x31, 0x63, 0x64}) // 808543076 = 0x30 0x31 0x63 0x64
+	return bytes.HasPrefix(data, []byte{0x30, 0x31, 0x63, 0x64}) // 808543076 = 0x30 0x31 0x63 0x64
 }
 
 func (s *baseStreamDataHandle) HasMinHeadLen(data []byte) bool {

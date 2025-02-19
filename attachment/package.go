@@ -108,7 +108,7 @@ func (p *PackageProgress) iter() func(func(err error) bool) {
 			} else if errors.Is(err, _errNotStreamData) { // 不是流数据格式的 换一个格式试一试
 				if err := p.stageJT808Data(); err == nil {
 					yield(nil)
-				} else if !errors.Is(err, ErrDataInconsistency) {
+				} else {
 					yield(err)
 					return
 				}
