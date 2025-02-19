@@ -9,7 +9,8 @@
 
 # go-jt808
 
-web例子在线网页 http://124.221.30.46:18000/
+- web例子在线网页 http://124.221.30.46:18000/
+- 飞书文档 https://dkpt1fpoxb.feishu.cn/docx/FUlPda09roSnN0x7SJAc7yPbnke
 
 ``` txt
  本项目已更好支持二次开发为目标 可通过各种自定义事件去完成相应功能
