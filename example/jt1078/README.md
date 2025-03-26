@@ -87,6 +87,7 @@ cat /home/zlm/linux/Release/config.ini | grep secret
 cd ./example/jt1078/zlm
 GOOS=linux GOARCH=amd64 go build -o go-zlm
 # config.yaml中的secret换成步骤2生成的secret
+# 这里把go-zlm和config.yaml放到了 /home/zlm/go/ 目录
 ./go-zlm
 
 ```
@@ -129,4 +130,14 @@ curl --location --request POST 'http://124.221.30.46:17002/api/v1/9101' \
     "mp4": "http://124.221.30.46:80/rtp/1004-1-1078.live.mp4"
   }
 }
+```
+
+6. 扩展
+```
+在config.ini的配置文件中添加
+hook.enable=1
+hook.on_stream_not_found=http://127.0.0.1:17002/api/v1/on_stream_not_found
+
+用户访问http://124.221.30.46:80/rtp/1004-1-1078.live.mp4
+当流不存在的时候 主动下发9101让这个流存在
 ```

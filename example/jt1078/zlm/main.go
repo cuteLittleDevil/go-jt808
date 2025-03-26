@@ -18,10 +18,15 @@ type Config struct {
 		WebAddr string `yaml:"webAddr"`
 	} `yaml:"service"`
 	Zlm struct {
-		OpenURL       string `yaml:"openURL"`
-		CloseURL      string `yaml:"closeURL"`
-		Secret        string `yaml:"secret"`
-		PlayURLFormat string `yaml:"playURLFormat"`
+		OpenURL          string `yaml:"openURL"`
+		CloseURL         string `yaml:"closeURL"`
+		Secret           string `yaml:"secret"`
+		PlayURLFormat    string `yaml:"playURLFormat"`
+		OnStreamNotFound struct {
+			IP         string `yaml:"ip"`
+			DataType   byte   `yaml:"dataType"`
+			StreamType byte   `yaml:"streamType"`
+		} `yaml:"onStreamNotFound"`
 	} `yaml:"zlm"`
 }
 
@@ -70,6 +75,6 @@ func main() {
 	})
 	apiV1 := h.Group("/api/v1/")
 	apiV1.POST("/9101", p9101)
-	// 还可以考虑实现zlm的回调 触发流地址不存在的时候 主动下发9101指令
+	apiV1.POST("/on_stream_not_found", onStreamNotFound)
 	h.Spin()
 }

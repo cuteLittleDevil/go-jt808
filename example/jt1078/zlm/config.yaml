@@ -11,3 +11,10 @@ zlm:
   # zlm播放规则 https://github.com/zlmediakit/ZLMediaKit/wiki/%E6%92%AD%E6%94%BEurl%E8%A7%84%E5%88%99
   # 如果使用外网ip的话 在config.ini配置文件中吧http.allow_ip_range添加 或者 置空（置空的话就是允许所有ip访问)
   playURLFormat: 'http://124.221.30.46:80/rtp/%s.live.mp4'
+  # 流找不到的时候 自动下发9101让流存在
+  onStreamNotFound:
+    ip: 124.221.30.46
+    # 0-音视频 1-视频 2-双向对讲 3-监听 4-中心广播 5-透传
+    dataType: 0
+    # 0-主码流 1-子码流
+    streamType: 0
