@@ -67,6 +67,7 @@ ip是外网的ip用于下发9101的1078的ip 可以用phone新建一个模拟终
 - [代码参考](./m7s/main.go)
 
 <h2 id="zlm"> ZLMediaKit </h2>
+- [代码参考](./zlm/main.go)
 
 1. 使用ZLMediaKit试用版
 - https://github.com/ziyuexiachu/ci/actions/runs/13678145491/artifacts/2696568677
