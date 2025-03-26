@@ -216,7 +216,7 @@ func handleCommand(c *app.RequestContext, key string, handle shared.PlatformHand
 		if replyMsg.Command != handle.ReplyProtocol() {
 			slog.Warn("command",
 				slog.String("reality", replyMsg.Command.String()),
-				slog.String("expect", replyMsg.Command.String()))
+				slog.String("expect", handle.ReplyProtocol().String()))
 		}
 		c.JSON(http.StatusOK, shared.Response{
 			Code: http.StatusOK,

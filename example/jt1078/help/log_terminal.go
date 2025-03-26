@@ -5,13 +5,11 @@ import (
 	"github.com/cuteLittleDevil/go-jt808/service"
 )
 
-type LogTerminal struct {
-}
+type LogTerminal struct{}
 
 func (l *LogTerminal) OnJoinEvent(msg *service.Message, key string, err error) {
-	if err != nil {
-		fmt.Println("终端加入", key, fmt.Sprintf("%x", msg.ExtensionFields.TerminalData))
-	}
+	fmt.Printf("终端加入 key=[%s] command=[%s] err=[%v]\n",
+		key, fmt.Sprintf("%x", msg.ExtensionFields.TerminalData), err)
 }
 
 func (l *LogTerminal) OnLeaveEvent(key string) {

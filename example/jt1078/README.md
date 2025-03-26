@@ -65,3 +65,68 @@ ip是外网的ip用于下发9101的1078的ip 可以用phone新建一个模拟终
 
 - [插件详情](https://github.com/cuteLittleDevil/m7s-jt1078)
 - [代码参考](./m7s/main.go)
+
+<h2 id="zlm"> ZLMediaKit </h2>
+
+1. 使用ZLMediaKit试用版
+- https://github.com/ziyuexiachu/ci/actions/runs/13678145491/artifacts/2696568677
+
+2. 启动ZLMediaKit 复制secret
+```
+unzip LinuxTry_feature_1078_2025-03-05.zip -d /home/zlm
+cd /home/zlm/linux/Release
+# 可以把./example/jt1078/zlm/config.ini放到 /home/zlm/linux/Release目录 使用这个配置文件
+./MediaServer
+# 案例的secret是5xGbdUpfXnsiW3uZq2CApzSyxSFrIWpc
+cat /home/zlm/linux/Release/config.ini | grep secret
+
+```
+
+3. 启动go zlm的示例
+```
+cd ./example/jt1078/zlm
+GOOS=linux GOARCH=amd64 go build -o go-zlm
+# config.yaml中的secret换成步骤2生成的secret
+./go-zlm
+
+```
+
+4. 使用模拟器连接到808服务
+- 测试案例的808服务默认端口是8083
+如下所示 终端sim卡号1004的加入了
+```
+终端加入 key=[1004] command=[7e01020004000000001004002631303034307e] err=[nil]
+
+```
+
+5. 调用http接口发送9101请求
+- ip换成部署的机器 案例云服务器ip 124.221.30.46 serverIPLen换ip的长度
+``` curl
+curl --location --request POST 'http://124.221.30.46:17002/api/v1/9101' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "key": "1004",
+    "data": {
+        "serverIPLen": 13,
+        "serverIPAddr": "124.221.30.46",
+        "tcpPort": 1078,
+        "udpPort": 0,
+        "channelNo": 1,
+        "dataType": 0,
+        "streamType": 0
+    }
+}'
+
+```
+
+- 返回结果如下
+```
+{
+  "code": 200,
+  "msg": "成功",
+  "data": {
+    "streamID": "1004-1-1078",
+    "mp4": "http://124.221.30.46:80/rtp/1004-1-1078.live.mp4"
+  }
+}
+```
