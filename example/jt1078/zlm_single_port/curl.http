@@ -1,0 +1,17 @@
+POST http://124.221.30.46:17002/api/v1/9101
+Content-Type: application/json
+
+{
+  "key": "1003",
+  "sim": "000000001003",
+  "data": {
+    "serverIPLen": 13,
+    "serverIPAddr": "124.221.30.46",
+    "tcpPort": 10000,
+    "udpPort": 0,
+    "channelNo": 1,
+    "dataType": 0,
+    "streamType": 0
+  }
+}
+

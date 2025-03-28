@@ -33,6 +33,7 @@ address是设备连接的地址 webAddress是页面的
 ![9101实时视频测试](./data/rtvs9101.png)
 
 需要对讲的话 则在本地打开tsrtvs.html测试
+<br/>
 
 <h2 id="lal"> LAL流媒体服务 </h2>
 
@@ -69,6 +70,7 @@ ip是外网的ip用于下发9101的1078的ip 可以用phone新建一个模拟终
 - [sky-java官方地址](https://gitee.com/hui_hui_zhou/open-source-repository)
 - [sky-java HTTP文档](http://222.244.144.181:9991/doc.html)
 - [代码参考](./sky/java/main.go)
+<br/>
 
 <h2 id="m7s"> m7s-jt1078 </h2>
 
@@ -78,27 +80,95 @@ ip是外网的ip用于下发9101的1078的ip 可以用phone新建一个模拟终
 
 <h2 id="zlm"> ZLMediaKit </h2>
 
-- [代码参考](./zlm/main.go)
+- 目前1078只推荐单端口模式
+- 使用ZLMediaKit试用版 [下载地址](https://github.com/ziyuexiachu/ci/actions/runs/13678145491/artifacts/2696568677)
 
-![9101实时视频测试](./data/zlm.jpg)
-
-1. 使用ZLMediaKit试用版
-- https://github.com/ziyuexiachu/ci/actions/runs/13678145491/artifacts/2696568677
 <br/>
 
-2. 启动ZLMediaKit 复制secret
+启动ZLMediaKit 复制secret
 ```
 unzip LinuxTry_feature_1078_2025-03-05.zip -d /home/zlm
 cd /home/zlm/linux/Release
-# 可以把./example/jt1078/zlm/config.ini放到 /home/zlm/linux/Release目录 使用这个配置文件
+# 可以把./example/jt1078/zlm_single_port/config.ini放到 /home/zlm/linux/Release目录 使用这个配置文件
 ./MediaServer
 # 案例的secret是5xGbdUpfXnsiW3uZq2CApzSyxSFrIWpc
 cat /home/zlm/linux/Release/config.ini | grep secret
 
 ```
+
+<h3> 单端口模式 </h3>
+
+- [代码参考](./zlm_single_port/main.go)
+
+1. 启动go zlm单端口模式示例
+```
+cd ./example/jt1078/zlm_single_port
+GOOS=linux GOARCH=amd64 go build
+# config.yaml中的secret换成步骤2生成的secret
+./zlm_single_port
+
+```
+
+2. 使用模拟器连接到808服务
+- 测试案例的808服务默认端口是8083
+如下所示 终端sim卡号1004的加入了
+```
+终端加入 key=[1003] command=[7e01020004000000001003000f31303033197e] err=[nil]
+
+```
 <br/>
 
-3. 启动go zlm的示例
+3. 调用http接口发送9101请求
+- ip换成部署的机器 案例云服务器ip 124.221.30.46 serverIPLen换ip的长度
+``` curl
+curl --location --request POST 'http://124.221.30.46:17002/api/v1/9101' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "key": "1003",
+    "sim": "000000001003",
+    "data": {
+        "serverIPLen": 13,
+        "serverIPAddr": "124.221.30.46",
+        "tcpPort": 10000,
+        "udpPort": 0,
+        "channelNo": 1,
+        "dataType": 0,
+        "streamType": 0
+    }
+}'
+
+```
+
+- 返回结果如下
+```
+{
+  "code": 200,
+  "msg": "成功",
+  "data": {
+    "streamID": "000000001003_1",
+    "mp4": "http://124.221.30.46:80/rtp/000000001003_1.live.mp4"
+  }
+}
+```
+
+4. 扩展
+```
+在config.ini的配置文件中添加
+hook.enable=1
+hook.on_stream_not_found=http://127.0.0.1:17002/api/v1/on_stream_not_found
+
+用户访问http://124.221.30.46:80/rtp/000000001003_1.live.mp4
+当流不存在的时候 主动下发9101让这个流存在
+```
+
+<h3> 多端口模式 </h3>
+
+- 目前不推荐使用 (2024.3.28询问过zlm作者)
+- [代码参考](./zlm/main.go)
+
+![9101实时视频测试](./data/zlm.jpg)
+
+1. 启动go zlm的示例
 ```
 cd ./example/jt1078/zlm
 GOOS=linux GOARCH=amd64 go build -o go-zlm
@@ -109,7 +179,7 @@ GOOS=linux GOARCH=amd64 go build -o go-zlm
 ```
 <br/>
 
-4. 使用模拟器连接到808服务
+2. 使用模拟器连接到808服务
 - 测试案例的808服务默认端口是8083
 如下所示 终端sim卡号1004的加入了
 ```
@@ -118,7 +188,7 @@ GOOS=linux GOARCH=amd64 go build -o go-zlm
 ```
 <br/>
 
-5. 调用http接口发送9101请求
+3. 调用http接口发送9101请求
 - ip换成部署的机器 案例云服务器ip 124.221.30.46 serverIPLen换ip的长度
 ``` curl
 curl --location --request POST 'http://124.221.30.46:17002/api/v1/9101' \
@@ -150,7 +220,7 @@ curl --location --request POST 'http://124.221.30.46:17002/api/v1/9101' \
 }
 ```
 
-6. 扩展
+4. 扩展
 ```
 在config.ini的配置文件中添加
 hook.enable=1

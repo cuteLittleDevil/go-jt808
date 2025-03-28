@@ -3,9 +3,8 @@ service:
   webAddr: 0.0.0.0:17002 #web服务端地址
 
 zlm:
-  # https://github.com/ZLMediaKit/ZLMediaKit/wiki/MediaServer%E6%94%AF%E6%8C%81%E7%9A%84HTTP-API#24indexapiopenrtpserver
-  openURL: 'http://127.0.0.1/index/api/openRtpServer'
-  closeURL: 'http://127.0.0.1/index/api/closeRtpServer'
+  # 单端口模式 固定端口 默认10000 在config.ini配置文件中的[rtp_proxy].port
+  port: 10000
   # 使用ZLMediaKit中/linux/Release/config.ini配置文件中secret
   secret: '5xGbdUpfXnsiW3uZq2CApzSyxSFrIWpc'
   # zlm播放规则 https://github.com/zlmediakit/ZLMediaKit/wiki/%E6%92%AD%E6%94%BEurl%E8%A7%84%E5%88%99
