@@ -9,21 +9,24 @@ docker run --restart always -p 5288:80 -d vanjoge/rtvsdevice
 然后访问你的//IP:5288即可
 
 ```
-
+<br/>
 <h2 id="rtvs"> RTVS </h2>
 
 - [RTVS官方地址](https://gitee.com/vanjoge/RTVS)
 - [部署文档参考](https://blog.csdn.net/vanjoge/article/details/108319078)
 - [代码参考](./rtvs/main.go)
+<br/>
 
 address是设备连接的地址 webAddress是页面的
 ```  go
 ./rtvs -address 0.0.0.0:8082 -webAddress 0.0.0.0:17001
 ```
+<br/>
 
 1. 测试部署网页 http://49.234.235.7:17001
 2. 让终端(模拟器)默认连接到了49.234.235.7:8082地址
 3. 根据测试部署网页进行测试 如点击9101观看在线视频
+<br/>
 
 测试模拟器的手机号为 013777883241
 
@@ -35,12 +38,15 @@ address是设备连接的地址 webAddress是页面的
 
 1. 使用模拟器默认的数据 持续推送到LAL服务
 2. 在线播放地址 http://49.234.235.7:8080/live/1001_1.flv
+<br/>
 
 ip是外网的ip用于下发9101的1078的ip 可以用phone新建一个模拟终端 使用dataPath的数据推送1078流
 ```  go
 ./lal2 -ip=49.234.235.7
 ./lal2 -ip=49.234.235.7  -phone=1 -dataPath=./data.txt
 ```
+
+<br/>
 
 ```
 运行后 让设备连接到808端口 默认3秒发送9101
@@ -51,12 +57,15 @@ ip是外网的ip用于下发9101的1078的ip 可以用phone新建一个模拟终
 
 - [LAL官方文档](https://pengrl.com/lal/#/streamurllist)
 - [代码参考](./lal/main.go)
+<br/>
 
 <h2 id="sky-java"> JT1078 sky-java </h2>
 
 1. 启动服务
 2. 使用RTVS终端模拟器连接到服务
 3. 调用sky-java的JT1078 HTTP接口发送请求(默认10秒内需要去拉流)
+<br/>
+
 - [sky-java官方地址](https://gitee.com/hui_hui_zhou/open-source-repository)
 - [sky-java HTTP文档](http://222.244.144.181:9991/doc.html)
 - [代码参考](./sky/java/main.go)
@@ -65,12 +74,17 @@ ip是外网的ip用于下发9101的1078的ip 可以用phone新建一个模拟终
 
 - [插件详情](https://github.com/cuteLittleDevil/m7s-jt1078)
 - [代码参考](./m7s/main.go)
+<br/>
 
 <h2 id="zlm"> ZLMediaKit </h2>
+
 - [代码参考](./zlm/main.go)
+
+![9101实时视频测试](./data/zlm.jpg)
 
 1. 使用ZLMediaKit试用版
 - https://github.com/ziyuexiachu/ci/actions/runs/13678145491/artifacts/2696568677
+<br/>
 
 2. 启动ZLMediaKit 复制secret
 ```
@@ -82,6 +96,7 @@ cd /home/zlm/linux/Release
 cat /home/zlm/linux/Release/config.ini | grep secret
 
 ```
+<br/>
 
 3. 启动go zlm的示例
 ```
@@ -92,6 +107,7 @@ GOOS=linux GOARCH=amd64 go build -o go-zlm
 ./go-zlm
 
 ```
+<br/>
 
 4. 使用模拟器连接到808服务
 - 测试案例的808服务默认端口是8083
@@ -100,6 +116,7 @@ GOOS=linux GOARCH=amd64 go build -o go-zlm
 终端加入 key=[1004] command=[7e01020004000000001004002631303034307e] err=[nil]
 
 ```
+<br/>
 
 5. 调用http接口发送9101请求
 - ip换成部署的机器 案例云服务器ip 124.221.30.46 serverIPLen换ip的长度

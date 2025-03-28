@@ -7,6 +7,7 @@ import (
 	"github.com/cuteLittleDevil/go-jt808/protocol/model"
 	"github.com/cuteLittleDevil/go-jt808/service"
 	_ "github.com/cuteLittleDevil/m7s-jt1078/v5"
+	"m7s.live/v5"
 	_ "m7s.live/v5/plugin/mp4" // v5版本目前还没有发布 需要拉到本地 使用go work
 	_ "m7s.live/v5/plugin/preview"
 	"time"
