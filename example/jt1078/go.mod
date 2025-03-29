@@ -3,7 +3,7 @@ module jt1078
 go 1.23.2
 
 require (
-	github.com/cloudwego/hertz v0.9.3
+	github.com/cloudwego/hertz v0.9.6
 	github.com/cuteLittleDevil/go-jt808/protocol v1.14.0
 	github.com/cuteLittleDevil/go-jt808/service v1.11.0
 	github.com/cuteLittleDevil/go-jt808/shared v1.6.0
@@ -12,6 +12,7 @@ require (
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/hertz-contrib/cors v0.1.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/q191201771/lal v0.37.4
 	github.com/spf13/cast v1.7.1
 	github.com/spf13/viper v1.20.0
@@ -20,19 +21,15 @@ require (
 
 require (
 	github.com/BurntSushi/toml v1.5.0 // indirect
-	github.com/andeya/ameda v1.5.3 // indirect
-	github.com/andeya/goutil v1.0.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bluenviron/mediacommon v1.11.1-0.20240525122142-20163863aa75 // indirect
-	github.com/bytedance/go-tagexpr/v2 v2.9.11 // indirect
 	github.com/bytedance/gopkg v0.1.1 // indirect
-	github.com/bytedance/sonic v1.12.4 // indirect
-	github.com/bytedance/sonic/loader v0.2.1 // indirect
+	github.com/bytedance/sonic v1.12.7 // indirect
+	github.com/bytedance/sonic/loader v0.2.2 // indirect
 	github.com/c0deltin/duckdb-driver v0.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cilium/ebpf v0.15.0 // indirect
 	github.com/cloudwego/base64x v0.1.4 // indirect
-	github.com/cloudwego/iasm v0.2.0 // indirect
 	github.com/cloudwego/netpoll v0.6.4 // indirect
 	github.com/deepch/vdk v0.0.27 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect

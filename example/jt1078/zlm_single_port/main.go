@@ -7,9 +7,12 @@ import (
 	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/cuteLittleDevil/go-jt808/service"
 	"github.com/natefinch/lumberjack"
+	"github.com/patrickmn/go-cache"
+	_ "github.com/patrickmn/go-cache"
 	"github.com/spf13/viper"
 	"jt1078/help"
 	"log/slog"
+	"time"
 )
 
 type Config struct {
@@ -22,9 +25,7 @@ type Config struct {
 		Secret           string `yaml:"secret"`
 		PlayURLFormat    string `yaml:"playURLFormat"`
 		OnStreamNotFound struct {
-			IP         string `yaml:"ip"`
-			DataType   byte   `yaml:"dataType"`
-			StreamType byte   `yaml:"streamType"`
+			IP string `yaml:"ip"`
 		} `yaml:"onStreamNotFound"`
 	} `yaml:"zlm"`
 }
@@ -69,11 +70,16 @@ func main() {
 	h := server.Default(
 		server.WithHostPorts(GlobalConfig.Service.WebAddr),
 	)
-	h.Use(func(ctx context.Context, c *app.RequestContext) {
+	h.Use(func(_ context.Context, c *app.RequestContext) {
 		c.Set("jt808", goJt808)
+	})
+	idCache := cache.New(1*time.Minute, 5*time.Minute)
+	h.Use(func(_ context.Context, c *app.RequestContext) {
+		c.Set("cache", idCache)
 	})
 	apiV1 := h.Group("/api/v1/")
 	apiV1.POST("/9101", p9101)
 	apiV1.POST("/on_stream_not_found", onStreamNotFound)
+	apiV1.POST("/on_publish", onPublish)
 	h.Spin()
 }

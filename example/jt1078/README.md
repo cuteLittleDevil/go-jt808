@@ -145,8 +145,8 @@ curl --location --request POST 'http://124.221.30.46:17002/api/v1/9101' \
   "code": 200,
   "msg": "成功",
   "data": {
-    "streamID": "000000001003_1",
-    "mp4": "http://124.221.30.46:80/rtp/000000001003_1.live.mp4"
+    "streamID": "000000001003_1_0_0",
+    "mp4": "http://124.221.30.46:80/rtp/000000001003_1_0_0.live.mp4"
   }
 }
 ```
@@ -156,9 +156,11 @@ curl --location --request POST 'http://124.221.30.46:17002/api/v1/9101' \
 在config.ini的配置文件中添加
 hook.enable=1
 hook.on_stream_not_found=http://127.0.0.1:17002/api/v1/on_stream_not_found
+on_publish=http://127.0.0.1:17002/api/v1/on_publish
 
-用户访问http://124.221.30.46:80/rtp/000000001003_1.live.mp4
-当流不存在的时候 主动下发9101让这个流存在
+用户访问http://124.221.30.46:80/rtp/000000001003_1_0_0.live.mp4
+当流不存在的时候 触发on_stream_not_found 主动下发9101让这个流存在
+因为zlm的流格式默认是sim卡号_通道号 触发on_publish 修改流id 格式变成 sim卡号_通道号_数据类型_主子码流
 ```
 
 <h3> 多端口模式 </h3>

@@ -7,6 +7,7 @@ import (
 	"github.com/cuteLittleDevil/go-jt808/protocol/model"
 	"github.com/cuteLittleDevil/go-jt808/service"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
+	"github.com/patrickmn/go-cache"
 	"github.com/spf13/cast"
 	"net/http"
 	"strings"
@@ -53,6 +54,7 @@ func p9101(_ context.Context, c *app.RequestContext) {
 		})
 		return
 	}
+
 	c.JSON(http.StatusOK, Response{
 		Code: http.StatusOK,
 		Msg:  "成功",
@@ -83,9 +85,9 @@ func onStreamNotFound(_ context.Context, c *app.RequestContext) {
 		return
 	}
 
-	// 流id固定格式 sim卡号_通道号 注意zlm的sim
+	// 流id固定格式 sim卡号_通道号_数据类型_主子码流 注意zlm的sim卡号是保留前面0的
 	list := strings.Split(info.Stream, "_")
-	if len(list) != 2 {
+	if len(list) != 4 {
 		c.JSON(http.StatusOK, Response{
 			Code: int(InvalidArgs),
 			Msg:  fmt.Sprintf("stream id 格式不正确 %s", info.Stream),
@@ -94,10 +96,8 @@ func onStreamNotFound(_ context.Context, c *app.RequestContext) {
 	}
 
 	var (
-		ip         = GlobalConfig.Zlm.OnStreamNotFound.IP
-		dataType   = GlobalConfig.Zlm.OnStreamNotFound.DataType
-		streamType = GlobalConfig.Zlm.OnStreamNotFound.StreamType
-		key        = ""
+		ip  = GlobalConfig.Zlm.OnStreamNotFound.IP
+		key = ""
 	)
 	sim := list[0]
 	for i := 0; i < len(sim); i++ {
@@ -115,8 +115,8 @@ func onStreamNotFound(_ context.Context, c *app.RequestContext) {
 			TcpPort:      GlobalConfig.Zlm.Port,
 			UdpPort:      0,
 			ChannelNo:    cast.ToUint8(list[1]),
-			DataType:     dataType,
-			StreamType:   streamType,
+			DataType:     cast.ToUint8(list[2]),
+			StreamType:   cast.ToUint8(list[3]),
 		},
 	}
 	if _, err := videoPlay(c, req); err != nil {
@@ -132,7 +132,87 @@ func onStreamNotFound(_ context.Context, c *app.RequestContext) {
 	})
 }
 
+func onPublish(_ context.Context, c *app.RequestContext) {
+	type Publish struct {
+		MediaServerId string `json:"mediaServerId"`
+		App           string `json:"app"`
+		Id            string `json:"id"`
+		IP            string `json:"ip"`
+		Params        string `json:"params"`
+		Port          int    `json:"port"`
+		Schema        string `json:"schema"`
+		Protocol      string `json:"protocol"`
+		Stream        string `json:"stream"`
+		Vhost         string `json:"vhost"`
+	}
+	// https://github.com/ZLMediaKit/ZLMediaKit/wiki/MediaServer%E6%94%AF%E6%8C%81%E7%9A%84HTTP-HOOK-API#7on_publish
+	var info Publish
+	if err := c.BindJSON(&info); err != nil {
+		c.JSON(http.StatusOK, Response{
+			Code: http.StatusBadRequest,
+			Msg:  "参数错误",
+			Data: err.Error(),
+		})
+		return
+	}
+
+	// 流id固定格式 sim卡号_通道号_数据类型_主子码流
+	reviseID := info.Stream + "_0_0"
+	if v, ok := c.Value("cache").(*cache.Cache); ok {
+		if id, ok := v.Get(info.Stream); ok {
+			reviseID = cast.ToString(id)
+		}
+	}
+
+	type ZlmReply struct {
+		Code           int    `json:"code"`
+		AddMuteAudio   bool   `json:"add_mute_audio"`
+		ContinuePushMs int    `json:"continue_push_ms"`
+		EnableAudio    bool   `json:"enable_audio"`
+		EnableFmp4     bool   `json:"enable_fmp4"`
+		EnableHls      bool   `json:"enable_hls"`
+		EnableHlsFmp4  bool   `json:"enable_hls_fmp4"`
+		EnableMp4      bool   `json:"enable_mp4"`
+		EnableRtmp     bool   `json:"enable_rtmp"`
+		EnableRtsp     bool   `json:"enable_rtsp"`
+		EnableTs       bool   `json:"enable_ts"`
+		HlsSavePath    string `json:"hls_save_path"`
+		ModifyStamp    bool   `json:"modify_stamp"`
+		Mp4AsPlayer    bool   `json:"mp4_as_player"`
+		Mp4MaxSecond   int    `json:"mp4_max_second"`
+		Mp4SavePath    string `json:"mp4_save_path"`
+		AutoClose      bool   `json:"auto_close"`
+		StreamReplace  string `json:"stream_replace"`
+	}
+	c.JSON(http.StatusOK, ZlmReply{
+		Code:           int(Success),
+		AddMuteAudio:   true,
+		ContinuePushMs: 10000,
+		EnableAudio:    true,
+		EnableFmp4:     true,
+		EnableHls:      true,
+		EnableHlsFmp4:  false,
+		EnableMp4:      false,
+		EnableRtmp:     true,
+		EnableRtsp:     true,
+		EnableTs:       true,
+		HlsSavePath:    "/hls_save_path/",
+		ModifyStamp:    false,
+		Mp4AsPlayer:    false,
+		Mp4MaxSecond:   3600,
+		Mp4SavePath:    "/mp4_save_path/",
+		AutoClose:      false,
+		StreamReplace:  reviseID,
+	})
+}
+
 func videoPlay(c *app.RequestContext, req Request[*model.P0x9101]) (any, error) {
+	// 修改zlm的流id 支持主子码流
+	zlmStreamID := fmt.Sprintf("%s_%d", req.Sim, req.Data.ChannelNo)
+	id := fmt.Sprintf("%s_%d_%d_%d", req.Sim, req.Data.ChannelNo, req.Data.DataType, req.Data.StreamType)
+	if v, ok := c.Value("cache").(*cache.Cache); ok {
+		v.Set(zlmStreamID, id, 5*time.Second)
+	}
 	// 发送指令
 	if err := handleCommand(c, req.Key, req.Data); err != nil {
 		return nil, fmt.Errorf("发送指令失败: %w", err)
@@ -143,8 +223,6 @@ func videoPlay(c *app.RequestContext, req Request[*model.P0x9101]) (any, error) 
 		StreamID string `json:"streamID"`
 		MP4      string `json:"mp4"`
 	}
-
-	id := fmt.Sprintf("%s_%d", req.Sim, req.Data.ChannelNo)
 	return Result{
 		StreamID: id,
 		MP4:      fmt.Sprintf(GlobalConfig.Zlm.PlayURLFormat, id),
