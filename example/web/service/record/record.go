@@ -78,7 +78,9 @@ func Join(msg service.Message) {
 		}
 		v := record.terminals[key]
 		v.joinTime = time.Now()
-		v.messages[v.next] = toPackageInfo(msg)
+		// 当终端退出的时候 next没有归零 可能导致越界
+		v.next = 0
+		v.messages[0] = toPackageInfo(msg)
 	}
 	<-ch
 }
