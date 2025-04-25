@@ -1,5 +1,5 @@
 example/web/service/static/ui/JT808协议.html linguist-documentation
 example/jt1078/rtvs/tstrtvs.html linguist-documentation
-example/jt1078/zlm_single_port/webrtc/index.html
-example/jt1078/zlm_single_port/webrtc/ZLMRTCClient.js
-example/jt1078/zlm_single_port/webrtc/ZLMRTCClient.js.map
+example/jt1078/zlm_single_port/webrtc/index.html linguist-documentation
+example/jt1078/zlm_single_port/webrtc/ZLMRTCClient.js linguist-documentation
+example/jt1078/zlm_single_port/webrtc/ZLMRTCClient.js.map linguist-documentation
