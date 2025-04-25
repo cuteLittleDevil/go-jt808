@@ -163,6 +163,49 @@ on_publish=http://127.0.0.1:17002/api/v1/on_publish
 因为zlm的流格式默认是sim卡号_通道号 触发on_publish 修改流id 格式变成 sim卡号_通道号_数据类型_主子码流
 ```
 
+<h3> 添加对讲 </h3>
+
+```
+对讲使用webrtc 因此需要https
+目前申请的域名go-jt808.online(ip为124.221.30.46) icp备案为三周左右
+
+```
+
+![zlm对讲流程](./data/jt1078-zlm.jpg)
+
+
+1. nginx代理
+- 配置文件参考 /example/jt1078/zlm_single_port/nginx.conf
+
+2. 访问测试页面
+
+![zlm对讲流程](./data/jt1078-zlm2.png)
+
+- 点击开始
+- 发起http请求 绑定设备对讲流
+``` curl
+curl --location --request POST 'http://124.221.30.46:17002/api/v1/start_send_rtp_talk' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+      "key": "1003",
+      "sim": "000000001003",
+      "data": {
+        "serverIPLen": 13,
+        "serverIPAddr": "124.221.30.46",
+        "tcpPort": 10000,
+        "udpPort": 0,
+        "channelNo": 1,
+        "dataType": 2,
+        "streamType": 0
+      },
+      "stream": "test"
+}'
+
+```
+
+3. 重新发起一次808请求 让设备推送音视频流
+- 如https://go-jt808.online/rtp/000000001003_1_0_0.live.mp4
+
 <h3> 多端口模式 </h3>
 
 - 目前不推荐使用 (2024.3.28询问过zlm作者)

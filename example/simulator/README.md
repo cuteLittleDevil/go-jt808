@@ -2,7 +2,7 @@
 
 mac系统的参数 临时修改
 ``` shell
-# 增大统默认的最大连接数限制
+# 增大系统默认的最大连接数限制
 sudo sysctl -w kern.maxfiles=8880000
 # 增大单个进程默认最大连接数限制
 sudo sysctl -w kern.maxfilesperproc=8990000
