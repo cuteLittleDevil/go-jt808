@@ -10,6 +10,25 @@ zlm:
   # zlm播放规则 https://github.com/zlmediakit/ZLMediaKit/wiki/%E6%92%AD%E6%94%BEurl%E8%A7%84%E5%88%99
   # 如果使用外网ip的话 在config.ini配置文件中把http.allow_ip_range添加 或者 置空（置空的话就是允许所有ip访问)
   playURLFormat: 'http://124.221.30.46:80/rtp/%s.live.mp4'
+  httpsPlayURLFormat: 'https://go-jt808.online/rtp/%s.live.mp4'
+  # 对讲
+  intercom:
+    # stream选择webrtc上的流名称 recv_stream_id选择1078设备上来的流名称
+    # ssrc 是sim卡号+通道号 如000000001003_1
+    # http://127.0.0.1/index/api/startSendRtpTalk? \
+    # secret=5xGbdUpfXnsiW3uZq2CApzSyxSFrIWpc&vhost=__defaultVhost__&app=rtp&stream=test&ssrc=1&recv_stream_id=000000001003_1_2_0
+    url: 'http://127.0.0.1/index/api/startSendRtpTalk'
+    # 虚拟主机
+    vhost: '__defaultVhost__'
+    # 应用名 1078固定rtp
+    app: 'rtp'
+    # webrtc播放地址 https://go-jt808.online/index/api/webrtc?app=rtp&stream=test&type=play
+    # 隔1秒去轮询看看1078流是否存在 超时则放弃
+    intervalSecond: 1
+    overtimeSecond: 10
+    # 如 http://www.go-jt808.online/index/api/getMediaInfo?‘
+    #secret=5xGbdUpfXnsiW3uZq2CApzSyxSFrIWpc&schema=rtsp&vhost=__defaultVhost__&app=rtp&stream=000000001003_1_2_0
+    getMediaInfoURL: 'http://127.0.0.1/index/api/getMediaInfo'
   # 流找不到的时候 自动下发9101让流存在
   onStreamNotFound:
     ip: 124.221.30.46

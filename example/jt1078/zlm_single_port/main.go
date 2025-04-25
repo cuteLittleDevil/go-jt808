@@ -21,9 +21,18 @@ type Config struct {
 		WebAddr string `yaml:"webAddr"`
 	} `yaml:"service"`
 	Zlm struct {
-		Port             uint16 `yaml:"port"`
-		Secret           string `yaml:"secret"`
-		PlayURLFormat    string `yaml:"playURLFormat"`
+		Port               uint16 `yaml:"port"`
+		Secret             string `yaml:"secret"`
+		PlayURLFormat      string `yaml:"playURLFormat"`
+		HttpsPlayURLFormat string `yaml:"httpsPlayURLFormat"`
+		Intercom           struct {
+			Url             string `yaml:"url"`
+			Vhost           string `yaml:"vhost"`
+			App             string `yaml:"app"`
+			IntervalSecond  int    `yaml:"intervalSecond"`
+			OvertimeSecond  int    `yaml:"overtimeSecond"`
+			GetMediaInfoURL string `yaml:"getMediaInfoURL"`
+		}
 		OnStreamNotFound struct {
 			IP string `yaml:"ip"`
 		} `yaml:"onStreamNotFound"`
@@ -81,5 +90,6 @@ func main() {
 	apiV1.POST("/9101", p9101)
 	apiV1.POST("/on_stream_not_found", onStreamNotFound)
 	apiV1.POST("/on_publish", onPublish)
+	apiV1.POST("/start_send_rtp_talk", startSendRtpTalk)
 	h.Spin()
 }

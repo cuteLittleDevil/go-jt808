@@ -1,3 +1,4 @@
+### 实时视频的测试
 POST http://124.221.30.46:17002/api/v1/9101
 Content-Type: application/json
 
@@ -13,5 +14,24 @@ Content-Type: application/json
     "dataType": 0,
     "streamType": 0
   }
+}
+
+### 对讲的测试
+POST http://124.221.30.46:17002/api/v1/start_send_rtp_talk
+Content-Type: application/json
+
+{
+  "key": "1003",
+  "sim": "000000001003",
+  "data": {
+    "serverIPLen": 13,
+    "serverIPAddr": "124.221.30.46",
+    "tcpPort": 10000,
+    "udpPort": 0,
+    "channelNo": 1,
+    "dataType": 2,
+    "streamType": 0
+  },
+  "stream": "test"
 }
 

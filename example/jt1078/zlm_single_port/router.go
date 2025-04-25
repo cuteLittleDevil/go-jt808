@@ -45,7 +45,7 @@ func p9101(_ context.Context, c *app.RequestContext) {
 		return
 	}
 
-	result, err := videoPlay(c, req)
+	_, result, err := videoPlay(c, req)
 	if err != nil {
 		c.JSON(http.StatusOK, Response{
 			Code: http.StatusBadRequest,
@@ -87,6 +87,8 @@ func onStreamNotFound(_ context.Context, c *app.RequestContext) {
 
 	// 流id固定格式 sim卡号_通道号_数据类型_主子码流 注意zlm的sim卡号是保留前面0的
 	list := strings.Split(info.Stream, "_")
+	fmt.Println("onStreamNotFound", info.Stream)
+
 	if len(list) != 4 {
 		c.JSON(http.StatusOK, Response{
 			Code: int(InvalidArgs),
@@ -119,7 +121,7 @@ func onStreamNotFound(_ context.Context, c *app.RequestContext) {
 			StreamType:   cast.ToUint8(list[3]),
 		},
 	}
-	if _, err := videoPlay(c, req); err != nil {
+	if _, _, err := videoPlay(c, req); err != nil {
 		c.JSON(http.StatusOK, Response{
 			Code: int(OtherFailed), // 0 表示允许播放
 			Msg:  err.Error(),
@@ -156,13 +158,18 @@ func onPublish(_ context.Context, c *app.RequestContext) {
 		return
 	}
 
-	// 流id固定格式 sim卡号_通道号_数据类型_主子码流
-	reviseID := info.Stream + "_0_0"
-	if v, ok := c.Value("cache").(*cache.Cache); ok {
-		if id, ok := v.Get(info.Stream); ok {
-			reviseID = cast.ToString(id)
+	reviseID := info.Stream
+	// 如果流id是sim卡号+通道号的格式 则改变成sim卡号_通道号_数据类型_主子码流
+	if strings.Count(info.Stream, "_") == 1 {
+		reviseID = info.Stream + "_0_0"
+		if v, ok := c.Value("cache").(*cache.Cache); ok {
+			if id, ok := v.Get(info.Stream); ok {
+				reviseID = cast.ToString(id)
+			}
 		}
 	}
+
+	fmt.Println("修改流程名称", info.Stream, reviseID)
 
 	type ZlmReply struct {
 		Code           int    `json:"code"`
@@ -206,7 +213,99 @@ func onPublish(_ context.Context, c *app.RequestContext) {
 	})
 }
 
-func videoPlay(c *app.RequestContext, req Request[*model.P0x9101]) (any, error) {
+func startSendRtpTalk(_ context.Context, c *app.RequestContext) {
+	type RtpTalk struct {
+		Request[*model.P0x9101]
+		Stream string `json:"stream"`
+	}
+
+	var req RtpTalk
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusOK, Response{
+			Code: http.StatusBadRequest,
+			Msg:  "参数错误",
+			Data: err.Error(),
+		})
+		return
+	}
+
+	receiveID, _, err := videoPlay(c, req.Request)
+	if err != nil {
+		c.JSON(http.StatusOK, Response{
+			Code: http.StatusBadRequest,
+			Msg:  "播放失败",
+			Data: err.Error(),
+		})
+		return
+	}
+
+	// 等待设备流推送到zlm服务
+	intercom := GlobalConfig.Zlm.Intercom
+	ticker := time.NewTicker(time.Duration(intercom.IntervalSecond) * time.Second)
+	overTime := time.After(time.Duration(intercom.OvertimeSecond) * time.Second)
+	defer ticker.Stop()
+	var (
+		isExist    = false
+		isOverTime = false
+	)
+	for !isExist && !isOverTime {
+		select {
+		case <-ticker.C:
+			isExist = isExistMediaInfo(intercom.GetMediaInfoURL, map[string]string{
+				"secret": GlobalConfig.Zlm.Secret,
+				"schema": "rtsp",
+				"vhost":  intercom.Vhost,
+				"app":    intercom.App,
+				"stream": receiveID,
+			})
+			break
+		case <-overTime:
+			isOverTime = true
+		}
+	}
+
+	if isOverTime {
+		c.JSON(http.StatusOK, Response{
+			Code: http.StatusBadRequest,
+			Msg:  "收流超时",
+		})
+		return
+	}
+
+	// 确保完全成功
+	time.Sleep(500 * time.Millisecond)
+	url := intercom.Url
+	params := map[string]string{
+		"secret":         GlobalConfig.Zlm.Secret,
+		"vhost":          intercom.Vhost,
+		"app":            intercom.App,
+		"stream":         req.Stream,
+		"ssrc":           fmt.Sprintf("%s_%d", req.Sim, req.Data.ChannelNo),
+		"recv_stream_id": receiveID,
+	}
+	if err := zlmStartSendRtpTalk(url, params); err != nil {
+		c.JSON(http.StatusOK, Response{
+			Code: http.StatusBadRequest,
+			Msg:  "播放失败",
+			Data: err.Error(),
+		})
+		return
+	}
+	type Reply struct {
+		Stream    string `json:"stream"`
+		ReceiveID string `json:"receiveID"`
+	}
+	c.JSON(http.StatusOK, Response{
+		Code: http.StatusOK,
+		Msg:  "播放成功",
+		Data: Reply{
+			ReceiveID: receiveID,
+			Stream:    req.Stream,
+		},
+	})
+}
+
+func videoPlay(c *app.RequestContext, req Request[*model.P0x9101]) (string, any, error) {
 	// 修改zlm的流id 支持主子码流
 	zlmStreamID := fmt.Sprintf("%s_%d", req.Sim, req.Data.ChannelNo)
 	id := fmt.Sprintf("%s_%d_%d_%d", req.Sim, req.Data.ChannelNo, req.Data.DataType, req.Data.StreamType)
@@ -215,17 +314,19 @@ func videoPlay(c *app.RequestContext, req Request[*model.P0x9101]) (any, error) 
 	}
 	// 发送指令
 	if err := handleCommand(c, req.Key, req.Data); err != nil {
-		return nil, fmt.Errorf("发送指令失败: %w", err)
+		return "", nil, fmt.Errorf("发送指令失败: %w", err)
 	}
 
 	// zlm播放规则 https://github.com/zlmediakit/ZLMediaKit/wiki/%E6%92%AD%E6%94%BEurl%E8%A7%84%E5%88%99
 	type Result struct {
 		StreamID string `json:"streamID"`
 		MP4      string `json:"mp4"`
+		HTTPSMP4 string `json:"httpsMP4"`
 	}
-	return Result{
+	return id, Result{
 		StreamID: id,
 		MP4:      fmt.Sprintf(GlobalConfig.Zlm.PlayURLFormat, id),
+		HTTPSMP4: fmt.Sprintf(GlobalConfig.Zlm.HttpsPlayURLFormat, id),
 	}, nil
 }
 
