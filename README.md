@@ -59,7 +59,7 @@
 | lal | go  | 在线播放地址 http://49.234.235.7:8080/live/1001_1.flv | [详情点击](./example/jt1078/README.md#lal)  |
 | sky-java | java  | 需要部署后 HTTP请求 10秒内拉流 参考格式如下 <br/> http://222.244.144.181:7777/video/1001-1-0-0.live.mp4 | [详情点击](./example/jt1078/README.md#sky-java)  |
 | m7s | go  | 目前v5版本还没有发布 参考格式如下 <br/> http://49.234.235.7:8088/mp4/live/jt1078-295696659617-1.mp4 | [详情点击](https://github.com/cuteLittleDevil/m7s-jt1078)  |
-| ZLMediaKit | c++  | 对讲测试 https://go-jt808.online/static/?app=rtp&stream=test&type=push <br/> 在线视频 http://124.221.30.46:80/rtp/000000001003_1_0_0.live.mp4 | [详情点击](./example/jt1078/README.md#zlm)  |
+| ZLMediaKit | c++  | 对讲测试 https://go-jt808.online/static/?type=push <br/> 在线视频 http://124.221.30.46:80/rtp/000000001003_1_0_0.live.mp4 | [详情点击](./example/jt1078/README.md#zlm)  |
 
 ### 3. 兼容任意808服务 [详情](./example/adapter/README.md)
 ``` txt
