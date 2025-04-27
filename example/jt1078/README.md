@@ -23,8 +23,8 @@ address是设备连接的地址 webAddress是页面的
 ```
 <br/>
 
-1. 测试部署网页 http://49.234.235.7:17001
-2. 让终端(模拟器)默认连接到了49.234.235.7:8082地址
+1. 测试部署网页 https://go-jt808.online:44300/index.html (目前go-jt808.online的ip为124.221.30.46)
+2. 让终端(模拟器)默认连接到了124.221.30.46:8082地址
 3. 根据测试部署网页进行测试 如点击9101观看在线视频
 <br/>
 
@@ -32,19 +32,18 @@ address是设备连接的地址 webAddress是页面的
 
 ![9101实时视频测试](./data/rtvs9101.png)
 
-需要对讲的话 则在本地打开tsrtvs.html测试
 <br/>
 
 <h2 id="lal"> LAL流媒体服务 </h2>
 
 1. 使用模拟器默认的数据 持续推送到LAL服务
-2. 在线播放地址 http://49.234.235.7:8080/live/1001_1.flv
+2. 在线播放地址 http://go-jt808.online:8080/live/1001_1.flv
 <br/>
 
 ip是外网的ip用于下发9101的1078的ip 可以用phone新建一个模拟终端 使用dataPath的数据推送1078流
 ```  go
-./lal2 -ip=49.234.235.7
-./lal2 -ip=49.234.235.7  -phone=1 -dataPath=./data.txt
+./lal2 -ip=124.221.30.46
+./lal2 -ip=124.221.30.46 -phone=1 -dataPath=./data.txt
 ```
 
 <br/>
@@ -52,8 +51,8 @@ ip是外网的ip用于下发9101的1078的ip 可以用phone新建一个模拟终
 ```
 运行后 让设备连接到808端口 默认3秒发送9101
 打印flv的播放地址（其他播放地址参考lal文档）
-默认的播放地址格式 http://49.234.235.7:8080/live/手机号_通道号.flv
-如 http://49.234.235.7:8080/live/156987000796_1.flv
+默认的播放地址格式 http://124.221.30.46:8080/live/手机号_通道号.flv
+如 http://124.221.30.46:8080/live/156987000796_1.flv
 ```
 
 - [LAL官方文档](https://pengrl.com/lal/#/streamurllist)
@@ -175,7 +174,7 @@ on_publish=http://127.0.0.1:17002/api/v1/on_publish
 
 
 1. nginx代理
-- 配置文件参考 /example/jt1078/zlm_single_port/nginx.conf
+- [配置文件参考](/example/jt1078/zlm_single_port/nginx.conf)
 
 2. 访问测试页面
 
@@ -208,7 +207,7 @@ curl --location --request POST 'http://124.221.30.46:17002/api/v1/start_send_rtp
 
 <h3> 多端口模式 </h3>
 
-- 目前不推荐使用 (2024.3.28询问过zlm作者)
+- 目前不推荐使用 (2025.3.28询问过zlm作者)
 - [代码参考](./zlm/main.go)
 
 ![9101实时视频测试](./data/zlm.jpg)
