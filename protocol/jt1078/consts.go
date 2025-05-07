@@ -5,7 +5,7 @@ import "fmt"
 type PTType uint8
 
 const (
-	PTG711A PTType = 6
+	PTG711A PTType = 6 // G711A就是PCMA
 	PTG711U PTType = 7
 	PTAAC   PTType = 19
 	PTMP3   PTType = 25

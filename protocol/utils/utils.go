@@ -19,6 +19,20 @@ func Bcd2Dec(data []byte) string {
 	return string(out)
 }
 
+func String2Bcd(sim string, size int) []byte {
+	// 如果字符串长度不足size，在前面补0 size需要偶数
+	for len(sim) < size {
+		sim = "0" + sim
+	}
+	bcd := make([]byte, size/2)
+	for i := 0; i < size; i += 2 {
+		high := sim[i] - '0'
+		low := sim[i+1] - '0'
+		bcd[i/2] = (high << 4) | low
+	}
+	return bcd
+}
+
 func Time2BCD(time string) []byte {
 	if strings.Contains(time, ":") {
 		time = strings.ReplaceAll(time, "-", "")

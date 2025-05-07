@@ -54,6 +54,35 @@ func TestBcd2Dec(t *testing.T) {
 	}
 }
 
+func TestString2Bcd(t *testing.T) {
+	tests := []struct {
+		name string
+		sim  string
+		size int
+		want []byte
+	}{
+		{
+			name: "jt1078-2016版",
+			sim:  "012345678901",
+			size: 12,
+			want: []byte{1, 35, 69, 103, 137, 1},
+		},
+		{
+			name: "jt1078-2016版 sim卡号位数不够",
+			sim:  "12345678901",
+			size: 12,
+			want: []byte{1, 35, 69, 103, 137, 1},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := String2Bcd(tt.sim, tt.size); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("String2Bcd() got = %+v \n want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func BenchmarkBcd2Dec(b *testing.B) {
 	bcd2013, _ := hex.DecodeString("012345678901")
 	bcd2019, _ := hex.DecodeString("00000000017299841738")

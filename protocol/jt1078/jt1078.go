@@ -60,11 +60,44 @@ type (
 		videoFrame bool
 		// headEnd 头部是到哪里结束的
 		headEnd int
+		// bcdTerminalPhoneNo 设备上传的bcd编码的手机号
+		bcdTerminalPhoneNo []byte
 	}
 )
 
 func NewPacket() *Packet {
 	return &Packet{}
+}
+
+func NewCustomPacket(sim string, channel uint8, opts ...func(p *Packet)) *Packet {
+	p := &Packet{
+		ID: "01cd",
+		Flag: Flag{
+			V:  2,
+			P:  0,
+			X:  0,
+			CC: 1,
+			M:  0,
+			PT: PTG711A,
+		},
+		Seq:                0,
+		Sim:                sim,
+		LogicChannel:       channel,
+		DataType:           DataTypeA,
+		SubcontractType:    0,
+		Timestamp:          0,
+		LastIFrameInterval: 0,
+		LastFrameInterval:  0,
+		customAttributes: customAttributes{
+			bcdTerminalPhoneNo: utils.String2Bcd(sim, 12),
+		},
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(p)
+		}
+	}
+	return p
 }
 
 func (p *Packet) Decode(data []byte) (remainData []byte, err error) {
@@ -88,7 +121,6 @@ func (p *Packet) decodeHead(data []byte) error {
 	}
 	p.ID = string(data[:4])
 	if p.ID != "01cd" { // 1078协议固定
-		fmt.Println(fmt.Sprintf("%x", data[:16]))
 		return errors.Join(fmt.Errorf("id is [%s]", p.ID), ErrUnqualifiedData)
 	}
 
@@ -134,6 +166,39 @@ func (p *Packet) decodeHead(data []byte) error {
 	p.DataBodyLen = binary.BigEndian.Uint16(data[start : start+2])
 	p.headEnd = start + 2
 	return nil
+}
+
+func (p *Packet) Encode() ([]byte, error) {
+	if p.ID != "01cd" { // 1078协议固定
+		return nil, errors.Join(fmt.Errorf("id is [%s]", p.ID), ErrUnqualifiedData)
+	}
+
+	data := make([]byte, 0, 30+len(p.Body))
+	data = append(data, 0x30, 0x31, 0x63, 0x64) // 固定id
+
+	frag := p.Flag
+	attr := (frag.V&0b11)<<6 | (frag.P&0b1)<<5 | (frag.X&0b1)<<4 | (frag.CC & 0b1111)
+	sign := (frag.M&0b1)<<7 | (uint8(frag.PT) & 0b1111_111)
+	data = append(data, attr, sign) // 标志
+
+	data = binary.BigEndian.AppendUint16(data, p.Seq)                  // 包序号
+	data = append(data, p.bcdTerminalPhoneNo...)                       // 终端手机号
+	data = append(data, p.LogicChannel)                                // 逻辑通道号
+	data = append(data, uint8(p.DataType<<4)|uint8(p.SubcontractType)) // 数据类型 | 分包处理标记
+
+	if p.DataType != DataTypePenetrate {
+		data = binary.BigEndian.AppendUint64(data, p.Timestamp) // 时间戳
+	}
+
+	if p.DataType == DataTypeI || p.DataType == DataTypeP || p.DataType == DataTypeB {
+		data = binary.BigEndian.AppendUint16(data, p.LastIFrameInterval)
+		data = binary.BigEndian.AppendUint16(data, p.LastFrameInterval)
+	}
+
+	body := p.Body
+	data = binary.BigEndian.AppendUint16(data, uint16(len(body))) // 数据体长度
+	data = append(data, body...)                                  // 数据
+	return data, nil
 }
 
 func (p *Packet) String() string {
