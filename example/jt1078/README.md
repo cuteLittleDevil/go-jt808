@@ -30,7 +30,7 @@ address是设备连接的地址 webAddress是页面的
 
 测试模拟器的手机号为 013777883241
 
-![9101实时视频测试](./data/rtvs9101.png)
+![9101实时视频测试](./data/rtvs9101.jpg)
 
 <br/>
 
@@ -178,7 +178,7 @@ on_publish=http://127.0.0.1:17002/api/v1/on_publish
 
 2. 访问测试页面
 
-![zlm对讲流程](./data/jt1078-zlm2.png)
+![zlm测试页面](./data/jt1078-zlm2.jpg)
 
 - 点击开始
 - 发起http请求 绑定设备对讲流
