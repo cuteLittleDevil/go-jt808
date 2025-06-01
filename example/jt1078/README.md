@@ -74,7 +74,7 @@ ip是外网的ip用于下发9101的1078的ip 可以用phone新建一个模拟终
 <h2 id="m7s"> m7s-jt1078 </h2>
 
 - [插件详情](https://github.com/cuteLittleDevil/m7s-jt1078)
-- [代码参考](./m7s/main.go)
+
 <br/>
 
 <h2 id="zlm"> ZLMediaKit </h2>

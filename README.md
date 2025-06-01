@@ -9,8 +9,7 @@
 
 # go-jt808
 
-- web例子在线网页 http://124.221.30.46:18000/
-- 飞书文档 https://dkpt1fpoxb.feishu.cn/docx/FUlPda09roSnN0x7SJAc7yPbnke
+- 设计说明 https://dkpt1fpoxb.feishu.cn/docx/FUlPda09roSnN0x7SJAc7yPbnke
 
 ``` txt
  本项目已更好支持二次开发为目标 可通过各种自定义事件去完成相应功能
@@ -44,7 +43,7 @@
 
 ### 1. 真实项目对接 [apifox文档](https://vsh9jdgg5d.apifox.cn/) [web详情](./example/web) [releases下载](https://github.com/cuteLittleDevil/go-jt808/releases)
 ``` txt
-终端连接到web服务 通过http下发指令给终端
+web例子在线网页 http://124.221.30.46:18000/
 真实案例 根据壹品信息技术有限公司对接中农云设备修改
 ```
 
@@ -88,9 +87,10 @@ jt808服务端 模拟器 消息队列 数据库都运行在2核4G腾讯云服务
 主动下发给设备指令 获取应答的情况
 ```
 
-### 8. 协议交互详情 [代码参考](./example/protocol/register/main.go)
+### 8. 协议交互详情 [代码参考](./example/protocol/register/register_test.go)
 ``` txt
 使用自定义模拟器 可以轻松生成测试用的报文 有详情描述
+可在apifox文档页面 使用测试环境查看报文详情 https://vsh9jdgg5d.apifox.cn/250573462e0
 ```
 
 ### 9. 自定义协议扩展 [代码参考](./example/protocol/custom_parse/main.go)
@@ -148,13 +148,9 @@ type meLocation struct {
 	model.T0x0200
 }
 
-func (l *meLocation) Parse(jtMsg *jt808.JTMessage) error {
-	return l.T0x0200.Parse(jtMsg)
-}
-
 func (l *meLocation) OnReadExecutionEvent(msg *service.Message) {
 	_ = l.Parse(msg.JTMessage)
-	fmt.Println(l.String()) // 打印经纬度等信息
+	fmt.Println(time.Now().Format(time.DateTime), l.String()) // 打印经纬度等信息
 }
 
 func (l *meLocation) OnWriteExecutionEvent(_ service.Message) {}
@@ -182,7 +178,7 @@ func client(phone string, address string) {
 	defer func() {
 		_ = conn.Close()
 	}()
-	ticker := time.NewTicker(1 * time.Second)
+	ticker := time.NewTicker(5 * time.Second)
 	for range ticker.C {
 		_, _ = conn.Write(location)
 	}
@@ -202,7 +198,6 @@ func client(phone string, address string) {
 - [飞哥的开发内功修炼](https://github.com/yanfeizhang/coder-kung-fu?tab=readme-ov-file)
 - [协议文档 (PDF整理)](https://gitee.com/yezhihao/jt808-server/tree/master/协议文档 )
 - [协议文档 (官网)](https://jtst.mot.gov.cn/hb/search/stdHBView?id=a3011cd31e6602ec98f26c35329e88e4)
-- [协议解析网站](https://jttools.smallchi.cn/jt808)
 - [bcd转dec编码](https://github.com/deatil/lakego-admin/tree/main/pkg/lakego-pkg/go-encoding/bcd)
 - [lal流媒体文档](https://pengrl.com/lal/#/streamurllist)
 

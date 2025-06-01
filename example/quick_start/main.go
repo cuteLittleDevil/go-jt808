@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
 	"github.com/cuteLittleDevil/go-jt808/protocol/model"
 	"github.com/cuteLittleDevil/go-jt808/service"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
@@ -41,13 +40,9 @@ type meLocation struct {
 	model.T0x0200
 }
 
-func (l *meLocation) Parse(jtMsg *jt808.JTMessage) error {
-	return l.T0x0200.Parse(jtMsg)
-}
-
 func (l *meLocation) OnReadExecutionEvent(msg *service.Message) {
 	_ = l.Parse(msg.JTMessage)
-	fmt.Println(l.String()) // 打印经纬度等信息
+	fmt.Println(time.Now().Format(time.DateTime), l.String()) // 打印经纬度等信息
 }
 
 func (l *meLocation) OnWriteExecutionEvent(_ service.Message) {}
@@ -75,7 +70,7 @@ func client(phone string, address string) {
 	defer func() {
 		_ = conn.Close()
 	}()
-	ticker := time.NewTicker(1 * time.Second)
+	ticker := time.NewTicker(5 * time.Second)
 	for range ticker.C {
 		_, _ = conn.Write(location)
 	}
