@@ -25,7 +25,6 @@ func init() {
 func main() {
 	goJt808 := service.New(
 		service.WithHostPorts("0.0.0.0:808"),
-		service.WithNetwork("tcp"),
 		service.WithCustomHandleFunc(func() map[consts.JT808CommandType]service.Handler {
 			return map[consts.JT808CommandType]service.Handler{
 				consts.T0200LocationReport: &meLocation{}, // 自定义0x0200位置解析等

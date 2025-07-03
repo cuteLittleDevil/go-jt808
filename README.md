@@ -1,4 +1,4 @@
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/cuteLittleDevil/go-jt808?tab=MIT-1-ov-file)
+![MIT License](https://img.shields.io/github/license/cuteLittleDevil/go-jt808)
 [![Go Doc](https://godoc.org/github.com/cuteLittleDevil/go-jt808?status.svg)](https://pkg.go.dev/github.com/cuteLittleDevil/go-jt808#readme-jt808)
 [![Perf](https://img.shields.io/badge/perf-save-blue.svg)](https://github.com/cuteLittleDevil/go-jt808/blob/main/example/simulator/README.md)
 [![WEB](https://img.shields.io/badge/example-web-red.svg)](https://github.com/cuteLittleDevil/go-jt808/tree/main/example/web#web)
@@ -109,7 +109,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
 	"github.com/cuteLittleDevil/go-jt808/protocol/model"
 	"github.com/cuteLittleDevil/go-jt808/service"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
@@ -133,7 +132,6 @@ func init() {
 func main() {
 	goJt808 := service.New(
 		service.WithHostPorts("0.0.0.0:808"),
-		service.WithNetwork("tcp"),
 		service.WithCustomHandleFunc(func() map[consts.JT808CommandType]service.Handler {
 			return map[consts.JT808CommandType]service.Handler{
 				consts.T0200LocationReport: &meLocation{}, // 自定义0x0200位置解析等

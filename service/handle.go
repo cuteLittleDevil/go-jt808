@@ -54,7 +54,7 @@ type defaultTerminalEvent struct {
 }
 
 func (d *defaultTerminalEvent) OnJoinEvent(msg *Message, key string, err error) {
-	if err != nil {
+	if err == nil {
 		d.createTime = time.Now()
 		slog.Debug("join",
 			slog.String("key", key),
@@ -64,16 +64,19 @@ func (d *defaultTerminalEvent) OnJoinEvent(msg *Message, key string, err error) 
 }
 
 func (d *defaultTerminalEvent) OnLeaveEvent(key string) {
-	slog.Debug("leave",
-		slog.String("key", key),
-		slog.String("create time", d.createTime.Format(time.DateTime)),
-		slog.Float64("online time second", time.Since(d.createTime).Seconds()))
+	if !d.createTime.IsZero() {
+		slog.Debug("leave",
+			slog.String("key", key),
+			slog.String("create time", d.createTime.Format(time.DateTime)),
+			slog.Float64("online time second", time.Since(d.createTime).Seconds()))
+	}
 }
 
 func (d *defaultTerminalEvent) OnNotSupportedEvent(msg *Message) {
-	slog.Warn("key not found",
+	slog.Warn("not supported",
 		slog.Any("seq", msg.ExtensionFields.TerminalSeq),
 		slog.Any("id", msg.JTMessage.Header.ID),
+		slog.String("data", fmt.Sprintf("%x", msg.ExtensionFields.TerminalData)),
 		slog.String("remark", msg.Command.String()))
 }
 
