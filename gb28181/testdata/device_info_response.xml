@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="GB2312" ?>
+<Response>
+    <CmdType>DeviceInfo</CmdType>
+    <SN>3</SN>
+    <DeviceID>34020000001110000005</DeviceID>
+    <DeviceName>jt808-simulation</DeviceName>
+    <Result>OK</Result>
+    <DeviceType>132</DeviceType>
+    <Manufacturer>go-jt808</Manufacturer>
+    <Model>simulation</Model>
+    <Firmware>v0.1.0</Firmware>
+    <Channel>4</Channel>
+</Response>

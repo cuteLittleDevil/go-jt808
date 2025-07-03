@@ -1,0 +1,37 @@
+linters:
+  # https://golangci-lint.run/usage/linters/#enabled-by-default
+  enable-all: true
+  disable:
+    - gci # 控制go包的导入顺序
+    - goimports # 格式化代码
+    - gofumpt # 格式化代码
+    - depguard # 允许github包是那些
+    - nlreturn # return break continue 前面需要空一行
+    - wsl # 部分语句需要换行
+    - mnd # 魔数
+  fast: true
+
+linters-settings:
+  cyclop:
+    max-complexity: 20
+  nestif:
+    min-complexity: 15 # if语句复杂度
+  funlen:
+    lines: 100 # 检查函数最多多少行
+    statements: 50 # 检查函数最多多少语句
+
+issues:
+  exclude-files: # 那些文件不用检查
+    - ".*_test.go"
+
+output:
+  # See the dedicated "output" documentation section.
+  option: value
+
+run:
+  tests: false # 不包含测试文件
+  go: "1.23"
+
+severity:
+  # See the dedicated "severity" documentation section.
+  option: value
