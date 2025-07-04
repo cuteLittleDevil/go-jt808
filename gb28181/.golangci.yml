@@ -23,7 +23,7 @@ linters-settings:
 issues:
   exclude-files: # 那些文件不用检查
     - ".*_test.go"
-    - "invite.go"
+    - "sdp.go"
 output:
   # See the dedicated "output" documentation section.
   option: value

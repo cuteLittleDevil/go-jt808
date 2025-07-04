@@ -2,6 +2,7 @@ package gb28181
 
 import (
 	"fmt"
+	"gb28181/internal/stream"
 	"github.com/emiago/sipgo"
 	"github.com/emiago/sipgo/sip"
 	"log/slog"
@@ -24,6 +25,7 @@ type Client struct {
 	contact   *sip.ContactHeader
 	// keepaliveReplyCount 心跳有多少次没有回复了.
 	keepaliveReplyCount int
+	stream              *stream.Stream
 }
 
 func New(sim string, opts ...Option) *Client {
@@ -107,6 +109,8 @@ func (c *Client) Init() error {
 	}
 	customCallID := fmt.Sprintf("%d@%s", time.Now().Unix(), c.Options.Sim)
 	c.callID = sip.CallIDHeader(customCallID)
+
+	c.stream = stream.NewStream(c.Options.OnInviteEventFunc)
 	return nil
 }
 
@@ -180,6 +184,9 @@ func (c *Client) Stop() {
 					slog.String("id", c.Options.DeviceInfo.ID),
 					slog.Any("err", err))
 			}
+		}
+		if c.stream != nil {
+			c.stream.Stop()
 		}
 	})
 }

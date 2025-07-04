@@ -1,6 +1,7 @@
 package gb28181
 
 import (
+	"gb28181/command"
 	"time"
 )
 
@@ -13,10 +14,11 @@ type (
 		Sim string
 		DeviceInfo
 		PlatformInfo
-		Transport       string
-		UserAgent       string
-		KeepAlive       time.Duration
-		MappingRuleFunc func(gb28181Port int) (jt1078Port int)
+		Transport         string
+		UserAgent         string
+		KeepAlive         time.Duration
+		MappingRuleFunc   func(gb28181Port int) (jt1078Port int)
+		OnInviteEventFunc func(command.InviteInfo)
 	}
 
 	PlatformInfo struct {
@@ -65,5 +67,12 @@ func WithKeepAliveSecond(second int) Option {
 func WithMappingRuleFunc(f func(gb28181Port int) int) Option {
 	return Option{F: func(o *Options) {
 		o.MappingRuleFunc = f
+	}}
+}
+
+// WithInviteEventFunc 收到invite事件时触发.
+func WithInviteEventFunc(f func(command.InviteInfo)) Option {
+	return Option{F: func(o *Options) {
+		o.OnInviteEventFunc = f
 	}}
 }

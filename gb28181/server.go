@@ -3,7 +3,7 @@ package gb28181
 import (
 	"context"
 	"fmt"
-	"gb28181/internal"
+	inCommand "gb28181/internal/command"
 	"github.com/emiago/sipgo/sip"
 	"log/slog"
 	"net/http"
@@ -20,8 +20,8 @@ func (c *Client) message(req *sip.Request, tx sip.ServerTransaction) {
 	}
 
 	body := req.Body()
-	var confirmType internal.ConfirmType
-	if err := internal.ParseXML(body, &confirmType); err != nil {
+	var confirmType inCommand.ConfirmType
+	if err := inCommand.ParseXML(body, &confirmType); err != nil {
 		slog.Warn("parse xml fail",
 			slog.String("sim", c.Options.Sim),
 			slog.String("id", c.Options.DeviceInfo.ID),
@@ -80,7 +80,7 @@ func (c *Client) message(req *sip.Request, tx sip.ServerTransaction) {
 }
 
 func (c *Client) invite(req *sip.Request, tx sip.ServerTransaction) {
-	inviteInfo, err := decodeSDP(req)
+	inviteInfo, err := c.decodeSDP(req)
 	if err != nil {
 		_ = tx.Respond(sip.NewResponseFromRequest(req, sip.StatusBadRequest, err.Error(), nil))
 		return
@@ -89,6 +89,7 @@ func (c *Client) invite(req *sip.Request, tx sip.ServerTransaction) {
 		_ = tx.Respond(sip.NewResponseFromRequest(req, sip.StatusNotFound, "目前只支持点播", nil))
 		return
 	}
+	// 通道就是通道ID最后一位
 	channel := inviteInfo.TargetChannelId[len(inviteInfo.TargetChannelId)-1] - '0'
 	inviteInfo.JT1078Info = struct {
 		Sim     string `json:"sim"`
@@ -96,10 +97,11 @@ func (c *Client) invite(req *sip.Request, tx sip.ServerTransaction) {
 		Port    int    `json:"port"`
 	}{
 		Sim:     c.Options.Sim,
-		Channel: int(channel),                               // 通道就是通道ID最后一位
+		Channel: int(channel),
 		Port:    c.Options.MappingRuleFunc(inviteInfo.Port), // 端口默认是连接的流媒体端口-100
 	}
 
+	c.stream.SubmitInvite(inviteInfo)
 	platformIP := c.PlatformInfo.IP
 	content := []string{
 		"v=0",
@@ -123,38 +125,38 @@ func (c *Client) invite(req *sip.Request, tx sip.ServerTransaction) {
 	}
 }
 
-func (c *Client) ack(req *sip.Request, tx sip.ServerTransaction) {
-	fmt.Println("ack")
+func (c *Client) ack(req *sip.Request, _ sip.ServerTransaction) {
+	c.stream.SubmitAck(req.CallID().Value())
 }
 
-func (c *Client) bye(req *sip.Request, tx sip.ServerTransaction) {
-	fmt.Println("req")
+func (c *Client) bye(req *sip.Request, _ sip.ServerTransaction) {
+	c.stream.SubmitBye(req.CallID().Value())
 }
 
-func (c *Client) handleMessages(confirmType internal.ConfirmType, body []byte) ([]byte, error) {
+func (c *Client) handleMessages(confirmType inCommand.ConfirmType, body []byte) ([]byte, error) {
 	switch confirmType.CmdType {
 	case "DeviceInfo":
-		var info internal.DeviceInfo
-		if err := internal.ParseXML(body, &info); err != nil {
+		var info inCommand.DeviceInfo
+		if err := inCommand.ParseXML(body, &info); err != nil {
 			return nil, err
 		}
 		name := fmt.Sprintf("%s-jt808-simulation", c.Options.Sim)
-		req := internal.NewDeviceInfoResponse(name, info)
-		return internal.ToXML(req), nil
+		req := inCommand.NewDeviceInfoResponse(name, info)
+		return inCommand.ToXML(req), nil
 	case "DeviceStatus":
-		var status internal.DeviceStatus
-		if err := internal.ParseXML(body, &status); err != nil {
+		var status inCommand.DeviceStatus
+		if err := inCommand.ParseXML(body, &status); err != nil {
 			return nil, err
 		}
-		req := internal.NewDeviceStatusResponse(status)
-		return internal.ToXML(req), nil
+		req := inCommand.NewDeviceStatusResponse(status)
+		return inCommand.ToXML(req), nil
 	case "Catalog":
-		var catalog internal.Catalog
-		if err := internal.ParseXML(body, &catalog); err != nil {
+		var catalog inCommand.Catalog
+		if err := inCommand.ParseXML(body, &catalog); err != nil {
 			return nil, err
 		}
-		req := internal.NewCatalogResponse(catalog, 4)
-		return internal.ToXML(req), nil
+		req := inCommand.NewCatalogResponse(catalog, 4)
+		return inCommand.ToXML(req), nil
 	default:
 		return nil, fmt.Errorf("unknown cmd type: %s", confirmType.CmdType)
 	}

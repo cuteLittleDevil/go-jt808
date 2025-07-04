@@ -2,7 +2,7 @@ package gb28181
 
 import (
 	"context"
-	"gb28181/internal"
+	inCommand "gb28181/internal/command"
 	"github.com/emiago/sipgo/sip"
 	"time"
 )
@@ -36,8 +36,8 @@ func (c *Client) handleKeepalive() error {
 	req.AppendHeader(sip.NewHeader("User-Agent", c.Options.UserAgent))
 	req.AppendHeader(sip.NewHeader("Content-Type", "Application/MANSCDP+xml"))
 
-	keep := internal.NewKeepalive(c.Options.DeviceInfo.ID, c.sn)
-	req.SetBody(internal.ToXML(keep))
+	keep := inCommand.NewKeepalive(c.Options.DeviceInfo.ID, c.sn)
+	req.SetBody(inCommand.ToXML(keep))
 	c.sn++
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

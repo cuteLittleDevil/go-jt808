@@ -1,6 +1,7 @@
 package gb28181
 
 import (
+	"gb28181/command"
 	"time"
 )
 
@@ -22,6 +23,9 @@ func Example() {
 		WithMappingRuleFunc(func(port int) int {
 			// 如gb28181收流端口是10050 则jt1078收流端口是10000
 			return port - 50
+		}),
+		WithInviteEventFunc(func(info command.InviteInfo) {
+			// 完成9101请求 让设备发送jt1078流
 		}),
 	)
 	if err := client.Init(); err != nil {
