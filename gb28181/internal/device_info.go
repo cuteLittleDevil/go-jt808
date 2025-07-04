@@ -48,12 +48,12 @@ type DeviceInfoResponse struct {
 	Channel      int      `xml:"Channel"`      // 视频输入通道数(可选)
 }
 
-func NewDeviceInfoResponse(info DeviceInfo) *DeviceInfoResponse {
+func NewDeviceInfoResponse(deviceName string, info DeviceInfo) *DeviceInfoResponse {
 	return &DeviceInfoResponse{
 		CmdType:      info.CmdType,
 		SN:           info.SN,
 		DeviceID:     info.DeviceID,
-		DeviceName:   "jt808-simulation",
+		DeviceName:   deviceName,
 		Result:       "OK",
 		DeviceType:   "132",
 		Manufacturer: "go-jt808",

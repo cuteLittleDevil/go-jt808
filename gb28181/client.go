@@ -2,6 +2,7 @@ package gb28181
 
 import (
 	"fmt"
+	"gb28181/internal"
 	"github.com/emiago/sipgo"
 	"github.com/emiago/sipgo/sip"
 	"log/slog"
@@ -61,7 +62,7 @@ func (c *Client) Init() error {
 		return err
 	} else {
 		c.server = server
-		//c.server.OnMessage(c.message)
+		c.server.OnMessage(c.message)
 		//c.server.OnInvite(c.invite)
 		//c.server.OnAck(c.ack)
 		//c.server.OnBye(c.bye)
@@ -178,18 +179,31 @@ func (c *Client) Stop() {
 	})
 }
 
-func (c *Client) message(req *sip.Request, tx sip.ServerTransaction) {
-
-}
-
-func (c *Client) invite(req *sip.Request, tx sip.ServerTransaction) {
-
-}
-
-func (c *Client) ack(req *sip.Request, tx sip.ServerTransaction) {
-
-}
-
-func (c *Client) bye(req *sip.Request, tx sip.ServerTransaction) {
-
+func (c *Client) handleMessages(confirmType internal.ConfirmType, body []byte) ([]byte, error) {
+	switch confirmType.CmdType {
+	case "DeviceInfo":
+		var info internal.DeviceInfo
+		if err := internal.ParseXML(body, &info); err != nil {
+			return nil, err
+		}
+		name := fmt.Sprintf("%s-jt808-simulation", c.Options.Sim)
+		req := internal.NewDeviceInfoResponse(name, info)
+		return internal.ToXML(req), nil
+	case "DeviceStatus":
+		var status internal.DeviceStatus
+		if err := internal.ParseXML(body, &status); err != nil {
+			return nil, err
+		}
+		req := internal.NewDeviceStatusResponse(status)
+		return internal.ToXML(req), nil
+	case "Catalog":
+		var catalog internal.Catalog
+		if err := internal.ParseXML(body, &catalog); err != nil {
+			return nil, err
+		}
+		req := internal.NewCatalogResponse(catalog, 4)
+		return internal.ToXML(req), nil
+	default:
+		return nil, fmt.Errorf("unknown cmd type: %s", confirmType.CmdType)
+	}
 }
