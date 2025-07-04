@@ -6,7 +6,7 @@ import (
 	"strconv"
 )
 
-// Catalog 查询通道情况.
+// Catalog 查询通道情况
 /*
 <?xml version="1.0" encoding="GB2312"?>
 <Query>
@@ -14,7 +14,7 @@ import (
     <SN>2</SN>
     <DeviceID>34020000001320000105</DeviceID>
 </Query>
-*/
+.*/
 type Catalog struct {
 	XMLName  xml.Name `xml:"Query"`
 	CmdType  string   `xml:"CmdType"`  // 命令类型 (必选 固定DeviceInfo)
@@ -23,7 +23,7 @@ type Catalog struct {
 }
 
 type (
-	// CatalogResponse 目录查询回复.
+	// CatalogResponse 目录查询回复
 	/*
 		<?xml version="1.0" encoding="GB2312"?>
 		<Response>
@@ -94,7 +94,7 @@ type (
 		        </Item>
 		    </DeviceList>
 		</Response>
-	*/
+	.*/
 	CatalogResponse struct {
 		XMLName    xml.Name `xml:"Response"`
 		CmdType    string   `xml:"CmdType"`
@@ -107,9 +107,9 @@ type (
 		} `xml:"DeviceList"`
 	}
 
-	// CatalogItem 目录选项
+	// CatalogItem 目录选项.
 	CatalogItem struct {
-		DeviceID     string `xml:"DeviceID" `       // 设备/区域/系统编码(必选) 就是通道ID
+		DeviceID     string `xml:"DeviceID"`        // 设备/区域/系统编码(必选) 就是通道ID
 		Name         string `xml:"Name"`            // 设备/区域/系统名称(必选)
 		Manufacturer string `xml:"Manufacturer"`    // 当为设备时,设备厂商(必选)
 		Model        string `xml:"Model"`           // 当为设备时,设备型号(必选)

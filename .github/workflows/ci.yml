@@ -27,7 +27,7 @@ jobs:
 
       - name: CI
         run: |
-          for dir in adapter attachment protocol service shared terminal ./example/web; do
+          for dir in adapter attachment protocol service shared terminal gb28181 ./example/web; do
             echo "Running golangci-lint in $dir"
             cd ./$dir
             golangci-lint run

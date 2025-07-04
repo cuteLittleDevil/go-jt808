@@ -10,7 +10,7 @@ import "encoding/xml"
  	<SN>0</SN>
 	<DeviceID>34020000001320000016</DeviceID>
 </Query>
-*/
+.*/
 type DeviceInfo struct {
 	XMLName  xml.Name `xml:"Query"`
 	CmdType  string   `xml:"CmdType"`  // 命令类型 (必选 固定DeviceInfo)
@@ -33,7 +33,7 @@ type DeviceInfo struct {
 	<Firmware>v0.1.0</Firmware>
 	<Channel>4</Channel>
 </Response>
-*/
+.*/
 type DeviceInfoResponse struct {
 	XMLName      xml.Name `xml:"Response"`
 	CmdType      string   `xml:"CmdType"`      // 命令类型 (必选 固定DeviceInfo)

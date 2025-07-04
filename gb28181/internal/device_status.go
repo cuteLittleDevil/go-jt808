@@ -10,7 +10,7 @@ import "encoding/xml"
     <SN>1</SN>
     <DeviceID>34020000001320000105</DeviceID>
 </Query>
-*/
+.*/
 type DeviceStatus struct {
 	XMLName  xml.Name `xml:"Query"`
 	CmdType  string   `xml:"CmdType"`  // 命令类型 (必选 固定DeviceInfo)
@@ -31,7 +31,7 @@ type DeviceStatus struct {
 	<Encode>ON</Encode>
 	<Record>ON</Record>
 </Response>
-*/
+.*/
 type DeviceStatusResponse struct {
 	XMLName  xml.Name `xml:"Response"`
 	CmdType  string   `xml:"CmdType"`
