@@ -2,7 +2,6 @@ package gb28181
 
 import (
 	"fmt"
-	"gb28181/internal"
 	"github.com/emiago/sipgo"
 	"github.com/emiago/sipgo/sip"
 	"log/slog"
@@ -34,6 +33,9 @@ func New(sim string, opts ...Option) *Client {
 			UserAgent: fmt.Sprintf("jt808-sim:%s", sim),
 			KeepAlive: 30 * time.Second, // 默认30秒
 			Transport: "UDP",            // 默认UDP
+			MappingRuleFunc: func(gb28181Port int) (jt1078Port int) {
+				return gb28181Port - 100
+			},
 		},
 		stopChan: make(chan struct{}),
 		sn:       1,
@@ -63,9 +65,9 @@ func (c *Client) Init() error {
 	} else {
 		c.server = server
 		c.server.OnMessage(c.message)
-		//c.server.OnInvite(c.invite)
-		//c.server.OnAck(c.ack)
-		//c.server.OnBye(c.bye)
+		c.server.OnInvite(c.invite)
+		c.server.OnAck(c.ack)
+		c.server.OnBye(c.bye)
 		c.server.OnNoRoute(func(req *sip.Request, tx sip.ServerTransaction) {
 			err := tx.Respond(sip.NewResponseFromRequest(req, sip.StatusNotFound, "目前不支持的请求", nil))
 			slog.Warn("OnNoRoute",
@@ -137,6 +139,9 @@ func (c *Client) Run() {
 					slog.Any("err", err))
 			} else if ok {
 				c.online = true
+				slog.Info("register success",
+					slog.String("sim", c.Options.Sim),
+					slog.String("id", c.Options.DeviceInfo.ID))
 			}
 		case <-ticker.C: // 心跳保活
 			if !c.online {
@@ -179,31 +184,11 @@ func (c *Client) Stop() {
 	})
 }
 
-func (c *Client) handleMessages(confirmType internal.ConfirmType, body []byte) ([]byte, error) {
-	switch confirmType.CmdType {
-	case "DeviceInfo":
-		var info internal.DeviceInfo
-		if err := internal.ParseXML(body, &info); err != nil {
-			return nil, err
-		}
-		name := fmt.Sprintf("%s-jt808-simulation", c.Options.Sim)
-		req := internal.NewDeviceInfoResponse(name, info)
-		return internal.ToXML(req), nil
-	case "DeviceStatus":
-		var status internal.DeviceStatus
-		if err := internal.ParseXML(body, &status); err != nil {
-			return nil, err
-		}
-		req := internal.NewDeviceStatusResponse(status)
-		return internal.ToXML(req), nil
-	case "Catalog":
-		var catalog internal.Catalog
-		if err := internal.ParseXML(body, &catalog); err != nil {
-			return nil, err
-		}
-		req := internal.NewCatalogResponse(catalog, 4)
-		return internal.ToXML(req), nil
-	default:
-		return nil, fmt.Errorf("unknown cmd type: %s", confirmType.CmdType)
+func (c *Client) getResponse(tx sip.ClientTransaction) (*sip.Response, error) {
+	select {
+	case <-tx.Done():
+		return nil, fmt.Errorf("事务已终止")
+	case res := <-tx.Responses():
+		return res, nil
 	}
 }

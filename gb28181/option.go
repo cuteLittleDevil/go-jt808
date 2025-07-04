@@ -13,9 +13,10 @@ type (
 		Sim string
 		DeviceInfo
 		PlatformInfo
-		Transport string
-		UserAgent string
-		KeepAlive time.Duration
+		Transport       string
+		UserAgent       string
+		KeepAlive       time.Duration
+		MappingRuleFunc func(gb28181Port int) (jt1078Port int)
 	}
 
 	PlatformInfo struct {
@@ -57,5 +58,12 @@ func WithTransport(transport string) Option {
 func WithKeepAliveSecond(second int) Option {
 	return Option{F: func(o *Options) {
 		o.KeepAlive = time.Duration(second) * time.Second
+	}}
+}
+
+// WithMappingRuleFunc 设置映射规则 输入gb28181的收流端口 输出jt1078的收流端口.
+func WithMappingRuleFunc(f func(gb28181Port int) int) Option {
+	return Option{F: func(o *Options) {
+		o.MappingRuleFunc = f
 	}}
 }

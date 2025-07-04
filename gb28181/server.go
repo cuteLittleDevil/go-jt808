@@ -2,10 +2,12 @@ package gb28181
 
 import (
 	"context"
+	"fmt"
 	"gb28181/internal"
 	"github.com/emiago/sipgo/sip"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -65,24 +67,95 @@ func (c *Client) message(req *sip.Request, tx sip.ServerTransaction) {
 			return
 		}
 		defer tx.Terminate()
+		_, _ = c.getResponse(tx)
 	} else {
 		if err := tx.Respond(sip.NewResponseFromRequest(req, http.StatusNotFound, "暂不支持的指令", nil)); err != nil {
 			slog.Warn("message respond fail",
 				slog.String("sim", c.Options.Sim),
 				slog.String("id", c.Options.DeviceInfo.ID),
+				slog.Any("data", string(body)),
 				slog.Any("err", err))
 		}
 	}
 }
 
 func (c *Client) invite(req *sip.Request, tx sip.ServerTransaction) {
+	inviteInfo, err := decodeSDP(req)
+	if err != nil {
+		_ = tx.Respond(sip.NewResponseFromRequest(req, sip.StatusBadRequest, err.Error(), nil))
+		return
+	}
+	if inviteInfo.SessionName != "Play" {
+		_ = tx.Respond(sip.NewResponseFromRequest(req, sip.StatusNotFound, "目前只支持点播", nil))
+		return
+	}
+	channel := inviteInfo.TargetChannelId[len(inviteInfo.TargetChannelId)-1] - '0'
+	inviteInfo.JT1078Info = struct {
+		Sim     string `json:"sim"`
+		Channel int    `json:"channelId"`
+		Port    int    `json:"port"`
+	}{
+		Sim:     c.Options.Sim,
+		Channel: int(channel),                               // 通道就是通道ID最后一位
+		Port:    c.Options.MappingRuleFunc(inviteInfo.Port), // 端口默认是连接的流媒体端口-100
+	}
 
+	platformIP := c.PlatformInfo.IP
+	content := []string{
+		"v=0",
+		fmt.Sprintf("o=%s 0 0 IN IP4 %s", inviteInfo.TargetChannelId, platformIP),
+		"s=Play",
+		fmt.Sprintf("c=IN IP4 %s", platformIP),
+		"t=0 0",
+		fmt.Sprintf("m=video %d TCP/RTP/AVP 96", inviteInfo.Port),
+		"a=setup:active", // GB28181 2016 95页 只支持TCP被动 也就是客户端主动发起TCP连接
+		"a=connection:new",
+		"a=sendonly",
+		"a=rtpmap:96 PS/90000",
+		fmt.Sprintf("y=%s", inviteInfo.SSRC),
+	}
+	response := sip.NewResponseFromRequest(req, sip.StatusOK, "OK", nil)
+	contentType := sip.ContentTypeHeader("application/sdp")
+	response.AppendHeader(&contentType)
+	response.SetBody([]byte(strings.Join(content, "\r\n") + "\r\n"))
+	if err := tx.Respond(response); err != nil {
+		panic(err)
+	}
 }
 
 func (c *Client) ack(req *sip.Request, tx sip.ServerTransaction) {
-
+	fmt.Println("ack")
 }
 
 func (c *Client) bye(req *sip.Request, tx sip.ServerTransaction) {
+	fmt.Println("req")
+}
 
+func (c *Client) handleMessages(confirmType internal.ConfirmType, body []byte) ([]byte, error) {
+	switch confirmType.CmdType {
+	case "DeviceInfo":
+		var info internal.DeviceInfo
+		if err := internal.ParseXML(body, &info); err != nil {
+			return nil, err
+		}
+		name := fmt.Sprintf("%s-jt808-simulation", c.Options.Sim)
+		req := internal.NewDeviceInfoResponse(name, info)
+		return internal.ToXML(req), nil
+	case "DeviceStatus":
+		var status internal.DeviceStatus
+		if err := internal.ParseXML(body, &status); err != nil {
+			return nil, err
+		}
+		req := internal.NewDeviceStatusResponse(status)
+		return internal.ToXML(req), nil
+	case "Catalog":
+		var catalog internal.Catalog
+		if err := internal.ParseXML(body, &catalog); err != nil {
+			return nil, err
+		}
+		req := internal.NewCatalogResponse(catalog, 4)
+		return internal.ToXML(req), nil
+	default:
+		return nil, fmt.Errorf("unknown cmd type: %s", confirmType.CmdType)
+	}
 }

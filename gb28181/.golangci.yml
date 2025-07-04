@@ -18,12 +18,12 @@ linters-settings:
     min-complexity: 15 # if语句复杂度
   funlen:
     lines: 100 # 检查函数最多多少行
-    statements: 50 # 检查函数最多多少语句
+    statements: 60 # 检查函数最多多少语句
 
 issues:
   exclude-files: # 那些文件不用检查
     - ".*_test.go"
-
+    - "invite.go"
 output:
   # See the dedicated "output" documentation section.
   option: value

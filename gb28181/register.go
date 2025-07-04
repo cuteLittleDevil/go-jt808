@@ -41,13 +41,19 @@ func (c *Client) handleRegister(hasRegister bool) (bool, error) {
 		req.AppendHeader(sip.NewHeader("Expires", "0"))
 	}
 	req.AppendHeader(sip.NewHeader("Content-Length", "0"))
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	// 注册wvp 有时候10秒不够 换30秒
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	res, err := c.client.Do(ctx, req)
+	tx, err := c.client.TransactionRequest(ctx, req)
 	if err != nil {
 		return false, err
 	}
+	defer tx.Terminate()
 
+	res, err := c.getResponse(tx)
+	if err != nil {
+		return false, err
+	}
 	success := false
 	if res.StatusCode == sip.StatusOK {
 		success = true
@@ -79,7 +85,12 @@ func (c *Client) handleRegister(hasRegister bool) (bool, error) {
 		newReq := req.Clone()
 		newReq.RemoveHeader("Via")
 		newReq.AppendHeader(sip.NewHeader("Authorization", cred.String()))
-		newRes, err := c.client.Do(ctx, newReq)
+		tx, err := c.client.TransactionRequest(ctx, newReq)
+		if err != nil {
+			return false, err
+		}
+		defer tx.Terminate()
+		newRes, err := c.getResponse(tx)
 		if err != nil {
 			return false, err
 		}
