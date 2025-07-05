@@ -2,7 +2,7 @@ package gb28181
 
 import (
 	"fmt"
-	"gb28181/command"
+	"github.com/cuteLittleDevil/go-jt808/gb28181/command"
 	"github.com/emiago/sipgo/sip"
 	"strconv"
 	"strings"

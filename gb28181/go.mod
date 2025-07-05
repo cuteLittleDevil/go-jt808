@@ -1,4 +1,4 @@
-module gb28181
+module github.com/cuteLittleDevil/go-jt808/gb28181
 
 go 1.23.2
 

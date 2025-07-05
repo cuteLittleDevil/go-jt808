@@ -2,7 +2,7 @@ package gb28181
 
 import (
 	"context"
-	inCommand "gb28181/internal/command"
+	inCommand "github.com/cuteLittleDevil/go-jt808/gb28181/internal/command"
 	"github.com/emiago/sipgo/sip"
 	"time"
 )

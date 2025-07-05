@@ -3,7 +3,7 @@ package stream
 import (
 	"errors"
 	"fmt"
-	"gb28181/command"
+	"github.com/cuteLittleDevil/go-jt808/gb28181/command"
 	"github.com/cuteLittleDevil/go-jt808/protocol/jt1078"
 	"github.com/pion/rtp"
 	"io"

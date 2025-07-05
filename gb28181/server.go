@@ -3,7 +3,7 @@ package gb28181
 import (
 	"context"
 	"fmt"
-	inCommand "gb28181/internal/command"
+	inCommand "github.com/cuteLittleDevil/go-jt808/gb28181/internal/command"
 	"github.com/cuteLittleDevil/go-jt808/protocol/jt1078"
 	"github.com/emiago/sipgo/sip"
 	"log/slog"

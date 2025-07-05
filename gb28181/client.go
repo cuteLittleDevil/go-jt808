@@ -2,7 +2,7 @@ package gb28181
 
 import (
 	"fmt"
-	"gb28181/internal/stream"
+	"github.com/cuteLittleDevil/go-jt808/gb28181/internal/stream"
 	"github.com/emiago/sipgo"
 	"github.com/emiago/sipgo/sip"
 	"log/slog"
