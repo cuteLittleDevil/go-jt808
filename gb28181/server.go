@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	inCommand "gb28181/internal/command"
+	"github.com/cuteLittleDevil/go-jt808/protocol/jt1078"
 	"github.com/emiago/sipgo/sip"
 	"log/slog"
 	"net/http"
@@ -69,13 +70,12 @@ func (c *Client) message(req *sip.Request, tx sip.ServerTransaction) {
 		defer tx.Terminate()
 		_, _ = c.getResponse(tx)
 	} else {
-		if err := tx.Respond(sip.NewResponseFromRequest(req, http.StatusNotFound, "暂不支持的指令", nil)); err != nil {
-			slog.Warn("message respond fail",
-				slog.String("sim", c.Options.Sim),
-				slog.String("id", c.Options.DeviceInfo.ID),
-				slog.Any("data", string(body)),
-				slog.Any("err", err))
-		}
+		err := tx.Respond(sip.NewResponseFromRequest(req, http.StatusNotFound, "暂不支持的指令", nil))
+		slog.Warn("message respond fail",
+			slog.String("sim", c.Options.Sim),
+			slog.String("id", c.Options.DeviceInfo.ID),
+			slog.Any("data", req.String()),
+			slog.Any("err", err))
 	}
 }
 
@@ -86,22 +86,24 @@ func (c *Client) invite(req *sip.Request, tx sip.ServerTransaction) {
 		return
 	}
 	if inviteInfo.SessionName != "Play" {
-		_ = tx.Respond(sip.NewResponseFromRequest(req, sip.StatusNotFound, "目前只支持点播", nil))
+		_ = tx.Respond(sip.NewResponseFromRequest(req, sip.StatusInternalServerError, "目前只支持点播", nil))
 		return
 	}
 	// 通道就是通道ID最后一位
 	channel := inviteInfo.TargetChannelId[len(inviteInfo.TargetChannelId)-1] - '0'
 	inviteInfo.JT1078Info = struct {
-		Sim     string `json:"sim"`
-		Channel int    `json:"channelId"`
-		Port    int    `json:"port"`
+		Sim         string          `json:"sim"`
+		Channel     int             `json:"channelId"`
+		Port        int             `json:"port"`
+		StreamTypes []jt1078.PTType `json:"streamTypes"`
 	}{
-		Sim:     c.Options.Sim,
-		Channel: int(channel),
-		Port:    c.Options.MappingRuleFunc(inviteInfo.Port), // 端口默认是连接的流媒体端口-100
+		Sim:         c.Options.Sim,
+		Channel:     int(channel),
+		Port:        inviteInfo.Port - 100, // 端口默认是连接的流媒体端口-100
+		StreamTypes: []jt1078.PTType{jt1078.PTH264, jt1078.PTG711A},
 	}
 
-	c.stream.SubmitInvite(inviteInfo)
+	c.manage.SubmitInvite(inviteInfo)
 	platformIP := c.PlatformInfo.IP
 	content := []string{
 		"v=0",
@@ -126,11 +128,11 @@ func (c *Client) invite(req *sip.Request, tx sip.ServerTransaction) {
 }
 
 func (c *Client) ack(req *sip.Request, _ sip.ServerTransaction) {
-	c.stream.SubmitAck(req.CallID().Value())
+	c.manage.SubmitAck(req.CallID().Value())
 }
 
 func (c *Client) bye(req *sip.Request, _ sip.ServerTransaction) {
-	c.stream.SubmitBye(req.CallID().Value())
+	c.manage.SubmitBye(req.CallID().Value())
 }
 
 func (c *Client) handleMessages(confirmType inCommand.ConfirmType, body []byte) ([]byte, error) {

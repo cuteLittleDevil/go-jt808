@@ -15,7 +15,7 @@ type XMLTypes interface {
 }
 
 func ToXML[T XMLTypes](v T) []byte {
-	output, _ := xml.MarshalIndent(v, "", "  ")
+	output, _ := xml.Marshal(v)
 	result := append([]byte("<?xml version=\"1.0\" encoding=\"GB2312\"?>\n"), output...)
 	return utf82gbk18030(result)
 }

@@ -5,17 +5,17 @@ import (
 	"sync"
 )
 
-type Stream struct {
+type Manage struct {
 	stopOnce      sync.Once
 	stopChan      chan struct{}
 	inviteChan    chan *command.InviteInfo
 	ackChan       chan string
 	byeChan       chan string
-	OnInviteEvent func(command.InviteInfo)
+	OnInviteEvent func(*command.InviteInfo) *command.InviteInfo
 }
 
-func NewStream(onInviteEvent func(command.InviteInfo)) *Stream {
-	return &Stream{
+func NewManage(onInviteEvent func(*command.InviteInfo) *command.InviteInfo) *Manage {
+	return &Manage{
 		OnInviteEvent: onInviteEvent,
 		stopChan:      make(chan struct{}),
 		inviteChan:    make(chan *command.InviteInfo, 10),
@@ -24,57 +24,57 @@ func NewStream(onInviteEvent func(command.InviteInfo)) *Stream {
 	}
 }
 
-func (s *Stream) Run() {
+func (s *Manage) Run() {
 	var (
-		record   = map[string]*command.InviteInfo{}
-		managers = map[string]*jt1078Server{}
+		record  = map[string]*command.InviteInfo{}
+		servers = map[string]*jt1078Server{}
 	)
 	defer func() {
 		clear(record)
-		for _, v := range managers {
+		for _, v := range servers {
 			v.stop()
 		}
-		clear(managers)
+		clear(servers)
 	}()
 	for {
 		select {
 		case <-s.stopChan:
 			return
 		case v := <-s.inviteChan:
-			if old, ok := managers[v.CallId]; ok {
+			if old, ok := servers[v.CallId]; ok {
 				old.stop()
-				delete(managers, v.CallId)
+				delete(servers, v.CallId)
 			}
 			record[v.CallId] = v
 		case callID := <-s.ackChan:
 			if inviteInfo, ok := record[callID]; ok {
-				// 监听端口A 有数据时 建立TCP连接 连接到端口B（收流端口)
-				// 把端口A收到的jt1078数据 转ps流数据上传
-				server := newJt1078Server(inviteInfo.SSRC)
-				go server.run(inviteInfo.JT1078Info.Port, inviteInfo.IP, inviteInfo.Port)
 				// 触发回调 让jt808设备上传jt1078到端口A
 				if s.OnInviteEvent != nil {
-					s.OnInviteEvent(*inviteInfo)
+					inviteInfo = s.OnInviteEvent(inviteInfo)
 				}
-				managers[callID] = server
+				// 监听端口A 有数据时 建立TCP连接 连接到端口B（收流端口)
+				// 把端口A收到的jt1078数据 转ps流数据上传
+				server := newJt1078Server(inviteInfo)
+				go server.run()
+				servers[callID] = server
 			}
 		case callID := <-s.byeChan:
 			delete(record, callID)
-			if v, ok := managers[callID]; ok {
+			if v, ok := servers[callID]; ok {
 				v.stop()
 			}
-			delete(managers, callID)
+			delete(servers, callID)
 		}
 	}
 }
 
-func (s *Stream) Stop() {
+func (s *Manage) Stop() {
 	s.stopOnce.Do(func() {
 		close(s.stopChan)
 	})
 }
 
-func (s *Stream) SubmitInvite(inviteInfo *command.InviteInfo) {
+func (s *Manage) SubmitInvite(inviteInfo *command.InviteInfo) {
 	select {
 	case <-s.stopChan:
 		return
@@ -83,7 +83,7 @@ func (s *Stream) SubmitInvite(inviteInfo *command.InviteInfo) {
 	}
 }
 
-func (s *Stream) SubmitAck(callID string) {
+func (s *Manage) SubmitAck(callID string) {
 	select {
 	case <-s.stopChan:
 		return
@@ -92,7 +92,7 @@ func (s *Stream) SubmitAck(callID string) {
 	}
 }
 
-func (s *Stream) SubmitBye(callID string) {
+func (s *Manage) SubmitBye(callID string) {
 	select {
 	case <-s.stopChan:
 		return

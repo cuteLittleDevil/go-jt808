@@ -25,7 +25,7 @@ type Client struct {
 	contact   *sip.ContactHeader
 	// keepaliveReplyCount 心跳有多少次没有回复了.
 	keepaliveReplyCount int
-	stream              *stream.Stream
+	manage              *stream.Manage
 }
 
 func New(sim string, opts ...Option) *Client {
@@ -35,9 +35,6 @@ func New(sim string, opts ...Option) *Client {
 			UserAgent: fmt.Sprintf("jt808-sim:%s", sim),
 			KeepAlive: 30 * time.Second, // 默认30秒
 			Transport: "UDP",            // 默认UDP
-			MappingRuleFunc: func(gb28181Port int) (jt1078Port int) {
-				return gb28181Port - 100
-			},
 		},
 		stopChan: make(chan struct{}),
 		sn:       1,
@@ -49,6 +46,8 @@ func New(sim string, opts ...Option) *Client {
 }
 
 func (c *Client) Init() error {
+	// 不知道查询目录时 通道>4时如何按要求一个个分 干脆一次性发送完成
+	sip.UDPMTUSize = 15000
 	ua, err := sipgo.NewUA(
 		sipgo.WithUserAgent(fmt.Sprintf("jt808-sim:%s", c.Sim)),
 	)
@@ -110,7 +109,8 @@ func (c *Client) Init() error {
 	customCallID := fmt.Sprintf("%d@%s", time.Now().Unix(), c.Options.Sim)
 	c.callID = sip.CallIDHeader(customCallID)
 
-	c.stream = stream.NewStream(c.Options.OnInviteEventFunc)
+	c.manage = stream.NewManage(c.Options.OnInviteEventFunc)
+	go c.manage.Run()
 	return nil
 }
 
@@ -185,8 +185,8 @@ func (c *Client) Stop() {
 					slog.Any("err", err))
 			}
 		}
-		if c.stream != nil {
-			c.stream.Stop()
+		if c.manage != nil {
+			c.manage.Stop()
 		}
 	})
 }

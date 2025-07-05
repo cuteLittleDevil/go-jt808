@@ -1,5 +1,7 @@
 package command
 
+import "github.com/cuteLittleDevil/go-jt808/protocol/jt1078"
+
 // InviteInfo 从INVITE消息中解析需要的信息
 // 来源于 https://github.com/langhuihui/monibuca
 type InviteInfo struct {
@@ -30,8 +32,9 @@ type InviteInfo struct {
 	// 端口
 	Port       int `json:"port"`
 	JT1078Info struct {
-		Sim     string `json:"sim"`
-		Channel int    `json:"channelId"`
-		Port    int    `json:"port"`
+		Sim         string          `json:"sim"`
+		Channel     int             `json:"channelId"`
+		Port        int             `json:"port"`
+		StreamTypes []jt1078.PTType `json:"streamTypes"`
 	}
 }

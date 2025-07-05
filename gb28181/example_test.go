@@ -2,6 +2,7 @@ package gb28181
 
 import (
 	"gb28181/command"
+	"github.com/cuteLittleDevil/go-jt808/protocol/jt1078"
 	"time"
 )
 
@@ -20,12 +21,14 @@ func Example() {
 	}),
 		WithTransport("UDP"),
 		WithKeepAliveSecond(10),
-		WithMappingRuleFunc(func(port int) int {
-			// 如gb28181收流端口是10050 则jt1078收流端口是10000
-			return port - 50
-		}),
-		WithInviteEventFunc(func(info command.InviteInfo) {
+		WithInviteEventFunc(func(info *command.InviteInfo) *command.InviteInfo {
 			// 完成9101请求 让设备发送jt1078流
+			// 流媒体默认选择的是音视频流 视频h264 音频g711a
+			info.JT1078Info.StreamTypes = []jt1078.PTType{jt1078.PTH264, jt1078.PTG711A}
+			// 默认jt1078收流端口是 gb28181 - 100
+			// 如gb28181收流端口是10100 则jt1078收流端口是10000
+			info.JT1078Info.Port = info.Port - 100
+			return info
 		}),
 	)
 	if err := client.Init(); err != nil {
