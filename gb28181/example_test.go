@@ -2,6 +2,7 @@ package gb28181
 
 import (
 	"github.com/cuteLittleDevil/go-jt808/gb28181/command"
+	"github.com/cuteLittleDevil/go-jt808/gb28181/internal/stream"
 	"github.com/cuteLittleDevil/go-jt808/protocol/jt1078"
 	"time"
 )
@@ -29,6 +30,11 @@ func Example() {
 			// 如gb28181收流端口是10100 则jt1078收流端口是10000
 			info.JT1078Info.Port = info.Port - 100
 			return info
+		}),
+		WithJT1078ToGB28181er(func() command.JT1078ToGB28181er {
+			// 目前模拟jt1078包转gb28181在m7s上成功 zlm上播放失败
+			// 目前这是内部包的实现 不暴露出来
+			return stream.NewJT1078T0GB289181()
 		}),
 	)
 	if err := client.Init(); err != nil {

@@ -2,6 +2,7 @@ package gb28181
 
 import (
 	"fmt"
+	"github.com/cuteLittleDevil/go-jt808/gb28181/command"
 	"github.com/cuteLittleDevil/go-jt808/gb28181/internal/stream"
 	"github.com/emiago/sipgo"
 	"github.com/emiago/sipgo/sip"
@@ -35,6 +36,9 @@ func New(sim string, opts ...Option) *Client {
 			UserAgent: fmt.Sprintf("jt808-sim:%s", sim),
 			KeepAlive: 30 * time.Second, // 默认30秒
 			Transport: "UDP",            // 默认UDP
+			JT1078ToGB28181erFunc: func() command.JT1078ToGB28181er {
+				return stream.NewJT1078T0GB289181()
+			},
 		},
 		stopChan: make(chan struct{}),
 		sn:       1,
@@ -109,7 +113,7 @@ func (c *Client) Init() error {
 	customCallID := fmt.Sprintf("%d@%s", time.Now().Unix(), c.Options.Sim)
 	c.callID = sip.CallIDHeader(customCallID)
 
-	c.manage = stream.NewManage(c.Options.OnInviteEventFunc)
+	c.manage = stream.NewManage(c.Options.OnInviteEventFunc, c.Options.JT1078ToGB28181erFunc)
 	go c.manage.Run()
 	return nil
 }

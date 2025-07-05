@@ -52,8 +52,8 @@ func main() {
 		IP:   device.IP,
 		Port: device.Port,
 	}),
-		gb28181.WithTransport("UDP"), // 信令默认使用UDP 也可以TCP
-		gb28181.WithKeepAliveSecond(20),
+		gb28181.WithTransport("UDP"),    // 信令默认使用UDP 也可以TCP
+		gb28181.WithKeepAliveSecond(30), // 心跳保活周期30秒
 		gb28181.WithInviteEventFunc(func(info *command.InviteInfo) *command.InviteInfo {
 			// 默认jt1078收流端口是 gb28181 - 100
 			// 如gb28181收流端口是10100 则jt1078收流端口是10000
