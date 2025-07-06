@@ -34,7 +34,7 @@ func Example() {
 		WithJT1078ToGB28181er(func() command.JT1078ToGB28181er {
 			// 目前模拟jt1078包转gb28181在m7s上成功 zlm上播放失败
 			// 目前这是内部包的实现 不暴露出来
-			return stream.NewJT1078T0GB289181()
+			return stream.NewJT1078T0GB28181()
 		}),
 	)
 	if err := client.Init(); err != nil {

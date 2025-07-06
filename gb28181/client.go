@@ -37,7 +37,7 @@ func New(sim string, opts ...Option) *Client {
 			KeepAlive: 30 * time.Second, // 默认30秒
 			Transport: "UDP",            // 默认UDP
 			JT1078ToGB28181erFunc: func() command.JT1078ToGB28181er {
-				return stream.NewJT1078T0GB289181()
+				return stream.NewJT1078T0GB28181()
 			},
 		},
 		stopChan: make(chan struct{}),

@@ -11,21 +11,22 @@ import (
 	"time"
 )
 
-type JT1078T0GB289181 struct {
+type JT1078ToGB28181 struct {
 	streamTypes []jt1078.PTType
 	hasAudio    bool
 	ssrc32      uint32
 	seq         uint16
+	sim         string
 }
 
-func NewJT1078T0GB289181() *JT1078T0GB289181 {
-	return &JT1078T0GB289181{}
+func NewJT1078T0GB28181() *JT1078ToGB28181 {
+	return &JT1078ToGB28181{}
 }
 
-func (j *JT1078T0GB289181) OnAck(info *command.InviteInfo) {
+func (j *JT1078ToGB28181) OnAck(info *command.InviteInfo) {
 	ssrc32, err := strconv.ParseUint(info.SSRC, 10, 32)
 	if err != nil {
-		ssrc32 = rand.Uint64()
+		ssrc32 = uint64(rand.Uint32())
 	}
 	hasAudio := false
 	for _, v := range info.JT1078Info.StreamTypes {
@@ -37,21 +38,24 @@ func (j *JT1078T0GB289181) OnAck(info *command.InviteInfo) {
 	j.hasAudio = hasAudio
 	j.streamTypes = info.JT1078Info.StreamTypes
 	j.seq = 0
+	j.sim = info.JT1078Info.Sim
 
 	slog.Info("connect success",
-		slog.String("sim", info.JT1078Info.Sim),
+		slog.String("sim", j.sim),
+		slog.Int("channel", info.JT1078Info.Channel),
 		slog.Any("ssrc32", j.ssrc32),
 		slog.Int("jt1078收流", info.JT1078Info.Port),
 		slog.String("gb28181推流", fmt.Sprintf("%s:%d", info.IP, info.Port)))
 }
 
-func (j *JT1078T0GB289181) OnBye(msg string) {
+func (j *JT1078ToGB28181) OnBye(msg string) {
 	slog.Info("jt1078 bye",
+		slog.String("sim", j.sim),
 		slog.Any("ssrc32", j.ssrc32),
 		slog.String("msg", msg))
 }
 
-func (j *JT1078T0GB289181) ConvertToGB28181(pack *jt1078.Packet) [][]byte {
+func (j *JT1078ToGB28181) ConvertToGB28181(pack *jt1078.Packet) [][]byte {
 	streamID := streamIDAudio
 	if pack.Flag.PT == jt1078.PTH264 || pack.Flag.PT == jt1078.PTH265 {
 		streamID = streamIDVideo
@@ -71,8 +75,8 @@ func (j *JT1078T0GB289181) ConvertToGB28181(pack *jt1078.Packet) [][]byte {
 	// 第一个包 I帧 psh + sys + psm + pes + h.264
 	// 第一个包 P帧或者B帧 psh + pes + h.264
 	// 音频 psh + pes + g711
-	// https://blog.csdn.net/fanyun_01/article/details/120537670
-	// https://ocw.unican.es/pluginfile.php/2825/course/section/2777/iso13818-1.pdf
+	// gb28181格式 https://blog.csdn.net/fanyun_01/article/details/120537670
+	// ps规范 https://ocw.unican.es/pluginfile.php/2825/course/section/2777/iso13818-1.pdf
 	psh := NewProgramStreamPackHeader(pts)
 	data = append(data, psh.Encode()...)
 	if pack.DataType == jt1078.DataTypeI {
@@ -112,7 +116,7 @@ func (j *JT1078T0GB289181) ConvertToGB28181(pack *jt1078.Packet) [][]byte {
 	return result
 }
 
-func (j *JT1078T0GB289181) createStreamMap() []streamMap {
+func (j *JT1078ToGB28181) createStreamMap() []streamMap {
 	if len(j.streamTypes) == 0 {
 		return []streamMap{
 			{
