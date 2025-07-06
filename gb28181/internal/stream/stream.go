@@ -16,7 +16,8 @@ type Manage struct {
 	ConvertFunc   func() command.JT1078ToGB28181er
 }
 
-func NewManage(onInviteEvent func(*command.InviteInfo) *command.InviteInfo, convertFunc func() command.JT1078ToGB28181er) *Manage {
+func NewManage(onInviteEvent func(*command.InviteInfo) *command.InviteInfo,
+	convertFunc func() command.JT1078ToGB28181er) *Manage {
 	return &Manage{
 		OnInviteEvent: onInviteEvent,
 		ConvertFunc:   convertFunc,

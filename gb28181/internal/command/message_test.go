@@ -1,24 +1,12 @@
 package command
 
 import (
-	"fmt"
 	"os"
 	"strings"
 	"testing"
 )
 
-func TestKeepalive_ParseXML(t *testing.T) {
-	data, _ := os.ReadFile("../testdata/keepalive.xml")
-	var k Keepalive
-	fmt.Println(string(utf82gbk18030(data)))
-	fmt.Println(ParseXML(utf82gbk18030(data), &k))
-	fmt.Println(k)
-	fmt.Println(string(ToXML(&k)))
-}
-
 func TestParseXML(t *testing.T) {
-	type Test[T XMLTypes] struct {
-	}
 	tests := []struct {
 		name     string
 		filePath string
@@ -26,37 +14,37 @@ func TestParseXML(t *testing.T) {
 	}{
 		{
 			name:     "心跳保活 KEEPALIVE",
-			filePath: "../testdata/keepalive.xml",
+			filePath: "../../testdata/keepalive.xml",
 			instance: &Keepalive{},
 		},
 		{
 			name:     "查询设备信息 DEVICE_INFO",
-			filePath: "../testdata/device_info.xml",
+			filePath: "../../testdata/device_info.xml",
 			instance: &DeviceInfo{},
 		},
 		{
 			name:     "查询设备信息-回复 DEVICE_INFO_RESPONSE",
-			filePath: "../testdata/device_info_response.xml",
+			filePath: "../../testdata/device_info_response.xml",
 			instance: &DeviceInfoResponse{},
 		},
 		{
 			name:     "查询设备状态 DEVICE_STATUS",
-			filePath: "../testdata/device_status.xml",
+			filePath: "../../testdata/device_status.xml",
 			instance: &DeviceStatus{},
 		},
 		{
 			name:     "查询设备状态-回复 DEVICE_STATUS_RESPONSE",
-			filePath: "../testdata/device_status_response.xml",
+			filePath: "../../testdata/device_status_response.xml",
 			instance: &DeviceStatusResponse{},
 		},
 		{
 			name:     "查询目录 CATALOG",
-			filePath: "../testdata/catalog.xml",
+			filePath: "../../testdata/catalog.xml",
 			instance: &Catalog{},
 		},
 		{
 			name:     "查询目录-回复 CATALOG_RESPONSE",
-			filePath: "../testdata/catalog_response.xml",
+			filePath: "../../testdata/catalog_response.xml",
 			instance: &CatalogResponse{},
 		},
 	}
@@ -98,10 +86,13 @@ func verifyXML[T XMLTypes](t *testing.T, data []byte, instance T) {
 		return
 	}
 	got := ToXML(instance)
+	// 忽略格式 内容正确就ok
 	expect := strings.ReplaceAll(string(gbData), " ", "")
+	expect = strings.ReplaceAll(expect, "\n", "")
 	actual := strings.ReplaceAll(string(got), " ", "")
+	actual = strings.ReplaceAll(actual, "\n", "")
 	if !strings.EqualFold(expect, actual) {
-		t.Errorf("\nexpect:%s \n actual:%v", string(gbData), string(got))
+		t.Errorf("\nexpect:%s \n actual:%v", expect, actual)
 		return
 	}
 }
