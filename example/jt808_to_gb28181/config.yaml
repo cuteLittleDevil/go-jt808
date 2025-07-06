@@ -1,0 +1,39 @@
+adapter:
+  enable: true # 是否启用
+  address: "0.0.0.0:808" # 设备连到适配器地址
+  retrySecond: 30 # 模拟链接断开后 多久重试一次 单位秒
+  leader: "127.0.0.1:20001" # 服务和设备之间读写全部正常
+  followers:
+    - address: "127.0.0.1:20002" # 服务和设备之间读正常 写默认拒绝(只允许部分命令)
+      # 允许的命令 jt1078相关的
+      allowCommands: [0x9101, 0x9102, 0x9003, 0x9201, 0x9202, 0x9205, 0x9206, 0x9208]
+
+jt808:
+  apiAddress: "0.0.0.0:20000" # gin http
+  address: "0.0.0.0:20002" # 808服务
+  hasDetails: false # 报文是否显示详情解析
+  jt1078:
+    ip: "127.0.0.1" # 让设备发送到这个ip 通常是外网ip
+    # 收到点播事件的回调
+    onPlayURL: "http://127.0.0.1:20000/api/v1/jt808/9101"
+
+  gb28181:
+    # 信令默认使用UDP 也可以TCP
+    # 流只支持tcp被动 即模拟设备主动去连接平台
+    transport: "UDP"
+    platform:
+      domain: "34020000002" # 平台域
+      id: "34020000002000000001" # 平台ID
+      password: "123456" # 平台密码
+      ip: "127.0.0.1" # 平台IP 部署机器的模拟gb28181链接过去的 通常使用内网ip
+      port: 15060 # 平台端口
+    device: # 暂未实现 都使用默认规则的 默认规则是 3402000000132 + sim卡号最后6位 + 0
+      type: "excel" #从excel表格读取sim卡号对应的设备信息
+      path: "./device.xlsx"
+      sheetName: "Sheet1"
+
+simulator: #模拟设备连自己 模拟一个设备 发送注册 鉴权 循环3次发送经纬度
+  enable: true # 是否启用
+  address: "127.0.0.1:20002"
+  sim: "295696659617" # 模拟设备SIM卡号
+  filePath: "./data.txt" # 模拟jt1078数据的文件 点播的话重复这个文件数据的10次
