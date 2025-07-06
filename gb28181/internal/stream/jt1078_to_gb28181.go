@@ -17,6 +17,7 @@ type JT1078ToGB28181 struct {
 	ssrc32      uint32
 	seq         uint16
 	sim         string
+	convertFunc func(ptType jt1078.PTType) (byte, bool)
 }
 
 func NewJT1078T0GB28181() *JT1078ToGB28181 {
@@ -39,6 +40,7 @@ func (j *JT1078ToGB28181) OnAck(info *command.InviteInfo) {
 	j.streamTypes = info.JT1078Info.StreamTypes
 	j.seq = 0
 	j.sim = info.JT1078Info.Sim
+	j.convertFunc = info.JT1078Info.RtpTypeConvert
 
 	slog.Info("connect success",
 		slog.String("sim", j.sim),
@@ -104,7 +106,8 @@ func (j *JT1078ToGB28181) ConvertToGB28181(pack *jt1078.Packet) [][]byte {
 
 		offset += chunkSize
 		end -= chunkSize
-		result = append(result, createRTPPacket(pack.Flag.PT, data, func(packet *rtp.Packet) {
+		result = append(result, createRTPPacket(data, func(packet *rtp.Packet) {
+			packet.PayloadType = j.getRtpType(pack.Flag.PT)
 			packet.SSRC = j.ssrc32
 			packet.Timestamp = pts
 			packet.SequenceNumber = j.seq
@@ -114,6 +117,28 @@ func (j *JT1078ToGB28181) ConvertToGB28181(pack *jt1078.Packet) [][]byte {
 		data = make([]byte, 0, 1460)
 	}
 	return result
+}
+
+func (j *JT1078ToGB28181) getRtpType(pt jt1078.PTType) byte {
+	if j.convertFunc != nil {
+		// zlm需要pt是96
+		if v, ok := j.convertFunc(pt); ok {
+			return v
+		}
+	}
+	payloadType := byte(96)
+	// GB28181 2016 附录C C.2.2 h264推荐98 h265推荐100
+	switch pt {
+	case jt1078.PTH264:
+		payloadType = 98
+	case jt1078.PTH265:
+		payloadType = 100
+	case jt1078.PTG711U:
+		payloadType = 0
+	case jt1078.PTG711A:
+		payloadType = 8
+	}
+	return payloadType
 }
 
 func (j *JT1078ToGB28181) createStreamMap() []streamMap {

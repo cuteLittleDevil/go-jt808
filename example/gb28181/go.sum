@@ -1,5 +1,5 @@
-github.com/cuteLittleDevil/go-jt808/gb28181 v0.2.0 h1:SNUoMMz8WDtm32mqUmANReavIAfFXfpgmlGB9iffHMo=
-github.com/cuteLittleDevil/go-jt808/gb28181 v0.2.0/go.mod h1:8MpV8UuXjvLXym0pb9w+Y1gaCSMZfRzq3V5mr6c+EyQ=
+github.com/cuteLittleDevil/go-jt808/gb28181 v0.3.0 h1:QWvj9q+7Ut2E61SKMxDMKHpNfixaDweUsWtLeeeHTlE=
+github.com/cuteLittleDevil/go-jt808/gb28181 v0.3.0/go.mod h1:8MpV8UuXjvLXym0pb9w+Y1gaCSMZfRzq3V5mr6c+EyQ=
 github.com/cuteLittleDevil/go-jt808/protocol v1.16.0 h1:svWxOTAfKLchDp/5kwwVVhoFprLM98QJUgmYCs5ixj8=
 github.com/cuteLittleDevil/go-jt808/protocol v1.16.0/go.mod h1:5wF2o2JCjVVj/oAqkwvCzgu23UYMrnDO+PkhiS0/egs=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

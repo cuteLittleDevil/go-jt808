@@ -92,10 +92,11 @@ func (c *Client) invite(req *sip.Request, tx sip.ServerTransaction) {
 	// 通道就是通道ID最后一位
 	channel := inviteInfo.TargetChannelId[len(inviteInfo.TargetChannelId)-1] - '0'
 	inviteInfo.JT1078Info = struct {
-		Sim         string          `json:"sim"`
-		Channel     int             `json:"channelId"`
-		Port        int             `json:"port"`
-		StreamTypes []jt1078.PTType `json:"streamTypes"`
+		Sim            string                                  `json:"sim"`
+		Channel        int                                     `json:"channelId"`
+		Port           int                                     `json:"port"`
+		StreamTypes    []jt1078.PTType                         `json:"streamTypes"`
+		RtpTypeConvert func(ptType jt1078.PTType) (byte, bool) `json:"-"`
 	}{
 		Sim:         c.Options.Sim,
 		Channel:     int(channel),

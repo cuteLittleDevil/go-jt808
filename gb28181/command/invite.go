@@ -32,9 +32,10 @@ type InviteInfo struct {
 	// 端口
 	Port       int `json:"port"`
 	JT1078Info struct {
-		Sim         string          `json:"sim"`
-		Channel     int             `json:"channelId"`
-		Port        int             `json:"port"`
-		StreamTypes []jt1078.PTType `json:"streamTypes"`
+		Sim            string                                  `json:"sim"`
+		Channel        int                                     `json:"channelId"`
+		Port           int                                     `json:"port"`
+		StreamTypes    []jt1078.PTType                         `json:"streamTypes"`
+		RtpTypeConvert func(ptType jt1078.PTType) (byte, bool) `json:"-"`
 	}
 }

@@ -113,8 +113,8 @@ type (
 	}
 
 	SystemBound struct {
-		StreamID             byte   // 0x1b: h264 0x90:g711
-		Level                byte   // 2 bit 缓存优先级 0-通用流 1-低延迟视频 2-高优先级音频
+		StreamID             byte
+		MarkerBit            byte   // 固定11
 		PTSDBufferBoundScale byte   // 1 bit 1-视频(缓存大小2^14字节) 0-音频(缓存大小2^13字节)
 		PTSDBufferSizeBound  uint16 // 13 bit 缓存上限
 	}
@@ -128,7 +128,7 @@ func NewSystemHeader(hasAudio bool) *SystemHeader {
 		MarkerBit1:                1,
 		RateBound:                 40960,
 		MarkerBit2:                1,
-		AudioBound:                1,
+		AudioBound:                0,
 		FixedFlag:                 0,
 		CSPSFlag:                  0,
 		SystemAudioLockFlag:       0,
@@ -140,16 +140,17 @@ func NewSystemHeader(hasAudio bool) *SystemHeader {
 		Bounds: []SystemBound{
 			{
 				StreamID:             0xe0,
-				Level:                1,
+				MarkerBit:            0b11,
 				PTSDBufferBoundScale: 1,
 				PTSDBufferSizeBound:  2048,
 			},
 		},
 	}
 	if hasAudio {
+		tmp.AudioBound = 1
 		tmp.Bounds = append(tmp.Bounds, SystemBound{
 			StreamID:             0xc0,
-			Level:                2,
+			MarkerBit:            0b11,
 			PTSDBufferBoundScale: 0,
 			PTSDBufferSizeBound:  1024,
 		})
@@ -191,8 +192,8 @@ func (s *SystemHeader) Encode() []byte {
 
 	for _, v := range s.Bounds {
 		data = append(data, v.StreamID)
-		// Level(2) + PTSDBufferBoundScale(1) + PTSDBufferSizeBound(5)
-		data = append(data, v.Level<<6&0b1100_0000|
+		// MarkerBit(2) + PTSDBufferBoundScale(1) + PTSDBufferSizeBound(5)
+		data = append(data, v.MarkerBit<<6&0b1100_0000|
 			v.PTSDBufferBoundScale<<5&0b0010_0000|
 			byte(v.PTSDBufferSizeBound>>8)&0b0001_1111)
 		// PTSDBufferSizeBound(8)

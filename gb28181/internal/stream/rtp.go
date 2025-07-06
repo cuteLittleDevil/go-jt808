@@ -2,7 +2,6 @@ package stream
 
 import (
 	"encoding/binary"
-	"github.com/cuteLittleDevil/go-jt808/protocol/jt1078"
 	"github.com/pion/rtp"
 )
 
@@ -82,20 +81,7 @@ import (
 //	return data
 //}
 
-func createRTPPacket(pt jt1078.PTType, payload []byte, ops ...func(*rtp.Packet)) []byte {
-	payloadType := byte(96)
-	// GB28181 2016 附录C C.2.2 h264推荐98 h265推荐100
-	switch pt {
-	case jt1078.PTH264:
-		payloadType = 98
-	case jt1078.PTH265:
-		payloadType = 100
-	case jt1078.PTG711U:
-		payloadType = 0
-	case jt1078.PTG711A:
-		payloadType = 8
-	}
-
+func createRTPPacket(payload []byte, ops ...func(*rtp.Packet)) []byte {
 	rtpPacket := &rtp.Packet{
 		Header: rtp.Header{
 			Padding:          false,
@@ -104,7 +90,7 @@ func createRTPPacket(pt jt1078.PTType, payload []byte, ops ...func(*rtp.Packet))
 			ExtensionProfile: 1,
 			Extensions:       nil,
 			Version:          2,
-			PayloadType:      payloadType,
+			PayloadType:      96,
 			SequenceNumber:   1,
 			Timestamp:        0,
 			SSRC:             0,

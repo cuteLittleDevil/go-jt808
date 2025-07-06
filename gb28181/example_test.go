@@ -26,6 +26,14 @@ func Example() {
 			// 完成9101请求 让设备发送jt1078流
 			// 流媒体默认选择的是音视频流 视频h264 音频g711a
 			info.JT1078Info.StreamTypes = []jt1078.PTType{jt1078.PTH264, jt1078.PTG711A}
+			info.JT1078Info.RtpTypeConvert = func(pt jt1078.PTType) (byte, bool) {
+				// 默认是按照h264=98的国标 但是zlm会不失败 因此可以自行修改
+				if pt == jt1078.PTH264 {
+					return 96, true
+				}
+				// 其他情况使用默认的国标规范
+				return 0, false
+			}
 			// 默认jt1078收流端口是 gb28181 - 100
 			// 如gb28181收流端口是10100 则jt1078收流端口是10000
 			info.JT1078Info.Port = info.Port - 100
