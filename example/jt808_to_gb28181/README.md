@@ -1,6 +1,6 @@
 # jt808转gb28181
 
-![流程](./testdata/jt808-to-gb2818.jpg)
+![流程](./testdata/jt808-to-gb28181.jpg)
 
 - 流程情况
 
@@ -29,7 +29,7 @@ http://127.0.0.1:12079/
 ```
 ![m7s-play](./testdata/m7s/m7s-play.jpg)
 
-<h2 id="gb28181"> 1. gb28181 </h2>
+<h2 id="gb28181"> 2. gb28181 </h2>
 
 - 信令使用gb28181 https://github.com/gowvp/gb28181
 - 流媒体使用zlm https://github.com/ZLMediaKit/ZLMediaKit
