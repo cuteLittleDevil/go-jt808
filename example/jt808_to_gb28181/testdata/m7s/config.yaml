@@ -1,0 +1,24 @@
+global:
+  http:
+    listen_addr: ":12079"
+  tcp:
+    listen_addr: ":12081"
+
+mp4:
+  enable: true
+
+gb28181:
+  enable: true
+  mediaip: 121.40.19.233 #流媒体收流IP,必填
+  sipip: 121.40.19.233  #SIP通讯IP,必填
+  mediaport: "10001-10010"   #默认收流端口范围,可选
+  serial: "34020000002000000001"   #服务器serverid,可选
+  realm: "3402000000"    #服务器域,可选
+  password: ""     #设备验证密码,可选
+  sip:
+    listenaddr:
+      - udp::15060    #SIP通讯端口,必填
+  onsub:
+    pull:
+      ^gb_\d+/(.+)$: $1    #播放GB设备请求URL的正则,例如deviceid,channelid分别为34020000001110000003,34020000001320000003,则在系统内的地址为http://localhost:8080/flv/gb_1/34020000001110000003/34020000001320000003.flv,其他协议类同
+      ^\d{20}/\d{20}$: $0

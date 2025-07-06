@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"fmt"
@@ -16,13 +16,17 @@ import (
 	"time"
 )
 
-type adapterTerminal struct {
+type AdapterTerminal struct {
 	gb         *gb28181.Client
 	hasDetails bool
 	*terminal.Terminal
 }
 
-func (a *adapterTerminal) OnJoinEvent(msg *service.Message, key string, err error) {
+func NewAdapterTerminal(hasDetails bool) *AdapterTerminal {
+	return &AdapterTerminal{hasDetails: hasDetails}
+}
+
+func (a *AdapterTerminal) OnJoinEvent(msg *service.Message, key string, err error) {
 	if a.hasDetails {
 		a.Terminal = terminal.New(terminal.WithHeader(msg.Header.ProtocolVersion, key))
 	}
@@ -98,20 +102,20 @@ func (a *adapterTerminal) OnJoinEvent(msg *service.Message, key string, err erro
 	}
 }
 
-func (a *adapterTerminal) OnLeaveEvent(key string) {
+func (a *AdapterTerminal) OnLeaveEvent(key string) {
 	fmt.Println("设备退出:", key)
 	if a.gb != nil {
 		a.gb.Stop()
 	}
 }
 
-func (a *adapterTerminal) OnNotSupportedEvent(msg *service.Message) {
+func (a *AdapterTerminal) OnNotSupportedEvent(msg *service.Message) {
 	slog.Warn("暂不支持的指令",
 		slog.String("key", msg.Key),
 		slog.String("cmd", fmt.Sprintf("%x", msg.ExtensionFields.TerminalCommand)))
 }
 
-func (a *adapterTerminal) OnReadExecutionEvent(msg *service.Message) {
+func (a *AdapterTerminal) OnReadExecutionEvent(msg *service.Message) {
 	if a.hasDetails {
 		str := fmt.Sprintf(" %s: [%x]", msg.ExtensionFields.TerminalCommand, msg.ExtensionFields.TerminalData)
 		fmt.Println(time.Now().Format(time.DateTime), str)
@@ -121,7 +125,7 @@ func (a *adapterTerminal) OnReadExecutionEvent(msg *service.Message) {
 	}
 }
 
-func (a *adapterTerminal) OnWriteExecutionEvent(msg service.Message) {
+func (a *AdapterTerminal) OnWriteExecutionEvent(msg service.Message) {
 	if a.hasDetails {
 		str := "回复的报文"
 		if msg.ExtensionFields.ActiveSend {

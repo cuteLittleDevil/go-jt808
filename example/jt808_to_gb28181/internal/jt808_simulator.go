@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"encoding/hex"
@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-func client(phone string, address string) {
+func Client(phone string, address string) {
 	t := terminal.New(terminal.WithHeader(consts.JT808Protocol2013, phone))
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
@@ -64,6 +64,7 @@ func client(phone string, address string) {
 							slog.Error("jt1078Conn",
 								slog.String("sim", phone),
 								slog.Any("err", err))
+							return
 						}
 						time.Sleep(time.Second)
 						dataPath := conf.GetData().Simulator.FilePath
@@ -110,6 +111,12 @@ func client(phone string, address string) {
 		}
 	}
 	time.Sleep(time.Second)
-	fmt.Println(phone, "模拟设备停止发送经纬度信息 在过1小时模拟设备退出")
 	time.Sleep(time.Hour)
+	second := conf.GetData().Simulator.LeaveSecond
+	if second < 0 {
+		fmt.Println(fmt.Sprintf("[%s] 模拟设备停止发送经纬度信息 不退出", phone))
+	} else {
+		fmt.Println(fmt.Sprintf("[%s] 模拟设备停止发送经纬度信息 在过[%d]秒模拟设备退出", phone, second))
+		time.Sleep(time.Duration(second) * time.Second)
+	}
 }

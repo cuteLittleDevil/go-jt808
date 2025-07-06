@@ -1,0 +1,64 @@
+[Server]
+  Debug = false
+  # rtmp 推流秘钥
+  RTMPSecret = '123'
+
+  # 对外提供的服务，建议由 nginx 代理
+  [Server.HTTP]
+    # http 端口
+    Port = 15123
+    # 请求超时时间
+    Timeout = '1m0s'
+    # jwt 秘钥，空串时，每次启动程序将随机赋值
+    JwtSecret = ''
+
+    [Server.HTTP.PProf]
+      # 是否启用 pprof, 建议设置为 true
+      Enabled = true
+      # 访问白名单
+      AccessIps = ['::1', '127.0.0.1']
+
+[Data]
+  # 数据库支持 sqlite 和 postgres 两种，使用 sqlite 时 dsn 应当填写文件存储路径
+  [Data.Database]
+    Dsn = './configs/data.db'
+    MaxIdleConns = 1
+    MaxOpenConns = 1
+    ConnMaxLifetime = '6h0m0s'
+    SlowThreshold = '200ms'
+
+[Log]
+  # 日志存储目录，不能使用特殊符号
+  Dir = './logs'
+  # 记录级别 debug/info/warn/error
+  Level = 'debug'
+  # 保留日志多久，超过时间自动删除
+  MaxAge = '744h0m0s'
+  # 多久时间，分割一个新的日志文件
+  RotationTime = '12h0m0s'
+  # 多大文件，分割一个新的日志文件(MB)
+  RotationSize = 50
+
+[Sip]
+  # 服务监听的 tcp/udp 端口号
+  Port = 15060
+  # gb/t28181 20 位国标 ID
+  ID = '34020000002000000001'
+  # 域
+  Domain = '3402000000'
+  # 注册密码
+  Password = ''
+
+[Media]
+  # 媒体服务器 IP
+  IP = '121.40.19.233'
+  # 媒体服务器 HTTP 端口
+  HTTPPort = 2395
+  # 媒体服务器密钥
+  Secret = 'g3qbC59Sql5bXQfLrRjC7sIfnPz7tpna'
+  # 用于流媒体 webhook 回调
+  WebHookIP = '127.0.0.1'
+  # 媒体服务器 RTP 端口范围
+  RTPPortRange = '20000-20100'
+  # 媒体服务器 SDP IP
+  SDPIP = '121.40.19.233'

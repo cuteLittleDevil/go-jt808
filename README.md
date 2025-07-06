@@ -36,6 +36,7 @@
 | adapter | jt808适配器 | [![Go Report Card](https://goreportcard.com/badge/github.com/cuteLittleDevil/go-jt808/adapter)](https://goreportcard.com/report/github.com/cuteLittleDevil/go-jt808/adapter) |
 | attachment | jt808附件服务 | [![Go Report Card](https://goreportcard.com/badge/github.com/cuteLittleDevil/go-jt808/attachment)](https://goreportcard.com/report/github.com/cuteLittleDevil/go-jt808/attachment) |
 | terminal | jt808客户端模拟器 | [![Go Report Card](https://goreportcard.com/badge/github.com/cuteLittleDevil/go-jt808/terminal)](https://goreportcard.com/report/github.com/cuteLittleDevil/go-jt808/terminal) |
+| gb28181 | gb28181客户端 | [![Go Report Card](https://goreportcard.com/badge/github.com/cuteLittleDevil/go-jt808/gb28181)](https://goreportcard.com/report/github.com/cuteLittleDevil/go-jt808/gb28181) |
 
 ---
 
@@ -60,45 +61,52 @@ web例子在线网页 http://124.221.30.46:18000/
 | m7s | go  | 对讲示例 https://go-jt808.online:12000 | [详情点击](https://github.com/cuteLittleDevil/m7s-jt1078)  |
 | ZLMediaKit | c++  | 对讲测试 https://go-jt808.online/static/?type=push <br/> http://go-jt808.online:80/rtp/000000001003_1_0_0.live.mp4 | [详情点击](./example/jt1078/README.md#zlm)  |
 
-### 3. 兼容任意808服务 [详情](./example/adapter/README.md)
+### 3. jt808模拟gb28181客户端 [详情](./example/jt808_to_gb28181/README.md)
+``` txt
+原: 设备连接到原808服务
+现: 设备连接到适配器 适配器产生两个模拟链接 一个连接到原808服务 保证不影响原服务
+另一个连接到gb28181模拟服务 产生一个gb28181客户端 (目前仅支持注册 目录查询 点播)
+```
+
+### 4. 兼容任意808服务 [详情](./example/adapter/README.md)
 ``` txt
 真实设备连接到适配器 适配器产生多个模拟设备连接多个808服务
 ```
 
-### 4. 主动安全附件 [流程](./example/attachment/README.md#主动安全)
+### 5. 主动安全附件 [流程](./example/attachment/README.md#主动安全)
 ``` txt
 默认支持苏标 可自定义各事件扩展（开始、传输进度、补传情况、完成、退出等事件）
 ```
 
-### 5. 存储经纬度 [详情](./README.md#save)
+### 6. 存储经纬度 [详情](./README.md#save)
 ``` txt
 jt808服务端 模拟器 消息队列 数据库都运行在2核4G腾讯云服务器
 测试每秒保存5000条的情况 约5.5小时保存了近1亿的经纬度
 ```
 
-### 6. 分布式集群方案 [详情](./example/distributed_cluster/README.md)
+### 7. 分布式集群方案 [详情](./example/distributed_cluster/README.md)
 ``` txt
 使用nginx把终端分配到多个808服务上 下发数据使用广播
 存在则回复终端应答到新主题 不存在则忽略
 ```
 
-### 7. 平台下发指令给终端 [获取参数](./example/protocol/active_reply/main.go) [立即拍摄](./example/protocol/camera/main.go)
+### 8. 平台下发指令给终端 [获取参数](./example/protocol/active_reply/main.go) [立即拍摄](./example/protocol/camera/main.go)
 ``` txt
 主动下发给设备指令 获取应答的情况
 ```
 
-### 8. 协议交互详情 [代码参考](./example/protocol/register/register_test.go)
+### 9. 协议交互详情 [代码参考](./example/protocol/register/register_test.go)
 ``` txt
 使用自定义模拟器 可以轻松生成测试用的报文 有详情描述
 可在apifox文档页面 使用测试环境查看报文详情 https://vsh9jdgg5d.apifox.cn/250573462e0
 ```
 
-### 9. 自定义协议扩展 [代码参考](./example/protocol/custom_parse/main.go)
+### 10. 自定义协议扩展 [代码参考](./example/protocol/custom_parse/main.go)
 ``` txt
 自定义附加信息处理 获取想要的扩展内容
 ```
 
-### 10. ftp例子 [详情](./example/ftp/README.md)
+### 11. ftp例子 [详情](./example/ftp/README.md)
 ``` txt
 把atop_cpu.png传输到ftp目录 (需要ftp服务)
 ```

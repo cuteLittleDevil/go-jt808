@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/natefinch/lumberjack"
 	"jt808_to_gb2818108/conf"
+	"jt808_to_gb2818108/internal"
 	"log/slog"
 	"path/filepath"
 	"time"
@@ -88,7 +89,7 @@ func main() {
 		goJt808 := service.New(
 			service.WithHostPorts(conf.GetData().JT808.Address),
 			service.WithCustomTerminalEventer(func() service.TerminalEventer {
-				return &adapterTerminal{hasDetails: conf.GetData().JT808.HasDetails}
+				return internal.NewAdapterTerminal(conf.GetData().JT808.HasDetails)
 			}),
 		)
 		go goJt808.Run()
@@ -99,20 +100,20 @@ func main() {
 
 	group := r.Group("/api/v1/jt808/")
 	{
-		group.POST("/9003", p9003)
-		group.POST("/9101", p9101)
-		group.POST("/9102", p9102)
-		group.POST("/9201", p9201)
-		group.POST("/9202", p9202)
-		group.POST("/9205", p9205)
-		group.POST("/9206", p9206)
-		group.POST("/9208", p9208)
+		group.POST("/9003", internal.P9003)
+		group.POST("/9101", internal.P9101)
+		group.POST("/9102", internal.P9102)
+		group.POST("/9201", internal.P9201)
+		group.POST("/9202", internal.P9202)
+		group.POST("/9205", internal.P9205)
+		group.POST("/9206", internal.P9206)
+		group.POST("/9208", internal.P9208)
 	}
 
 	if simulator := conf.GetData().Simulator; simulator.Enable {
-		time.Sleep(3 * time.Second)
+		time.Sleep(1 * time.Second)
 		fmt.Println("使用模拟链接")
-		go client(simulator.Sim, conf.GetData().Simulator.Address) // 模拟一个设备连接
+		go internal.Client(simulator.Sim, conf.GetData().Simulator.Address) // 模拟一个设备连接
 	}
 
 	_ = r.Run(conf.GetData().JT808.ApiAddress)

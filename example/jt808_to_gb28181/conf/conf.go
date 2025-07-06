@@ -55,10 +55,11 @@ type (
 	}
 
 	SimulatorConfig struct {
-		Enable   bool   `mapstructure:"enable" json:"enable"`
-		Address  string `mapstructure:"address" json:"address"`
-		Sim      string `mapstructure:"sim" json:"sim"`
-		FilePath string `mapstructure:"filePath" json:"filePath"`
+		Enable      bool   `mapstructure:"enable" json:"enable"`
+		Address     string `mapstructure:"address" json:"address"`
+		Sim         string `mapstructure:"sim" json:"sim"`
+		LeaveSecond int    `mapstructure:"leaveSecond" json:"leaveSecond"`
+		FilePath    string `mapstructure:"filePath" json:"filePath"`
 	}
 )
 

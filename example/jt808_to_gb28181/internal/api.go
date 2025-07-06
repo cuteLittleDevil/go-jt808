@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"fmt"
@@ -31,7 +31,7 @@ type (
 	}
 )
 
-func p9003(c *gin.Context) {
+func P9003(c *gin.Context) {
 	var req Request[*model.P0x9003]
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusOK, Response{
@@ -44,7 +44,7 @@ func p9003(c *gin.Context) {
 	handleCommand(c, req.Key, req.Data)
 }
 
-func p9101(c *gin.Context) {
+func P9101(c *gin.Context) {
 	var req Request[*model.P0x9101]
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusOK, Response{
@@ -57,7 +57,7 @@ func p9101(c *gin.Context) {
 	handleCommand(c, req.Key, req.Data)
 }
 
-func p9102(c *gin.Context) {
+func P9102(c *gin.Context) {
 	var req Request[*model.P0x9102]
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusOK, Response{
@@ -70,7 +70,7 @@ func p9102(c *gin.Context) {
 	handleCommand(c, req.Key, req.Data)
 }
 
-func p9201(c *gin.Context) {
+func P9201(c *gin.Context) {
 	var req Request[*model.P0x9201]
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusOK, Response{
@@ -83,7 +83,7 @@ func p9201(c *gin.Context) {
 	handleCommand(c, req.Key, req.Data)
 }
 
-func p9202(c *gin.Context) {
+func P9202(c *gin.Context) {
 	var req Request[*model.P0x9202]
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusOK, Response{
@@ -96,7 +96,7 @@ func p9202(c *gin.Context) {
 	handleCommand(c, req.Key, req.Data)
 }
 
-func p9205(c *gin.Context) {
+func P9205(c *gin.Context) {
 	var req Request[*model.P0x9205]
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusOK, Response{
@@ -109,7 +109,7 @@ func p9205(c *gin.Context) {
 	handleCommand(c, req.Key, req.Data)
 }
 
-func p9206(c *gin.Context) {
+func P9206(c *gin.Context) {
 	var req Request[*model.P0x9206]
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusOK, Response{
@@ -122,7 +122,7 @@ func p9206(c *gin.Context) {
 	handleCommand(c, req.Key, req.Data)
 }
 
-func p9208(c *gin.Context) {
+func P9208(c *gin.Context) {
 	var req Request[*model.P0x9208]
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusOK, Response{
