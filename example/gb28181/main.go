@@ -61,6 +61,14 @@ func main() {
 			// 流媒体默认选择的是音视频流 视频h264 音频g711a
 			info.JT1078Info.StreamTypes = []jt1078.PTType{jt1078.PTH264}
 			info.JT1078Info.Port = info.Port - 100
+			info.JT1078Info.RtpTypeConvert = func(pt jt1078.PTType) (byte, bool) {
+				// 默认是按照h264=98的国标 但是zlm会失败 因此可以自行修改
+				if pt == jt1078.PTH264 {
+					return 96, true
+				}
+				// 其他情况使用默认的国标规范
+				return 0, false
+			}
 			// 只支持TCP被动模式 即设备TCP链接到gb28181平台
 			go sendJT1078Packet(info.JT1078Info.Port)
 			return info

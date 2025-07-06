@@ -27,7 +27,7 @@ func Example() {
 			// 流媒体默认选择的是音视频流 视频h264 音频g711a
 			info.JT1078Info.StreamTypes = []jt1078.PTType{jt1078.PTH264, jt1078.PTG711A}
 			info.JT1078Info.RtpTypeConvert = func(pt jt1078.PTType) (byte, bool) {
-				// 默认是按照h264=98的国标 但是zlm会不失败 因此可以自行修改
+				// 默认是按照h264=98的国标 但是zlm会失败 因此可以自行修改
 				if pt == jt1078.PTH264 {
 					return 96, true
 				}
