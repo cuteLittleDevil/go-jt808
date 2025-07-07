@@ -8,8 +8,6 @@ import (
 	"github.com/cuteLittleDevil/go-jt808/protocol/model"
 	"github.com/cuteLittleDevil/go-jt808/service"
 	"github.com/cuteLittleDevil/go-jt808/terminal"
-	"github.com/go-resty/resty/v2"
-	_ "github.com/go-resty/resty/v2"
 	"jt808_to_gb2818108/conf"
 	"log/slog"
 	"math/rand/v2"
@@ -44,7 +42,7 @@ func (a *AdapterTerminal) OnJoinEvent(msg *service.Message, key string, err erro
 			time.Sleep(time.Duration(rand.IntN(3000)+100) * time.Millisecond)
 			platform := conf.GetData().JT808.GB28181.Platform
 			sim := key // 默认sim卡号就是key
-			device := DefaultDeviceInfo(sim)
+			device := sendDevice(sim)
 			slog.Debug("开始创建gb28181模拟设备",
 				slog.String("key", key),
 				slog.String("id", device.ID))
@@ -54,12 +52,7 @@ func (a *AdapterTerminal) OnJoinEvent(msg *service.Message, key string, err erro
 				Password: platform.Password,
 				IP:       platform.IP,
 				Port:     platform.Port,
-			}), gb28181.WithDeviceInfo(gb28181.DeviceInfo{
-				ID: device.ID,
-				// 实际不会用到设备的IP和端口 只是sip传输过去
-				IP:   device.IP,
-				Port: device.Port,
-			}),
+			}), gb28181.WithDeviceInfo(device),
 				gb28181.WithTransport("UDP"), // 信令默认使用UDP 也可以TCP
 				gb28181.WithKeepAliveSecond(20),
 				gb28181.WithInviteEventFunc(func(info *command.InviteInfo) *command.InviteInfo {
@@ -144,25 +137,4 @@ func (a *AdapterTerminal) OnWriteExecutionEvent(msg service.Message) {
 		fmt.Println(details)
 		fmt.Println()
 	}
-}
-
-func send9101(req Request[*model.P0x9101]) {
-	config := conf.GetData().JT808.JT1078
-	var res Response
-	httpClient := resty.New()
-	httpClient.SetDebug(false)
-	httpClient.SetTimeout(5 * time.Second)
-	_, err := httpClient.R().
-		SetBody(req).
-		SetResult(&res).
-		ForceContentType("application/json; charset=utf-8").
-		Post(config.OnPlayURL)
-	if err != nil {
-		slog.Warn("send 9101 fail",
-			slog.Any("data", req.Data),
-			slog.Any("err", err))
-		return
-	}
-	slog.Info("send 9101",
-		slog.Any("res", res))
 }

@@ -30,10 +30,8 @@ jt808:
       password: "123456" # 平台密码
       ip: "127.0.0.1" # 平台IP 部署机器的模拟gb28181链接过去的 通常使用内网ip
       port: 15060 # 平台端口
-    device: # 暂未实现 都使用默认规则的 默认规则是 3402000000132 + sim卡号最后6位 + 0
-      type: "excel" #从excel表格读取sim卡号对应的设备信息
-      path: "./device.xlsx"
-      sheetName: "Sheet1"
+    device: # http回调获取设备ID 默认规则是 3402000000132 + sim卡号最后6位 + 0
+      onConfigURL: "http://127.0.0.1:20000/api/v1/jt808/gb28181/device"
 
 simulator:
   #模拟设备连自己 模拟一个设备 发送注册 鉴权 循环3次发送经纬度 默认1个小时后退出

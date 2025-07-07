@@ -24,17 +24,17 @@ type (
 		Data T      `json:"data" binding:"required"`
 	}
 
-	Response struct {
+	Response[T any] struct {
 		Code int    `json:"code"`
 		Msg  string `json:"msg"`
-		Data any    `json:"data"`
+		Data T      `json:"data"`
 	}
 )
 
 func P9003(c *gin.Context) {
 	var req Request[*model.P0x9003]
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, Response{
+		c.JSON(http.StatusOK, Response[string]{
 			Code: http.StatusBadRequest,
 			Msg:  "参数错误",
 			Data: err.Error(),
@@ -47,7 +47,7 @@ func P9003(c *gin.Context) {
 func P9101(c *gin.Context) {
 	var req Request[*model.P0x9101]
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, Response{
+		c.JSON(http.StatusOK, Response[string]{
 			Code: http.StatusBadRequest,
 			Msg:  "参数错误",
 			Data: err.Error(),
@@ -60,7 +60,7 @@ func P9101(c *gin.Context) {
 func P9102(c *gin.Context) {
 	var req Request[*model.P0x9102]
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, Response{
+		c.JSON(http.StatusOK, Response[string]{
 			Code: http.StatusBadRequest,
 			Msg:  "参数错误",
 			Data: err.Error(),
@@ -73,7 +73,7 @@ func P9102(c *gin.Context) {
 func P9201(c *gin.Context) {
 	var req Request[*model.P0x9201]
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, Response{
+		c.JSON(http.StatusOK, Response[string]{
 			Code: http.StatusBadRequest,
 			Msg:  "参数错误",
 			Data: err.Error(),
@@ -86,7 +86,7 @@ func P9201(c *gin.Context) {
 func P9202(c *gin.Context) {
 	var req Request[*model.P0x9202]
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, Response{
+		c.JSON(http.StatusOK, Response[string]{
 			Code: http.StatusBadRequest,
 			Msg:  "参数错误",
 			Data: err.Error(),
@@ -99,7 +99,7 @@ func P9202(c *gin.Context) {
 func P9205(c *gin.Context) {
 	var req Request[*model.P0x9205]
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, Response{
+		c.JSON(http.StatusOK, Response[string]{
 			Code: http.StatusBadRequest,
 			Msg:  "参数错误",
 			Data: err.Error(),
@@ -112,7 +112,7 @@ func P9205(c *gin.Context) {
 func P9206(c *gin.Context) {
 	var req Request[*model.P0x9206]
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, Response{
+		c.JSON(http.StatusOK, Response[string]{
 			Code: http.StatusBadRequest,
 			Msg:  "参数错误",
 			Data: err.Error(),
@@ -125,7 +125,7 @@ func P9206(c *gin.Context) {
 func P9208(c *gin.Context) {
 	var req Request[*model.P0x9208]
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, Response{
+		c.JSON(http.StatusOK, Response[string]{
 			Code: http.StatusBadRequest,
 			Msg:  "参数错误",
 			Data: err.Error(),
@@ -144,7 +144,7 @@ func handleCommand(c *gin.Context, key string, handle PlatformHandler) {
 			OverTimeDuration: 3 * time.Second,
 		})
 		if replyMsg.ExtensionFields.Err != nil {
-			c.JSON(http.StatusOK, Response{
+			c.JSON(http.StatusOK, Response[string]{
 				Code: http.StatusInternalServerError,
 				Msg:  replyMsg.ExtensionFields.Err.Error(),
 			})
@@ -155,7 +155,7 @@ func handleCommand(c *gin.Context, key string, handle PlatformHandler) {
 				slog.String("reality", replyMsg.Command.String()),
 				slog.String("expect", handle.ReplyProtocol().String()))
 		}
-		c.JSON(http.StatusOK, Response{
+		c.JSON(http.StatusOK, Response[any]{
 			Code: http.StatusOK,
 			Msg:  "success",
 			Data: replyParse(handle.Protocol(), replyMsg.Command, replyMsg),
@@ -163,9 +163,10 @@ func handleCommand(c *gin.Context, key string, handle PlatformHandler) {
 		return
 	}
 
-	c.JSON(http.StatusOK, Response{
+	c.JSON(http.StatusOK, Response[string]{
 		Code: http.StatusInternalServerError,
 		Msg:  "终端不存在",
+		Data: "终端不存在",
 	})
 }
 

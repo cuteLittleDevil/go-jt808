@@ -1,0 +1,7 @@
+# 获取设备信息
+POST http://127.0.0.1:20000/api/v1/jt808/gb28181/device
+Content-Type: application/json
+
+{
+  "sim": "295696659617"
+}

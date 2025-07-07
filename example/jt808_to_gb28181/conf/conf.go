@@ -49,9 +49,7 @@ type (
 			Port     int    `mapstructure:"port" json:"port"`
 		} `mapstructure:"platform" json:"platform"`
 		Device struct {
-			Type      string `mapstructure:"type" json:"type"`
-			Path      string `mapstructure:"path" json:"path"`
-			SheetName string `mapstructure:"sheetName" json:"sheetName"`
+			OnConfigURL string `mapstructure:"onConfigURL" json:"onConfigURL"`
 		} `mapstructure:"device" json:"device"`
 	}
 

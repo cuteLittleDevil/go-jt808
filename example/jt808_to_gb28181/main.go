@@ -98,8 +98,8 @@ func main() {
 		})
 	}
 
-	group := r.Group("/api/v1/jt808/")
 	{
+		group := r.Group("/api/v1/jt808/")
 		group.POST("/9003", internal.P9003)
 		group.POST("/9101", internal.P9101)
 		group.POST("/9102", internal.P9102)
@@ -108,6 +108,11 @@ func main() {
 		group.POST("/9205", internal.P9205)
 		group.POST("/9206", internal.P9206)
 		group.POST("/9208", internal.P9208)
+	}
+
+	{
+		group := r.Group("/api/v1/jt808/gb28181/")
+		group.POST("/device", internal.Device)
 	}
 
 	if simulator := conf.GetData().Simulator; simulator.Enable {
