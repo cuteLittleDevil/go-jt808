@@ -62,18 +62,18 @@ web例子在线网页 http://124.221.30.46:18000/
 | monibuca | go  | 对讲示例 https://go-jt808.online:12000 | [详情点击](https://github.com/cuteLittleDevil/m7s-jt1078)  |
 | ZLMediaKit | c++  | 对讲测试 https://go-jt808.online/static/?type=push <br/> http://go-jt808.online:80/rtp/000000001003_1_0_0.live.mp4 | [详情点击](./example/jt1078/README.md#zlm)  |
 
-### 3. jt808模拟gb28181客户端 [gb28181使用](./gb28181/example_test.go) [jt1078转ps流](./gb28181/internal/stream/jt1078_to_gb28181.go) [详情](./example/jt808_to_gb28181/README.md)
+### 3. jt808模拟gb28181客户端 [gb28181使用](./gb28181/example_test.go) [jt1078转ps流](./gb28181/internal/stream/jt1078_to_gb28181.go)
 ``` txt
 原: 设备连接到原808服务
 现: 设备连接到适配器 适配器产生两个模拟链接 一个连接到原808服务 保证不影响原服务
 另一个连接到gb28181模拟服务 产生一个gb28181客户端 (目前仅支持注册 目录查询 点播[jt1078转ps流])
 ```
 
-| 信令服务 | 流媒体 | 在线测试  |
-|----------|-----|-------------------|
-| monibuca | monibuca  | http://124.221.30.46:21000/#/0/device/gb28181 |
-| gb28181 | ZLMediaKit  |   |
-| wvp-GB28181-pro | ZLMediaKit  |   |
+| 信令服务 | 流媒体 | 在线测试  |  说明 |
+|----------|-----|-------------------| --- |
+| monibuca | monibuca  | http://124.221.30.46:21000/#/0/device/gb28181 | [详情](./example/jt808_to_gb28181/README.md) |
+| gb28181 | ZLMediaKit  |   | |
+| wvp-GB28181-pro | ZLMediaKit  |   | |
 
 ### 4. 兼容任意808服务 [详情](./example/adapter/README.md)
 ``` txt

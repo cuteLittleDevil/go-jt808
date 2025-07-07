@@ -9,7 +9,7 @@ import (
 
 func (c *Client) handleKeepalive() error {
 	platform := c.Options.PlatformInfo
-	req := sip.NewRequest("OnMessage", c.recipient)
+	req := sip.NewRequest(sip.MESSAGE, c.recipient)
 	req.SetTransport(c.Options.Transport)
 	req.AppendHeader(&sip.ViaHeader{
 		ProtocolName:    "SIP",
