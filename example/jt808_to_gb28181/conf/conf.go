@@ -40,8 +40,9 @@ type (
 	}
 
 	GB28181Config struct {
-		Transport string `mapstructure:"transport" json:"transport"`
-		Platform  struct {
+		Transport       string `mapstructure:"transport" json:"transport"`
+		KeepAliveSecond int    `mapstructure:"keepAliveSecond" json:"keepAliveSecond"`
+		Platform        struct {
 			Domain   string `mapstructure:"domain" json:"domain"`
 			ID       string `mapstructure:"id" json:"id"`
 			Password string `mapstructure:"password" json:"password"`

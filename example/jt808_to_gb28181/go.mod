@@ -4,7 +4,7 @@ go 1.23.2
 
 require (
 	github.com/cuteLittleDevil/go-jt808/adapter v0.2.0
-	github.com/cuteLittleDevil/go-jt808/gb28181 v0.4.0
+	github.com/cuteLittleDevil/go-jt808/gb28181 v0.4.1
 	github.com/cuteLittleDevil/go-jt808/protocol v1.16.0
 	github.com/cuteLittleDevil/go-jt808/service v1.11.1
 	github.com/cuteLittleDevil/go-jt808/shared v1.6.0

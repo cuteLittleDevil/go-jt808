@@ -24,6 +24,7 @@ jt808:
     # 信令默认使用UDP 也可以TCP
     # 流只支持tcp被动 即模拟设备主动去连接平台
     transport: "UDP"
+    keepAliveSecond: 30 # 设备保活周期 默认30秒
     platform:
       domain: "34020000002" # 平台域
       id: "34020000002000000001" # 平台ID

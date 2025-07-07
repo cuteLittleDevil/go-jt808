@@ -53,8 +53,8 @@ func (a *AdapterTerminal) OnJoinEvent(msg *service.Message, key string, err erro
 				IP:       platform.IP,
 				Port:     platform.Port,
 			}), gb28181.WithDeviceInfo(device),
-				gb28181.WithTransport("UDP"), // 信令默认使用UDP 也可以TCP
-				gb28181.WithKeepAliveSecond(20),
+				gb28181.WithTransport(conf.GetData().JT808.GB28181.Transport),             // 信令默认使用UDP 也可以TCP
+				gb28181.WithKeepAliveSecond(conf.GetData().JT808.GB28181.KeepAliveSecond), // 默认30秒
 				gb28181.WithInviteEventFunc(func(info *command.InviteInfo) *command.InviteInfo {
 					// 默认jt1078收流端口是 gb28181 - 100
 					// 如gb28181收流端口是10100 则jt1078收流端口是10000
