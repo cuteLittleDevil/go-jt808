@@ -58,7 +58,7 @@ func main() {
 			// 默认jt1078收流端口是 gb28181 - 100
 			// 如gb28181收流端口是10100 则jt1078收流端口是10000
 			// 完成9101请求 让设备发送jt1078流
-			// 流媒体默认选择的是音视频流 视频h264 音频g711a
+			// 流媒体默认选择的是音视频流 视频h264 音频g711a 测试文件是h264的jt1078
 			info.JT1078Info.StreamTypes = []jt1078.PTType{jt1078.PTH264}
 			info.JT1078Info.Port = info.Port - 100
 			info.JT1078Info.RtpTypeConvert = func(pt jt1078.PTType) (byte, bool) {
@@ -70,6 +70,7 @@ func main() {
 				return 0, false
 			}
 			// 只支持TCP被动模式 即设备TCP链接到gb28181平台
+			// 模拟9101下发到设备 设备上传jt1078流到info.JT1078Info.Port
 			go sendJT1078Packet(info.JT1078Info.Port)
 			return info
 		}),

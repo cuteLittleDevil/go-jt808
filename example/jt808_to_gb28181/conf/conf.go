@@ -35,6 +35,7 @@ type (
 
 	JT1078Config struct {
 		IP        string `mapstructure:"ip" json:"ip"`
+		PortRule  int    `mapstructure:"portRule" json:"portRule"`
 		OnPlayURL string `mapstructure:"onPlayURL" json:"onPlayURL"`
 	}
 

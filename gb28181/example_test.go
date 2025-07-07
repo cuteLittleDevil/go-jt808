@@ -9,21 +9,22 @@ import (
 
 func Example() {
 	client := New("1001", WithPlatformInfo(PlatformInfo{
-		Domain:   "34020000002",
-		ID:       "34020000002000000001",
-		Password: "123456",
-		IP:       "127.0.0.1",
-		Port:     15060,
+		Domain:   "34020000002",          // 平台域
+		ID:       "34020000002000000001", // 平台id
+		Password: "123456",               // 平台密码
+		IP:       "127.0.0.1",            // 平台ip
+		Port:     15060,                  // 平台端口
 	}), WithDeviceInfo(DeviceInfo{
-		ID: "34020000001320000330",
+		ID: "34020000001320000330", // 设备ID
 		// 实际不会用到设备的IP和端口 只是sip传输过去
 		IP:   "127.0.0.1",
 		Port: 5060,
 	}),
-		WithTransport("UDP"),
-		WithKeepAliveSecond(10),
+		WithTransport("UDP"),    // 默认使用UDP 也可以用TCP
+		WithKeepAliveSecond(10), // 心跳保活周期10秒
 		WithInviteEventFunc(func(info *command.InviteInfo) *command.InviteInfo {
-			// 完成9101请求 让设备发送jt1078流
+			// 也可以选择收到invite 直接把ps流传输到info.IP info.Port上
+
 			// 流媒体默认选择的是音视频流 视频h264 音频g711a
 			info.JT1078Info.StreamTypes = []jt1078.PTType{jt1078.PTH264, jt1078.PTG711A}
 			info.JT1078Info.RtpTypeConvert = func(pt jt1078.PTType) (byte, bool) {
@@ -37,6 +38,10 @@ func Example() {
 			// 默认jt1078收流端口是 gb28181 - 100
 			// 如gb28181收流端口是10100 则jt1078收流端口是10000
 			info.JT1078Info.Port = info.Port - 100
+
+			// 完成9101请求 让设备发送jt1078流
+			// 或者参考 https://github.com/cuteLittleDevil/go-jt808/blob/main/example/gb28181/main.go
+			// 直接发送jt1078流测试
 			return info
 		}),
 		WithJT1078ToGB28181er(func() command.JT1078ToGB28181er {

@@ -58,19 +58,21 @@ web例子在线网页 http://124.221.30.46:18000/
 | rtvs | 不开源<br/> 可使用  | 在线测试页面 https://go-jt808.online:44300/index.html <br/> 点击实时视频(0x9101)按钮播放| [详情点击](./example/jt1078/README.md#rtvs)  |
 | lal | go  | 在线播放地址 http://go-jt808.online:8080/live/1001_1.flv | [详情点击](./example/jt1078/README.md#lal)  |
 | sky-java | java  | 需要部署后 HTTP请求 10秒内拉流 参考格式如下 <br/> http://222.244.144.181:7777/video/1001-1-0-0.live.mp4 | [详情点击](./example/jt1078/README.md#sky-java)  |
-| m7s | go  | 对讲示例 https://go-jt808.online:12000 | [详情点击](https://github.com/cuteLittleDevil/m7s-jt1078)  |
+| monibuca | go  | 对讲示例 https://go-jt808.online:12000 | [详情点击](https://github.com/cuteLittleDevil/m7s-jt1078)  |
 | ZLMediaKit | c++  | 对讲测试 https://go-jt808.online/static/?type=push <br/> http://go-jt808.online:80/rtp/000000001003_1_0_0.live.mp4 | [详情点击](./example/jt1078/README.md#zlm)  |
 
-### 3. jt808模拟gb28181客户端 [详情](./example/jt808_to_gb28181/README.md)
+### 3. jt808模拟gb28181客户端 [gb28181客户端使用](./gb28181/example_test.go) [详情](./example/jt808_to_gb28181/README.md)
 ``` txt
 原: 设备连接到原808服务
 现: 设备连接到适配器 适配器产生两个模拟链接 一个连接到原808服务 保证不影响原服务
 另一个连接到gb28181模拟服务 产生一个gb28181客户端 (目前仅支持注册 目录查询 点播)
 ```
+
 | 信令服务 | 流媒体 | 在线测试  |
 |----------|-----|-------------------|
-| m7s | m7s  |  |
+| monibuca | monibuca  |  |
 | gb28181 | ZLMediaKit  |   |
+| wvp-GB28181-pro | ZLMediaKit  |   |
 
 ### 4. 兼容任意808服务 [详情](./example/adapter/README.md)
 ``` txt

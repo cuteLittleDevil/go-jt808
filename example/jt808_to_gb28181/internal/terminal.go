@@ -20,10 +20,18 @@ type AdapterTerminal struct {
 	gb         *gb28181.Client
 	hasDetails bool
 	*terminal.Terminal
+	portRule int
 }
 
 func NewAdapterTerminal(hasDetails bool) *AdapterTerminal {
-	return &AdapterTerminal{hasDetails: hasDetails}
+	portRule := conf.GetData().JT808.JT1078.PortRule
+	if portRule == 0 {
+		portRule = -100
+	}
+	return &AdapterTerminal{
+		hasDetails: hasDetails,
+		portRule:   portRule,
+	}
 }
 
 func (a *AdapterTerminal) OnJoinEvent(msg *service.Message, key string, err error) {
@@ -35,8 +43,7 @@ func (a *AdapterTerminal) OnJoinEvent(msg *service.Message, key string, err erro
 			// 随机延迟创建gb28181客户端 防止设备加入就创建 一下子太多
 			time.Sleep(time.Duration(rand.IntN(3000)+100) * time.Millisecond)
 			platform := conf.GetData().JT808.GB28181.Platform
-			// 默认sim卡号就是key
-			sim := key
+			sim := key // 默认sim卡号就是key
 			device := DefaultDeviceInfo(sim)
 			slog.Debug("开始创建gb28181模拟设备",
 				slog.String("key", key),
@@ -60,7 +67,7 @@ func (a *AdapterTerminal) OnJoinEvent(msg *service.Message, key string, err erro
 					// 如gb28181收流端口是10100 则jt1078收流端口是10000
 					// 流媒体默认选择的是音视频流 视频h264 音频g711a
 					info.JT1078Info.StreamTypes = []jt1078.PTType{jt1078.PTH264}
-					info.JT1078Info.Port = info.Port - 100
+					info.JT1078Info.Port = info.Port + a.portRule
 					info.JT1078Info.RtpTypeConvert = func(pt jt1078.PTType) (byte, bool) {
 						// 默认是按照h264=98的国标 但是zlm会失败 因此可以自行修改
 						if pt == jt1078.PTH264 {
