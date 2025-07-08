@@ -100,7 +100,7 @@ func sendJT1078Packet(port int) {
 				start = i * groupSum
 				end = start + groupSum
 				_, _ = conn.Write(data[start:end])
-				time.Sleep(50 * time.Millisecond)
+				time.Sleep(20 * time.Millisecond)
 			}
 			_, _ = conn.Write(data[end:])
 		}
