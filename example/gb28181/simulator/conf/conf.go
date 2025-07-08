@@ -11,8 +11,12 @@ type (
 	}
 
 	GB28181Config struct {
-		Platform PlatformConfig `mapstructure:"platform" json:"platform"`
-		Device   DeviceConfig   `mapstructure:"device" json:"device"`
+		Transport                 string         `mapstructure:"transport" json:"transport"`
+		KeepAliveSecond           int            `mapstructure:"keepAliveSecond" json:"keepAliveSecond"`
+		StopSecond                int            `mapstructure:"stopSecond" json:"stopSecond"`
+		CreateIntervalMicrosecond int            `mapstructure:"createIntervalMicrosecond" json:"createIntervalMicrosecond"`
+		Platform                  PlatformConfig `mapstructure:"platform" json:"platform"`
+		Device                    DeviceConfig   `mapstructure:"device" json:"device"`
 	}
 
 	PlatformConfig struct {
@@ -24,9 +28,9 @@ type (
 	}
 
 	DeviceConfig struct {
-		ID   string `mapstructure:"id" json:"id"`
-		IP   string `mapstructure:"ip" json:"ip"`
-		Port int    `mapstructure:"port" json:"port"`
+		MaxID int    `mapstructure:"maxID" json:"maxID"`
+		IP    string `mapstructure:"ip" json:"ip"`
+		Port  int    `mapstructure:"port" json:"port"`
 	}
 
 	JT1078Config struct {

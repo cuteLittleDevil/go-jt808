@@ -1,19 +1,20 @@
 gb28181:
   transport: "UDP" # 信令默认使用UDP 也可以TCP
+  keepAliveSecond: 30 # 设备保活周期 默认30秒
+  stopSecond: 0 # 模拟设备多久退出 默认3600秒 小于等于0则不退出
+  createIntervalMicrosecond: 1000 # 模拟设备创建间隔 默认1ms
   platform:
     domain: "34020000002" # 平台域
     id: "34020000002000000001" # 平台ID
     password: "123456" # 平台密码
-    ip: "121.40.19.233" # 平台IP
+    ip: "127.0.0.1" # 平台IP
     port: 15060 # 平台端口
 
   device:
-    id: "34020000001320000330" # 设备ID
+    maxID: 10 # 设备ID最大值 从1开始 34020000001320000001-34020000001320001000
     # 实际不会用到设备的IP和端口 只是sip传输过去
     ip: "127.0.0.1" # 设备IP
     port: 5060 # 设备端口
 
 jt1078:
-  # 只支持点播 使用TCP被动模式 即设备TCP链接到gb28181平台
-  # 音视频请求的jt1078文件 jt1078转ps流
-  file: "./data.txt"
+  file: "../testdata/data.txt"
