@@ -40,4 +40,6 @@ simulator:
   address: "127.0.0.1:808"
   sim: "295696659617" # 模拟设备SIM卡号
   leaveSecond: 3600 # 模拟设备多久退出 默认3600秒 小于0则不退出
-  filePath: "./testdata/data.txt" # 模拟jt1078数据的文件 点播的话重复这个文件数据的10次
+  # "../testdata/data.txt" jt1078的h264文件
+  # "../testdata/audio_data.txt" jt1078的h264+g711a文件
+  filePath: "./testdata/audio_data.txt" # 模拟jt1078数据的文件 点播的话重复这个文件数据的10次

@@ -16,4 +16,6 @@ gb28181:
 jt1078:
   # 只支持点播 使用TCP被动模式 即设备TCP链接到gb28181平台
   # 音视频请求的jt1078文件 jt1078转ps流
-  file: "../testdata/data.txt"
+  # "../testdata/data.txt" jt1078的h264文件
+  # "../testdata/audio_data.txt" jt1078的h264+g711a文件
+  file: "../testdata/audio_data.txt"

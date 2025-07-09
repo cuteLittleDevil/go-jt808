@@ -11,6 +11,8 @@ jobs:
     strategy:
       matrix:
         arch: [amd64, arm64]
+      max-parallel: 1 # 最大并行数 这样amd和arm的打包不会互相影响
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4

@@ -59,7 +59,7 @@ func (a *AdapterTerminal) OnJoinEvent(msg *service.Message, key string, err erro
 					// 默认jt1078收流端口是 gb28181 - 100
 					// 如gb28181收流端口是10100 则jt1078收流端口是10000
 					// 流媒体默认选择的是音视频流 视频h264 音频g711a
-					info.JT1078Info.StreamTypes = []jt1078.PTType{jt1078.PTH264}
+					info.JT1078Info.StreamTypes = []jt1078.PTType{jt1078.PTH264, jt1078.PTG711A}
 					info.JT1078Info.Port = info.Port + a.portRule
 					info.JT1078Info.RtpTypeConvert = func(pt jt1078.PTType) (byte, bool) {
 						// 默认是按照h264=98的国标 但是zlm会失败 因此可以自行修改
@@ -82,8 +82,12 @@ func (a *AdapterTerminal) OnJoinEvent(msg *service.Message, key string, err erro
 								TcpPort:      uint16(info.JT1078Info.Port),
 								UdpPort:      0,
 								ChannelNo:    byte(info.JT1078Info.Channel),
-								DataType:     1, //  0-音视频 1-视频 2-双向对讲 3-监听 4-中心广播 5-透传
-								StreamType:   0,
+								// gb28181 2016 96页
+								// m=video6000RTP/AVP96”标识媒体类型为视频或视音频
+								// m=audio8000RTP/AVP8”标识媒体类型为音频,传输端口为8000
+								// 因此可以说协议没地方判断是不是音视频 就默认使用音视频和主码流
+								DataType:   0, //  0-音视频 1-视频 2-双向对讲 3-监听 4-中心广播 5-透传
+								StreamType: 0,
 							},
 						})
 					}
