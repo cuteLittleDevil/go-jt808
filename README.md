@@ -82,7 +82,7 @@ docker pull cdcddcdc/jt808-to-gb28181:latest
 ```
 ```
 docker run -d \
--v /home/config.yaml:/app/jt808-to-gb28181/config.yaml \
+-v /home/config.yaml:/app/jt808_to_gb28181/config.yaml \
 --network host \
 cdcddcdc/jt808-to-gb28181:latest
 ```
