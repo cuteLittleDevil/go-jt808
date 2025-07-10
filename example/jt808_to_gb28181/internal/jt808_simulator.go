@@ -115,6 +115,7 @@ func Client(phone string, address string) {
 	second := conf.GetData().Simulator.LeaveSecond
 	if second < 0 {
 		fmt.Println(fmt.Sprintf("[%s] 模拟设备停止发送经纬度信息 不退出", phone))
+		select {}
 	} else {
 		fmt.Println(fmt.Sprintf("[%s] 模拟设备停止发送经纬度信息 在过[%d]秒模拟设备退出", phone, second))
 		time.Sleep(time.Duration(second) * time.Second)

@@ -1,0 +1,168 @@
+spring:
+  # 设置接口超时时间
+  mvc:
+    async:
+      request-timeout: 20000
+  thymeleaf:
+    cache: false
+  # [可选]上传文件大小限制
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 100MB
+  cache:
+    type: redis
+  # REDIS数据库配置
+  redis:
+    # [必须修改] Redis服务器IP, REDIS安装在本机的,使用127.0.0.1
+    host: 127.0.0.1
+    # [必须修改] 端口号
+    port: 6379
+    # [可选] 数据库 DB
+    database: 0
+    # [可选] 访问密码,若你的redis服务器没有设置密码，就不需要用密码去连接
+    password:
+    # [可选] 超时时间
+    timeout: 10000
+    # mysql数据源
+    # mysql数据源
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://127.0.0.1:3306/wvp?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8
+    username: root
+    password: qazwsx1234CD..
+pagehelper:
+  helper-dialect: mysql
+
+#[可选] WVP监听的HTTP端口, 网页和接口调用都是这个端口
+server:
+  port: 12336
+  # [可选] HTTPS配置， 默认不开启
+  ssl:
+    # [可选] 是否开启HTTPS访问
+    enabled: false
+    # [可选] 证书文件路径，放置在resource/目录下即可，修改xxx为文件名
+    #key-store:
+    # [可选] 证书密码
+    #key-store-password:
+    # [可选] 证书类型， 默认为jks，根据实际修改
+    #
+    # 配置证书可以使用如下两项，如上面二选一即可
+    # PEM 编码证书
+    #        certificate: 'wvp.jdjtzhzx.com.pem'
+    #   私钥文件
+#        certificate-private-key: "wvp.jdjtzhzx.com.key"
+
+# 作为28181服务器的配置
+sip:
+  # [必须修改] 本机的IP，对应你的网卡，监听什么ip就是使用什么网卡，
+  # 如果要监听多张网卡，可以使用逗号分隔多个IP， 例如： 192.168.1.4,10.0.0.4
+  # 如果不明白，就使用0.0.0.0，大部分情况都是可以的
+  # 请不要使用127.0.0.1，任何包括localhost在内的域名都是不可以的。
+  ip: 0.0.0.0
+  # [可选] 28181服务监听的端口
+  port: 15060
+  # 根据国标6.1.2中规定，domain宜采用ID统一编码的前十位编码。国标附录D中定义前8位为中心编码（由省级、市级、区级、基层编号组成，参照GB/T 2260-2007）
+  # 后两位为行业编码，定义参照附录D.3
+  # 3701020049标识山东济南历下区 信息行业接入
+  # [可选]
+  domain: 3402000000
+  # [可选]37070000082008000002
+  id: 34020000002000000001
+  # [可选] 默认设备认证密码，后续扩展使用设备单独密码, 移除密码将不进行校验
+  password: 123456
+  # 是否存储alarm信息
+  alarm: true
+
+#zlm 默认服务器配置
+media:
+  id: your_server_id
+  # [必须修改] zlm服务器的内网IP
+  ip: 127.0.0.1
+  # [必须修改] zlm服务器的http.port
+  http-port: 2395
+  # [可选] 返回流地址时的ip，置空使用 media.ip
+  stream-ip: 121.40.19.233
+  # [可选] wvp在国标信令中使用的ip，此ip为摄像机可以访问到的ip， 置空使用 media.ip
+  sdp-ip: 121.40.19.233
+  # [可选] zlm服务器的hook所使用的IP, 默认使用sip.ip
+  hook-ip: 127.0.0.1
+  # [可选] zlm服务器的http.sslport, 置空使用zlm配置文件配置
+  http-ssl-port: '13038'
+  # [可选] 是否自动配置ZLM, 如果希望手动配置ZLM, 可以设为false, 不建议新接触的用户修改
+  auto-config: false
+  # [可选] zlm服务器的hook.admin_params=secret
+  secret: 'g3qbC59Sql5bXQfLrRjC7sIfnPz7tpna'
+  # 启用多端口模式, 多端口模式使用端口区分每路流，兼容性更好。 单端口使用流的ssrc区分， 点播超时建议使用多端口测试
+  rtp:
+    # [可选] 是否启用多端口模式, 开启后会在portRange范围内选择端口用于媒体流传输
+    enable: true
+    # [可选] 在此范围内选择端口用于媒体流传输, 必须提前在zlm上配置该属性，不然自动配置此属性可能不成功
+    port-range: 13000,13037 # 端口范围
+    # [可选] 国标级联在此范围内选择端口发送媒体流,
+    send-port-range: 13060,13070 # 端口范围
+  # 录像辅助服务， 部署此服务可以实现zlm录像的管理与下载， 0 表示不使用
+  record-assist-port: 18081
+# [根据业务需求配置]
+user-settings:
+  # [可选] 服务ID，不写则为000000
+  server-id:
+  # [可选] 自动点播， 使用固定流地址进行播放时，如果未点播则自动进行点播, 需要rtp.enable=true
+  auto-apply-play: true
+  # [可选] 部分设备需要扩展SDP，需要打开此设置
+  senior-sdp: false
+  # 保存移动位置历史轨迹：true:保留历史数据，false:仅保留最后的位置(默认)
+  save-position-history: true
+  # 点播/录像回放 等待超时时间,单位：毫秒
+  play-timeout: 18000
+  # 上级点播等待超时时间,单位：毫秒
+  platform-play-timeout: 60000
+  # 是否开启接口鉴权
+  interface-authentication: true
+  # 接口鉴权例外的接口, 即不进行接口鉴权的接口,尽量详细书写，尽量不用/**，至少两级目录
+  interface-authentication-excludes:
+  #  - /api/v1/**
+  #  - /api/play/**
+  #  - /api/user/**
+  #    - /api/user/pushKey
+  # 推流直播是否录制
+  record-push-live: false
+  # 国标是否录制
+  record-sip: false
+  # 是否将日志存储进数据库
+  logInDatabase: true
+  # 使用推流状态作为推流通道状态
+  use-pushing-as-status: true
+  # 使用来源请求ip作为streamIp,当且仅当你只有zlm节点它与wvp在一起的情况下开启
+  use-source-ip-as-stream-ip: false
+  # 国标点播 按需拉流, true：有人观看拉流，无人观看释放， false：拉起后不自动释放
+  stream-on-demand: false
+  # 推流鉴权， 默认开启
+  push-authority: false
+  # 设备上线时是否自动同步通道
+  sync-channel-on-device-online: false
+  # 是否使用设备来源Ip作为回复IP， 不设置则为 false
+  sip-use-source-ip-as-remote-address: false
+  # 是否开启sip日志
+  sip-log: true
+  # 是否开启sql日志
+  sql-log: true
+  # 消息通道功能-缺少国标ID是否给所有上级发送消息
+  send-to-platforms-when-id-lost: true
+  # 保持通道状态，不接受notify通道状态变化， 兼容海康平台发送错误消息
+  refuse-channel-status-channel-form-notify: false
+  # 设置notify缓存队列最大长度，超过此长度的数据将返回486 BUSY_HERE，消息丢弃, 默认10000
+  max-notify-count-queue: 10000
+  # 设备/通道状态变化时发送消息
+  device-status-notify: false
+  # 上级平台点播时不使用上级平台指定的ssrc，使用自定义的ssrc，参考国标文档-点播外域设备媒体流SSRC处理方式
+  use-custom-ssrc-for-parent-invite: true
+  # 国标级联离线后多久重试一次注册
+  register-again-after-time: 60
+  # 国标续订方式，true为续订，每次注册在同一个会话里，false为重新注册，每次使用新的会话
+  register-keep-int-dialog: false
+  # 跨域配置，配置你访问前端页面的地址即可， 可以配置多个
+  allowed-origins:
+    - https://121.40.19.233:13038
+    - https://121.40.19.233:13039
