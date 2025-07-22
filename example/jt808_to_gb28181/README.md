@@ -61,9 +61,6 @@ http://121.40.19.233:15123
 - 参考的配置文件的外网ip是121.40.19.233 需要修改成自己的
 
 ```
-# 可以根据gb28181官方 打包docker使用
-# 这里使用直接编译的gb28181和下载好的zlm
-
 # zlm下载 https://github.com/ZLMediaKit/ZLMediaKit/issues/483
 # 使用的配置文件 ./testdata/wvp/config.ini 放到和MediaServer同级的目录
 ./MediaServer -c config.ini

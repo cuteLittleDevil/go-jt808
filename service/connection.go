@@ -9,14 +9,18 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
 type connection struct {
-	conn                  *net.TCPConn
-	handles               map[consts.JT808CommandType]Handler
-	stopOnce              sync.Once
-	stopChan              chan struct{}
+	conn     *net.TCPConn
+	handles  map[consts.JT808CommandType]Handler
+	stopOnce sync.Once
+	// stopChan 读终端数据异常时退出
+	stopChan chan struct{}
+	// finallyCompleteChan 读终端数据异常后 等待主动下发的全部指令完成或者超时
+	finallyCompleteChan   chan struct{}
 	msgChan               chan *Message
 	activeMsgChan         chan *ActiveMessage
 	activeMsgCompleteChan chan *Message
@@ -27,7 +31,9 @@ type connection struct {
 	leaveFunc            func(key string)
 	key                  string
 	filter               bool
-	terminalEvent        TerminalEventer
+	// activeUnfinishedSum 当前主动下发未完成的指令数量
+	activeUnfinishedSum int32
+	terminalEvent       TerminalEventer
 }
 
 func newConnection(conn *net.TCPConn, handles map[consts.JT808CommandType]Handler, terminalEvent TerminalEventer, filter bool,
@@ -37,19 +43,21 @@ func newConnection(conn *net.TCPConn, handles map[consts.JT808CommandType]Handle
 		handles:               handles,
 		stopOnce:              sync.Once{},
 		stopChan:              make(chan struct{}),
+		finallyCompleteChan:   make(chan struct{}),
 		msgChan:               make(chan *Message, 10),
-		activeMsgChan:         make(chan *ActiveMessage, 3),
-		activeMsgCompleteChan: make(chan *Message, 3),
-		reissuePackChan:       make(chan *Message, 3),
+		activeMsgChan:         make(chan *ActiveMessage, 10),
+		activeMsgCompleteChan: make(chan *Message, 10),
+		reissuePackChan:       make(chan *Message, 10),
 		platformSerialNumber:  uint16(0),
 		joinFunc:              join,
 		leaveFunc:             leave,
 		filter:                filter,
+		activeUnfinishedSum:   int32(0),
 		terminalEvent:         terminalEvent,
 	}
 }
 
-func (c *connection) Start() {
+func (c *connection) run() {
 	go c.reader()
 	go c.write()
 }
@@ -63,9 +71,9 @@ func (c *connection) reader() {
 	)
 
 	defer func() {
-		c.stop()
 		clear(curData)
 		pack.clear()
+		c.stop()
 	}()
 
 	for {
@@ -146,18 +154,28 @@ func (c *connection) handleMessages(msgs []*Message) {
 
 func (c *connection) write() {
 	record := map[uint16]*ActiveMessage{}
+	defer func() {
+		close(c.activeMsgChan)
+		close(c.reissuePackChan)
+		close(c.msgChan)
+		close(c.activeMsgCompleteChan)
+		clear(record)
+		clear(c.handles)
+	}()
+
 	for {
 		select {
-		case <-c.stopChan:
-			clear(record)
+		case <-c.finallyCompleteChan: // 如果现在有平台主动下发的 需要等待完成在退出
 			return
 		case activeMsg, ok := <-c.activeMsgChan: // 平台主动下发的
 			if ok {
+				atomic.AddInt32(&c.activeUnfinishedSum, 1)
 				c.onActiveEvent(activeMsg, record)
 			}
 		case msg, ok := <-c.activeMsgCompleteChan: // 平台主动下发的完成情况
 			if ok {
 				c.onActiveEventComplete(msg, record)
+				atomic.AddInt32(&c.activeUnfinishedSum, -1)
 			}
 		case subPackMsg, ok := <-c.reissuePackChan: // 分包补传的
 			if ok {
@@ -184,11 +202,10 @@ func (c *connection) stop() {
 		c.terminalEvent.OnLeaveEvent(c.key)
 		close(c.stopChan)
 		_ = c.conn.Close()
-		clear(c.handles)
-		close(c.msgChan)
-		close(c.activeMsgChan)
-		close(c.activeMsgCompleteChan)
-		close(c.reissuePackChan)
+		for atomic.LoadInt32(&c.activeUnfinishedSum) != 0 {
+			time.Sleep(time.Second)
+		}
+		close(c.finallyCompleteChan)
 	})
 }
 
@@ -266,17 +283,12 @@ func (c *connection) onActiveEvent(activeMsg *ActiveMessage, record map[uint16]*
 		if activeMsg.OverTimeDuration > 0 {
 			duration = activeMsg.OverTimeDuration
 		}
-		go func(overtimeMsg *Message) {
-			time.Sleep(duration)
-			select {
-			case <-c.stopChan:
-				return
-			default:
-			}
+		go func(overtimeMsg *Message, timeout time.Duration) {
+			time.Sleep(timeout)
 			overtimeMsg.ExtensionFields.Err = errors.Join(ErrWriteDataOverTime,
 				fmt.Errorf("overtime is [%.2f]second", duration.Seconds()))
 			c.activeMsgCompleteChan <- overtimeMsg
-		}(replyMsg)
+		}(replyMsg, duration)
 	}
 }
 

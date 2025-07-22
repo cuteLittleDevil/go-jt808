@@ -19,7 +19,7 @@ type ActiveMessage struct {
 	Command consts.JT808CommandType `json:"command"`
 	// Body 平台下发的数据
 	Body []byte `json:"body"`
-	// OverTimeDuration  超时时间 默认5秒
+	// OverTimeDuration  超时时间 默认3秒
 	OverTimeDuration time.Duration `json:"overTimeDuration"`
 	ExtensionFields  struct {
 		// PlatformSeq 平台下发的流水号

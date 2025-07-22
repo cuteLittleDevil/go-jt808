@@ -55,7 +55,7 @@ func (g *GoJT808) Run() {
 		terminalEvent := g.opts.CustomTerminalEventerFunc()
 		conn := newConnection(c, handles, terminalEvent, g.opts.FilterSubcontract,
 			g.sessionManager.join, g.sessionManager.leave)
-		go conn.Start()
+		go conn.run()
 	}
 }
 
