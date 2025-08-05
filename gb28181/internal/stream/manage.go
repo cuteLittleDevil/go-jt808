@@ -13,11 +13,11 @@ type Manage struct {
 	ackChan       chan string
 	byeChan       chan string
 	OnInviteEvent func(*command.InviteInfo) *command.InviteInfo
-	ConvertFunc   func() command.JT1078ToGB28181er
+	ConvertFunc   func() command.ToGB28181er
 }
 
 func NewManage(onInviteEvent func(*command.InviteInfo) *command.InviteInfo,
-	convertFunc func() command.JT1078ToGB28181er) *Manage {
+	convertFunc func() command.ToGB28181er) *Manage {
 	return &Manage{
 		OnInviteEvent: onInviteEvent,
 		ConvertFunc:   convertFunc,
@@ -29,9 +29,12 @@ func NewManage(onInviteEvent func(*command.InviteInfo) *command.InviteInfo,
 }
 
 func (s *Manage) Run() {
+	type handler interface {
+		stop(msg string)
+	}
 	var (
 		record  = map[string]*command.InviteInfo{}
-		servers = map[string]*jt1078Server{}
+		servers = map[string]handler{}
 	)
 	defer func() {
 		clear(record)
@@ -52,16 +55,18 @@ func (s *Manage) Run() {
 			record[v.CallId] = v
 		case callID := <-s.ackChan:
 			if inviteInfo, ok := record[callID]; ok {
-				// 触发回调 让jt808设备上传jt1078到端口A
+				// 触发回调 让设备把ps流传到gb28181服务端
 				if s.OnInviteEvent != nil {
 					inviteInfo = s.OnInviteEvent(inviteInfo)
 				}
 				// 监听端口A 有数据时 建立TCP连接 连接到端口B（收流端口)
-				// 把端口A收到的jt1078数据 转ps流数据上传
-				jt1078ToGB := s.ConvertFunc()
-				jt1078ToGB.OnAck(inviteInfo)
-				server := newJt1078Server(inviteInfo, jt1078ToGB)
-				go server.run()
+				// 把端口A收到的数据(默认jt1078) 转ps流数据上传
+				toGB := s.ConvertFunc()
+				toGB.OnAck(inviteInfo)
+				server := newAdapterServer(inviteInfo, toGB)
+				if inviteInfo.Adapter.Enable {
+					go server.run()
+				}
 				servers[callID] = server
 			}
 		case callID := <-s.byeChan:

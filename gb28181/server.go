@@ -3,6 +3,7 @@ package gb28181
 import (
 	"context"
 	"fmt"
+	"github.com/cuteLittleDevil/go-jt808/gb28181/command"
 	inCommand "github.com/cuteLittleDevil/go-jt808/gb28181/internal/command"
 	"github.com/cuteLittleDevil/go-jt808/protocol/jt1078"
 	"github.com/emiago/sipgo/sip"
@@ -89,22 +90,10 @@ func (c *Client) invite(req *sip.Request, tx sip.ServerTransaction) {
 		_ = tx.Respond(sip.NewResponseFromRequest(req, sip.StatusInternalServerError, "目前只支持点播", nil))
 		return
 	}
-	// 通道就是通道ID最后一位
-	channel := inviteInfo.TargetChannelId[len(inviteInfo.TargetChannelId)-1] - '0'
-	inviteInfo.JT1078Info = struct {
-		Sim            string                                  `json:"sim"`
-		Channel        int                                     `json:"channelId"`
-		Port           int                                     `json:"port"`
-		StreamTypes    []jt1078.PTType                         `json:"streamTypes"`
-		RtpTypeConvert func(ptType jt1078.PTType) (byte, bool) `json:"-"`
-	}{
-		Sim:         c.Options.Sim,
-		Channel:     int(channel),
-		Port:        inviteInfo.Port - 100, // 端口默认是连接的流媒体端口-100
-		StreamTypes: []jt1078.PTType{jt1078.PTH264, jt1078.PTG711A},
-	}
 
-	c.manage.SubmitInvite(inviteInfo)
+	defaultInfo := c.defaultInvite(inviteInfo)
+	c.manage.SubmitInvite(defaultInfo)
+
 	platformIP := c.PlatformInfo.IP
 	content := []string{
 		"v=0",
@@ -134,6 +123,41 @@ func (c *Client) ack(req *sip.Request, _ sip.ServerTransaction) {
 
 func (c *Client) bye(req *sip.Request, _ sip.ServerTransaction) {
 	c.manage.SubmitBye(req.CallID().Value())
+}
+
+func (c *Client) defaultInvite(inviteInfo *command.InviteInfo) *command.InviteInfo {
+	inviteInfo.Adapter = struct {
+		Enable bool             `json:"enable"`
+		Port   int              `json:"port"`
+		Type   command.ToGBType `json:"type"`
+	}{
+		Enable: true,
+		Port:   0,
+		Type:   c.Options.ToGBType,
+	}
+
+	switch inviteInfo.Adapter.Type {
+	case command.JT1078ToPS:
+		// 通道就是通道ID最后一位
+		channel := inviteInfo.TargetChannelId[len(inviteInfo.TargetChannelId)-1] - '0'
+		inviteInfo.JT1078Info = struct {
+			Sim            string                                  `json:"sim"`
+			Channel        int                                     `json:"channelId"`
+			Port           int                                     `json:"port"`
+			StreamTypes    []jt1078.PTType                         `json:"streamTypes"`
+			RtpTypeConvert func(ptType jt1078.PTType) (byte, bool) `json:"-"`
+		}{
+			Sim:         c.Options.Sim,
+			Channel:     int(channel),
+			Port:        inviteInfo.Port - 100, // 端口默认是连接的流媒体端口-100
+			StreamTypes: []jt1078.PTType{jt1078.PTH264, jt1078.PTG711A},
+		}
+		inviteInfo.Adapter.Port = inviteInfo.JT1078Info.Port
+	case command.CustomPS:
+		inviteInfo.Adapter.Enable = false
+	default:
+	}
+	return inviteInfo
 }
 
 func (c *Client) handleMessages(confirmType inCommand.ConfirmType, body []byte) ([]byte, error) {

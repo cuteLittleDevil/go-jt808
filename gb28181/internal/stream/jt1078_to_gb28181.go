@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"errors"
 	"fmt"
 	"github.com/cuteLittleDevil/go-jt808/gb28181/command"
 	"github.com/cuteLittleDevil/go-jt808/protocol/jt1078"
@@ -8,6 +9,7 @@ import (
 	"log/slog"
 	"math/rand/v2"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -18,10 +20,13 @@ type JT1078ToGB28181 struct {
 	seq         uint16
 	sim         string
 	convertFunc func(ptType jt1078.PTType) (byte, bool)
+	packHandle  *packageParse
 }
 
 func NewJT1078T0GB28181() *JT1078ToGB28181 {
-	return &JT1078ToGB28181{}
+	return &JT1078ToGB28181{
+		packHandle: newPackageParse(),
+	}
 }
 
 func (j *JT1078ToGB28181) OnAck(info *command.InviteInfo) {
@@ -51,57 +56,68 @@ func (j *JT1078ToGB28181) OnAck(info *command.InviteInfo) {
 }
 
 func (j *JT1078ToGB28181) OnBye(msg string) {
+	j.packHandle.clear()
 	slog.Info("jt1078 bye",
 		slog.String("sim", j.sim),
 		slog.Any("ssrc32", j.ssrc32),
 		slog.String("msg", msg))
 }
 
-func (j *JT1078ToGB28181) ConvertToGB28181(pack *jt1078.Packet) [][]byte {
+func (j *JT1078ToGB28181) ConvertToGB28181(jt1078Data []byte) ([][]byte, error) {
+	if packs, err := j.getPackets(jt1078Data); err != nil {
+		return nil, err
+	} else if len(packs) > 0 {
+		result := make([][]byte, 0, 10*len(packs))
+		for _, pack := range packs {
+			result = append(result, j.jt1078ToGB28181(pack)...)
+		}
+		return result, nil
+	}
+	return nil, nil
+}
+
+func (j *JT1078ToGB28181) jt1078ToGB28181(pack *jt1078.Packet) [][]byte {
 	streamID := streamIDAudio
 	if pack.Flag.PT == jt1078.PTH264 || pack.Flag.PT == jt1078.PTH265 {
 		streamID = streamIDVideo
 	}
-	var (
-		pts  = uint32(0)
-		data = make([]byte, 0, 1460)
-	)
-
+	pts := uint32(pack.Timestamp)
 	// 如果jt1078包的时间不准确 就使用本地时间
 	if cur := time.Now().UnixMilli(); uint64(cur)-pack.Timestamp > 10*1000 {
 		pts = uint32(cur)
-	} else {
-		pts = uint32(pack.Timestamp)
 	}
-
-	// 第一个包 I帧 psh + sys + psm + pes + h.264
-	// 第一个包 P帧或者B帧 psh + pes + h.264
-	// 音频 psh + pes + g711
-	// gb28181格式 https://blog.csdn.net/fanyun_01/article/details/120537670
-	// ps规范 https://ocw.unican.es/pluginfile.php/2825/course/section/2777/iso13818-1.pdf
-	psh := NewProgramStreamPackHeader(pts)
-	data = append(data, psh.Encode()...)
-	if pack.DataType == jt1078.DataTypeI {
-		sys := NewSystemHeader(j.hasAudio)
-		data = append(data, sys.Encode()...)
-		// psm可以只发一次
-		psm := NewProgramStreamMap(j.createStreamMap()...)
-		data = append(data, psm.Encode()...)
-	}
-	pes := NewPESPacket(streamID, uint16(len(pack.Body)), pts)
-	data = append(data, pes.Encode()...)
 
 	var (
 		offset = 0
 		end    = len(pack.Body)
 		result = make([][]byte, 0, 1)
+		once   sync.Once
 	)
+
 	for end > 0 {
 		chunkSize := 1350
 		//chunkSize = len(pack.Body)
 		if offset+chunkSize >= len(pack.Body) {
 			chunkSize = len(pack.Body) - offset
 		}
+		data := make([]byte, 0, 1460)
+		once.Do(func() {
+			// 第一个包 I帧 psh + sys + psm + pes + h.264
+			// 第一个包 P帧或者B帧 psh + pes + h.264
+			// 音频 psh + pes + g711
+			// gb28181格式 https://blog.csdn.net/fanyun_01/article/details/120537670
+			// ps规范 https://ocw.unican.es/pluginfile.php/2825/course/section/2777/iso13818-1.pdf
+			psh := NewProgramStreamPackHeader(pts)
+			data = append(data, psh.Encode()...)
+			if pack.DataType == jt1078.DataTypeI {
+				sys := NewSystemHeader(j.hasAudio)
+				data = append(data, sys.Encode()...)
+				psm := NewProgramStreamMap(j.createStreamMap()...)
+				data = append(data, psm.Encode()...)
+			}
+			pes := NewPESPacket(streamID, uint16(len(pack.Body)), pts)
+			data = append(data, pes.Encode()...)
+		})
 		data = append(data, pack.Body[offset:offset+chunkSize]...)
 
 		offset += chunkSize
@@ -114,7 +130,6 @@ func (j *JT1078ToGB28181) ConvertToGB28181(pack *jt1078.Packet) [][]byte {
 			packet.Marker = end == 0
 			j.seq++
 		}))
-		data = make([]byte, 0, 1460)
 	}
 	return result
 }
@@ -189,4 +204,20 @@ func (j *JT1078ToGB28181) createStreamMap() []streamMap {
 		list = append(list, tmp)
 	}
 	return list
+}
+
+func (j *JT1078ToGB28181) getPackets(data []byte) ([]*jt1078.Packet, error) {
+	packs := make([]*jt1078.Packet, 0, 1)
+	for pack, err := range j.packHandle.parse(data) {
+		if err == nil {
+			if pack != nil {
+				packs = append(packs, pack)
+			}
+		} else if errors.Is(err, jt1078.ErrBodyLength2Short) || errors.Is(err, jt1078.ErrHeaderLength2Short) {
+			// 数据长度不够的 忽略
+		} else {
+			return nil, err
+		}
+	}
+	return packs, nil
 }

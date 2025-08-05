@@ -30,7 +30,15 @@ type InviteInfo struct {
 	// IP地址
 	IP string `json:"ip"`
 	// 端口
-	Port       int `json:"port"`
+	Port    int `json:"port"`
+	Adapter struct {
+		// Enable 是否启动转换(监听某个端口 然后把收到的数据转ps流发送 默认是jt1078转gb28181) 默认启用.
+		Enable bool `json:"enable"`
+		// 监听的端口 默认是jt1078.port.
+		Port int `json:"port"`
+		// Type 适配的类型 默认1 1-jt1078转ps流 2-rtsp转ps流(未实现) 3-rtmp转ps流(未实现). 4-转发ps流
+		Type ToGBType `json:"type"`
+	}
 	JT1078Info struct {
 		Sim            string                                  `json:"sim"`
 		Channel        int                                     `json:"channelId"`

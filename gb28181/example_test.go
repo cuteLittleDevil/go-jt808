@@ -44,9 +44,9 @@ func Example() {
 			// 直接发送jt1078流测试
 			return info
 		}),
-		WithJT1078ToGB28181er(func() command.JT1078ToGB28181er {
-			// 目前模拟jt1078包转gb28181在m7s上成功 zlm上播放失败
-			// 目前这是内部包的实现 不暴露出来
+		WithToGBType(command.JT1078ToPS),
+		WithToGB28181er(func() command.ToGB28181er {
+			// 默认流处理 jt1078转ps流
 			return stream.NewJT1078T0GB28181()
 		}),
 	)
