@@ -1,0 +1,31 @@
+gb28181:
+  transport: "UDP" # 信令默认使用UDP 也可以TCP
+  platform:
+    domain: "34020000002" # 平台域
+    id: "34020000002000000001" # 平台ID
+    password: "123456" # 平台密码
+    ip: "127.0.0.1" # 平台IP
+    port: 15060 # 平台端口
+
+  device:
+    id: "34020000001320003330" # 设备ID
+    # 实际不会用到设备的IP和端口 只是sip传输过去
+    ip: "127.0.0.1" # 设备IP
+    port: 5060 # 设备端口
+
+zlm:
+  # config.ini中的secret 调用api的时候需要
+  secret: "6LWE2ejbUt0lzoUIB4E9GINnDjTnhYey"
+  vhost: "__defaultVhost__"
+  app: "gb"
+  stream: "simulator"
+  rtsp: "rtsp://localhost/gb/test"
+  # 添加rtsp流拉流代理
+  addStreamProxy: http://127.0.0.1:80/index/api/addStreamProxy
+  # 作为gb28181客户端推流
+  startSendRtp: http://127.0.0.1:80/index/api/startSendRtp
+  # 停止gb28181推流
+  stopSendRtp: http://127.0.0.1:80/index/api/stopSendRtp
+  # 关闭流
+  closeStreams: http://127.0.0.1:80/index/api/close_streams
+
