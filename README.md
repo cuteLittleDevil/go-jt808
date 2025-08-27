@@ -109,7 +109,7 @@ jt808服务端 模拟器 消息队列 数据库都运行在2核4G腾讯云服务
 存在则回复终端应答到新主题 不存在则忽略
 ```
 
-### 8. 平台下发指令给终端 [获取参数](./example/protocol/active_reply/main.go) [立即拍摄](./example/protocol/camera/main.go) [自定义指令](./example/custom_command/camera/main.go)
+### 8. 平台下发指令给终端 [获取参数](./example/protocol/active_reply/main.go) [立即拍摄](./example/protocol/camera/main.go) [自定义指令](./example/protocol/README.md#custom_command)
 ``` txt
 主动下发给设备指令 获取应答的情况
 ```

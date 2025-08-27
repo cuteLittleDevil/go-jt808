@@ -716,3 +716,25 @@
 <h2 id="custom_command"> 5. 自定义指令处理 </h2>
 
 - [代码参考](./custom_command/main.go)
+
+```
+如终端上传0x0200位置信息 -> 设备回复0x8001通用应答
+1. 解析jt808固定报文头 获取指令id
+2.1 如果指令id不存在 如0x1111 则触发OnNotSupportedEvent（不支持的指令回调)
+2.2 指令id存在 如0x0200 则触发OnReadExecutionEvent （读事件回调)
+3.1 如果指令不需要回复则结束
+3.2 如果指令需要回复 如0x0200 -> 0x8001 则触发OnWriteExecutionEvent (写事件回调)
+```
+
+![事件流程图1](./custom_command/testdata/event1.jpg)
+
+```
+如平台下发0x9001请求实时音视频 -> 设备回复0x0001通用应答
+1. 发送0x9001指令后 触发OnReadExecutionEvent （读事件回调)
+2.1 如果超时的情况 则触发OnWriteExecutionEvent (写事件回调)
+2.2 如果匹配完成的情况
+触发0x0001指令的OnWriteExecutionEvent (写事件回调)
+在触发0x9001指令的OnWriteExecutionEvent (写事件回调)
+```
+
+![事件流程图2](./custom_command/testdata/event2.jpg)
