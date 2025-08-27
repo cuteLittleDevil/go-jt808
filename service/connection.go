@@ -172,8 +172,13 @@ func (c *connection) write() {
 			c.onActiveEvent(activeMsg, record)
 
 		case msg := <-c.activeMsgCompleteChan: // 平台主动下发的完成情况
-			c.onActiveEventComplete(msg, record)
-			atomic.AddInt32(&c.activeUnfinishedSum, -1)
+			seq := msg.ExtensionFields.PlatformSeq
+			// 超时的情况一定执行一次 如果完成了 还可能执行一次
+			if v, ok := record[seq]; ok {
+				c.onActiveEventComplete(msg, v)
+				delete(record, seq)
+				atomic.AddInt32(&c.activeUnfinishedSum, -1)
+			}
 
 		case subPackMsg := <-c.reissuePackChan: // 分包补传的
 			c.onSubPackReplyEvent(subPackMsg)
@@ -376,28 +381,19 @@ func (c *connection) onActiveRespondEvent(record map[uint16]*ActiveMessage, msg 
 	return false
 }
 
-func (c *connection) onActiveEventComplete(msg *Message, record map[uint16]*ActiveMessage) {
-	seq := msg.ExtensionFields.PlatformSeq
-	if v, ok := record[seq]; ok {
-		msg.ExtensionFields.PlatformData = v.ExtensionFields.Data
-		msg.ExtensionFields.PlatformCommand = v.Command
-		msg.ExtensionFields.ActiveSend = true
-		// 如0x8300 -> 0x0001
-		// 超时的情况 msg就是平台下发的指令 如0x8300
-		// 完成的情况 msg就是平台需要回复的 如0x0001
-		c.onWriteExecutionEvent(msg)
-		if msg.ExtensionFields.Err == nil {
-			// 完成的情况 前面已经触发了如0x0001的回调 在触发0x8300的回调
-			c.onWriteExecutionEvent(v.convertMessage)
-		}
-		v.replyChan <- msg
-
-		delete(record, seq)
-	} else {
-		slog.Warn("seq not found",
-			slog.Any("seq", seq),
-			slog.Any("msg", msg.Header.String()))
+func (c *connection) onActiveEventComplete(msg *Message, activeMsg *ActiveMessage) {
+	msg.ExtensionFields.PlatformData = activeMsg.ExtensionFields.Data
+	msg.ExtensionFields.PlatformCommand = activeMsg.Command
+	msg.ExtensionFields.ActiveSend = true
+	// 如0x8300 -> 0x0001
+	// 超时的情况 msg就是平台下发的指令 如0x8300
+	// 完成的情况 msg就是平台需要回复的 如0x0001
+	c.onWriteExecutionEvent(msg)
+	if msg.ExtensionFields.Err == nil {
+		// 完成的情况 前面已经触发了如0x0001的回调 在触发0x8300的回调
+		c.onWriteExecutionEvent(activeMsg.convertMessage)
 	}
+	activeMsg.replyChan <- msg
 }
 
 func (c *connection) onReadExecutionEvent(msg *Message) {
