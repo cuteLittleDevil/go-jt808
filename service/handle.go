@@ -30,8 +30,15 @@ type (
 	}
 
 	Eventer interface {
-		OnReadExecutionEvent(msg *Message) // 读到jt808数据时
-		OnWriteExecutionEvent(msg Message) // 写入数据给终端后
+		// OnReadExecutionEvent 读事件 以下两种情况触发
+		// 1. 终端上传的报文到平台完成时 如0x0200位置信息
+		// 2. 平台主动下发报文到终端后 如0x9101实时视频
+		OnReadExecutionEvent(msg *Message)
+		// OnWriteExecutionEvent 写事件 以下情况触发
+		// 1. 回复终端主动上传的报文 如0x0200 -> 0x8001 收到设备位置信息 平台回复通用应答
+		// 2. 收到终端应答 如0x9001 -> 0x0001 平台主动发送实时视频请求 终端回复通用应答
+		// 3. 超时（平台主动下发指令的情况)
+		OnWriteExecutionEvent(msg Message)
 	}
 )
 

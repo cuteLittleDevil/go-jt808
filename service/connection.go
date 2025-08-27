@@ -156,9 +156,9 @@ func (c *connection) write() {
 	record := map[uint16]*ActiveMessage{}
 	defer func() {
 		close(c.activeMsgChan)
+		close(c.activeMsgCompleteChan)
 		close(c.reissuePackChan)
 		close(c.msgChan)
-		close(c.activeMsgCompleteChan)
 		clear(record)
 		clear(c.handles)
 	}()
@@ -167,30 +167,25 @@ func (c *connection) write() {
 		select {
 		case <-c.finallyCompleteChan: // 如果现在有平台主动下发的 需要等待完成在退出
 			return
-		case activeMsg, ok := <-c.activeMsgChan: // 平台主动下发的
-			if ok {
-				atomic.AddInt32(&c.activeUnfinishedSum, 1)
-				c.onActiveEvent(activeMsg, record)
-			}
-		case msg, ok := <-c.activeMsgCompleteChan: // 平台主动下发的完成情况
-			if ok {
-				c.onActiveEventComplete(msg, record)
-				atomic.AddInt32(&c.activeUnfinishedSum, -1)
-			}
-		case subPackMsg, ok := <-c.reissuePackChan: // 分包补传的
-			if ok {
-				c.onSubPackReplyEvent(subPackMsg)
-			}
-		case msg, ok := <-c.msgChan: // 终端上传的
-			if ok {
-				if len(record) > 0 && msg.hasComplete() { // 说明现在有主动的请求 等待回复中
-					if c.onActiveRespondEvent(record, msg) {
-						continue
-					}
+		case activeMsg := <-c.activeMsgChan: // 平台主动下发的
+			atomic.AddInt32(&c.activeUnfinishedSum, 1)
+			c.onActiveEvent(activeMsg, record)
+
+		case msg := <-c.activeMsgCompleteChan: // 平台主动下发的完成情况
+			c.onActiveEventComplete(msg, record)
+			atomic.AddInt32(&c.activeUnfinishedSum, -1)
+
+		case subPackMsg := <-c.reissuePackChan: // 分包补传的
+			c.onSubPackReplyEvent(subPackMsg)
+
+		case msg := <-c.msgChan: // 终端上传的
+			if len(record) > 0 && msg.hasComplete() { // 说明现在有主动的请求 等待回复中
+				if c.onActiveRespondEvent(record, msg) {
+					continue
 				}
-				if msg.hasComplete() || !c.filter { // 默认完整包才触发回复
-					c.defaultReplyEvent(msg)
-				}
+			}
+			if msg.hasComplete() || !c.filter { // 默认完整包才触发回复
+				c.defaultReplyEvent(msg)
 			}
 		}
 	}
@@ -269,16 +264,19 @@ func (c *connection) onActiveEvent(activeMsg *ActiveMessage, record map[uint16]*
 		PlatformSeq: seq,
 		Data:        data,
 	}
-	record[seq] = activeMsg
 	_, err := c.conn.Write(data)
 	replyMsg := newActiveMessage(seq, activeMsg.Command, data, err)
 	if v, ok := c.handles[activeMsg.Command]; ok {
 		replyMsg.Handler = v
 	}
+	c.onReadExecutionEvent(replyMsg)
+
+	activeMsg.convertMessage = replyMsg
+	record[seq] = activeMsg
 	if err != nil {
 		replyMsg.ExtensionFields.Err = errors.Join(ErrWriteDataFail, err)
 		c.activeMsgCompleteChan <- replyMsg
-	} else if activeMsg.OverTimeDuration >= 0 {
+	} else {
 		duration := 3 * time.Second
 		if activeMsg.OverTimeDuration > 0 {
 			duration = activeMsg.OverTimeDuration
@@ -384,10 +382,21 @@ func (c *connection) onActiveEventComplete(msg *Message, record map[uint16]*Acti
 		msg.ExtensionFields.PlatformData = v.ExtensionFields.Data
 		msg.ExtensionFields.PlatformCommand = v.Command
 		msg.ExtensionFields.ActiveSend = true
+		// 如0x8300 -> 0x0001
+		// 超时的情况 msg就是平台下发的指令 如0x8300
+		// 完成的情况 msg就是平台需要回复的 如0x0001
 		c.onWriteExecutionEvent(msg)
+		if msg.ExtensionFields.Err == nil {
+			// 完成的情况 前面已经触发了如0x0001的回调 在触发0x8300的回调
+			c.onWriteExecutionEvent(v.convertMessage)
+		}
 		v.replyChan <- msg
 
 		delete(record, seq)
+	} else {
+		slog.Warn("seq not found",
+			slog.Any("seq", seq),
+			slog.Any("msg", msg.Header.String()))
 	}
 }
 

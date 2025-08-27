@@ -13,6 +13,8 @@ type ActiveMessage struct {
 	header *jt808.Header
 	// replyChan 用于获取终端应答情况
 	replyChan chan *Message
+	// convertMessage 平台最终转换的Message
+	convertMessage *Message
 	// Key 唯一标识符 默认手机号
 	Key string `json:"key"`
 	// Command 平台下发的指令
