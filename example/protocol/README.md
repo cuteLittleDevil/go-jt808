@@ -1,8 +1,11 @@
 # 协议解析
 
-<h2 id="register"> 协议解析 </h2>
+<h2 id="register"> 1. 协议解析 </h2>
 
-输出详情 [代码参考](./register/main.go)
+- [代码参考](./register/main.go)
+
+<details>
+        <summary>输出详情</summary>
 
 ```
 模拟器生成的[7e010000300000000000010001001f006e63643132337777772e3830382e636f6d0000000000000000003736353433323101b2e2413132333435363738797e]
@@ -30,10 +33,16 @@
 }
 
 ```
+</details>
 
-<h2 id="custom"> 自定义附加信息 </h2>
 
-输出详情 [代码参考](./custom_parse/main.go)
+<h2 id="custom"> 2. 自定义附加信息 </h2>
+
+- [代码参考](./custom_parse/main.go)
+
+<details>
+        <summary>输出详情</summary>
+
 ```
 加入 [0200] 消息ID:[512] [终端-位置上报]
 消息体属性对象: {
@@ -152,9 +161,14 @@
 
 ```
 
-<h2 id="active_reply"> 查询终端参数 </h2>
+</details>
 
-输出详情 [代码参考](./active_reply/main.go)
+<h2 id="active_reply"> 3. 查询终端参数 </h2>
+
+- [代码参考](./active_reply/main.go)
+
+<details>
+        <summary>输出详情</summary>
 
 ```
 0x8104发送 7e810400000144199999990003437e
@@ -599,10 +613,16 @@
 
 
 ```
+</details>
 
-<h2 id="camera"> 立即拍摄例子 </h2>
+<h2 id="camera"> 4. 立即拍摄例子 </h2>
 
+- [代码参考](./camera/main.go)
 - 关闭分包过滤 观察进度
+
+<details>
+        <summary>输出详情</summary>
+
 ```
 # 需要用模拟器或者真实设备来连接
 ./camera -address=0.0.0.0:8089 -phone=1256256927
@@ -691,3 +711,8 @@
 }
 
 ```
+</details>
+
+<h2 id="custom_command"> 5. 自定义指令处理 </h2>
+
+- [代码参考](./custom_command/main.go)
