@@ -36,7 +36,6 @@ require (
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
 	github.com/goccy/go-json v0.10.4 // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/pprof v0.0.0-20211214055906-6f57359322fd // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
@@ -52,7 +51,7 @@ require (
 	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/nats-io/nkeys v0.4.9 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
-	github.com/nyaruka/phonenumbers v1.0.55 // indirect
+	github.com/nyaruka/phonenumbers v1.2.2 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
