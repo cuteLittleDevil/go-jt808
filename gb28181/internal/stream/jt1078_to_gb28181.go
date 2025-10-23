@@ -14,7 +14,7 @@ import (
 )
 
 type JT1078ToGB28181 struct {
-	// HasFilterPacket 收到jt1078错误包的时候 主动过滤 触发告警
+	// HasFilterPacket 收到jt1078错误包的时候 主动过滤 打印异常报文.
 	HasFilterPacket bool
 	streamTypes     []jt1078.PTType
 	hasAudio        bool

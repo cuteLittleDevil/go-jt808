@@ -9,7 +9,7 @@ const (
 	RTMPToPS
 	RelayPS
 	CustomPS
-	// JT1078ToPSFilterPacket 当jt1078报文解析错误的时候 跳过
+	// JT1078ToPSFilterPacket 当jt1078报文解析错误的时候 跳过.
 	JT1078ToPSFilterPacket
 )
 
