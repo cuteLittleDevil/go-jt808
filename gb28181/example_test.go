@@ -44,7 +44,8 @@ func Example() {
 			// 直接发送jt1078流测试
 			return info
 		}),
-		WithToGBType(command.JT1078ToPS),
+		// command.JT1078ToPSFilterPacket 可选择有报文错误就过滤的
+		WithToGBType(command.JT1078ToPS), // 默认报文有错误就退出
 		WithToGB28181er(func() command.ToGB28181er {
 			// 默认流处理 jt1078转ps流
 			return stream.NewJT1078T0GB28181()

@@ -9,6 +9,8 @@ const (
 	RTMPToPS
 	RelayPS
 	CustomPS
+	// JT1078ToPSFilterPacket 当jt1078报文解析错误的时候 跳过
+	JT1078ToPSFilterPacket
 )
 
 type ToGB28181er interface {
@@ -29,6 +31,8 @@ func (t ToGBType) String() string {
 		return "ps -> ps流"
 	case CustomPS:
 		return "自定义ps流处理"
+	case JT1078ToPSFilterPacket:
+		return "jt1078[包异常时跳过] -> ps流"
 	default:
 		return "unknown"
 	}

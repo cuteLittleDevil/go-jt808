@@ -14,19 +14,24 @@ import (
 )
 
 type JT1078ToGB28181 struct {
-	streamTypes []jt1078.PTType
-	hasAudio    bool
-	ssrc32      uint32
-	seq         uint16
-	sim         string
-	convertFunc func(ptType jt1078.PTType) (byte, bool)
-	packHandle  *packageParse
+	// HasFilterPacket 收到jt1078错误包的时候 主动过滤 触发告警
+	HasFilterPacket bool
+	streamTypes     []jt1078.PTType
+	hasAudio        bool
+	ssrc32          uint32
+	seq             uint16
+	sim             string
+	convertFunc     func(ptType jt1078.PTType) (byte, bool)
+	packHandle      *packageParse
 }
 
-func NewJT1078T0GB28181() *JT1078ToGB28181 {
-	return &JT1078ToGB28181{
-		packHandle: newPackageParse(),
+func NewJT1078T0GB28181(opts ...func(gb28181 *JT1078ToGB28181)) *JT1078ToGB28181 {
+	tmp := &JT1078ToGB28181{}
+	for _, opt := range opts {
+		opt(tmp)
 	}
+	tmp.packHandle = newPackageParse(tmp.HasFilterPacket)
+	return tmp
 }
 
 func (j *JT1078ToGB28181) OnAck(info *command.InviteInfo) {

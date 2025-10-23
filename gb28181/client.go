@@ -50,6 +50,12 @@ func New(sim string, opts ...Option) *Client {
 			client.Options.ToGB28181erFunc = func() command.ToGB28181er {
 				return stream.NewJT1078T0GB28181()
 			}
+		case command.JT1078ToPSFilterPacket:
+			client.Options.ToGB28181erFunc = func() command.ToGB28181er {
+				return stream.NewJT1078T0GB28181(func(gb28181 *stream.JT1078ToGB28181) {
+					gb28181.HasFilterPacket = true
+				})
+			}
 		case command.RelayPS:
 			client.Options.ToGB28181erFunc = func() command.ToGB28181er {
 				return stream.NewRelayPS()

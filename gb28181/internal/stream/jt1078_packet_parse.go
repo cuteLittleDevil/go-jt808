@@ -1,19 +1,24 @@
 package stream
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"github.com/cuteLittleDevil/go-jt808/protocol/jt1078"
+	"log/slog"
 )
 
 type packageParse struct {
-	historyData []byte
-	record      map[jt1078.DataType][]byte
+	historyData     []byte
+	record          map[jt1078.DataType][]byte
+	hasFilterPacket bool
 }
 
-func newPackageParse() *packageParse {
+func newPackageParse(hasFilterPacket bool) *packageParse {
 	return &packageParse{
-		historyData: make([]byte, 0, 1023),
-		record:      make(map[jt1078.DataType][]byte),
+		historyData:     make([]byte, 0, 1023),
+		record:          make(map[jt1078.DataType][]byte),
+		hasFilterPacket: hasFilterPacket,
 	}
 }
 
@@ -51,8 +56,18 @@ func (p *packageParse) parse(data []byte) func(func(packet *jt1078.Packet, err e
 					yield(packet, nil)
 				}
 			} else {
-				yield(nil, err)
-				return
+				if p.hasFilterPacket && errors.Is(err, jt1078.ErrUnqualifiedData) {
+					slog.Warn("filter packet",
+						slog.String("data", fmt.Sprintf("%x", p.historyData)))
+					if index := bytes.Index(p.historyData, []byte{0x30, 0x31, 0x63, 0x64}); index > 0 {
+						p.historyData = p.historyData[index:]
+					} else {
+						p.historyData = p.historyData[0:0]
+					}
+				} else {
+					yield(nil, err)
+					return
+				}
 			}
 		}
 	}
