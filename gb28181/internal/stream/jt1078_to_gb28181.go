@@ -88,9 +88,9 @@ func (j *JT1078ToGB28181) jt1078ToGB28181(pack *jt1078.Packet) [][]byte {
 	}
 	pts := uint32(pack.Timestamp)
 	// 如果jt1078包的时间不准确 就使用本地时间
-	if cur := time.Now().UnixMilli(); uint64(cur)-pack.Timestamp > 10*1000 {
-		pts = uint32(cur)
-	}
+	//if cur := time.Now().UnixMilli(); uint64(cur)-pack.Timestamp > 10*1000 {
+	//	pts = uint32(cur)
+	//}
 
 	var (
 		offset = 0
@@ -130,7 +130,7 @@ func (j *JT1078ToGB28181) jt1078ToGB28181(pack *jt1078.Packet) [][]byte {
 		result = append(result, createRTPPacket(data, func(packet *rtp.Packet) {
 			packet.PayloadType = j.getRtpType(pack.Flag.PT)
 			packet.SSRC = j.ssrc32
-			packet.Timestamp = pts
+			packet.Timestamp = uint32(time.Now().UnixMilli())
 			packet.SequenceNumber = j.seq
 			packet.Marker = end == 0
 			j.seq++

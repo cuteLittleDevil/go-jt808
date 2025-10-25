@@ -22,7 +22,7 @@ type adapterServer struct {
 }
 
 func newAdapterServer(info *command.InviteInfo, toGB28181er command.ToGB28181er) *adapterServer {
-	if info.Adapter.Type == command.JT1078ToPS {
+	if info.Adapter.Type == command.JT1078ToPS || info.Adapter.Type == command.JT1078ToPSFilterPacket {
 		info.Adapter.Port = info.JT1078Info.Port
 	}
 	return &adapterServer{
@@ -56,6 +56,8 @@ func (j *adapterServer) run() {
 
 	conn, err := in.AcceptTCP()
 	if err == nil {
+		slog.Info("jt1078 connect success",
+			slog.Any("addr", conn.RemoteAddr()))
 		go j.readPacket(conn)
 		gb28181Address := fmt.Sprintf("%s:%d", j.gb28181IP, j.gb28181Port)
 		if gb28181Conn, err := net.Dial("tcp", gb28181Address); err == nil {
