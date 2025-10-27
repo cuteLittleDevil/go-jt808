@@ -14,7 +14,7 @@ type adapterServer struct {
 	stopOnce    sync.Once
 	stopChan    chan struct{}
 	listen      *net.TCPListener
-	dataChan    chan []byte
+	rtpChan     chan [][]byte
 	streamPort  int
 	gb28181IP   string
 	gb28181Port int
@@ -29,7 +29,7 @@ func newAdapterServer(info *command.InviteInfo, toGB28181er command.ToGB28181er)
 		stopOnce:    sync.Once{},
 		stopChan:    make(chan struct{}),
 		listen:      nil,
-		dataChan:    make(chan []byte, 100),
+		rtpChan:     make(chan [][]byte, 100),
 		streamPort:  info.Adapter.Port,
 		gb28181IP:   info.IP,
 		gb28181Port: info.Port,
@@ -79,12 +79,13 @@ func (j *adapterServer) stop(msg string) {
 }
 
 func (j *adapterServer) readPacket(conn *net.TCPConn) {
-	data := make([]byte, 10*1024)
+	// 根据真实设备报文有3w+ byte调整
+	data := make([]byte, 10*10*1024)
 	defer func() {
 		clear(data)
 		_ = conn.Close()
 		j.stop("")
-		close(j.dataChan)
+		close(j.rtpChan)
 	}()
 	for {
 		select {
@@ -100,7 +101,16 @@ func (j *adapterServer) readPacket(conn *net.TCPConn) {
 					slog.Any("err", err))
 				return
 			} else if n > 0 {
-				j.dataChan <- data[:n]
+				// 转gb28181的ps包发送 会新生成rtp包make([]byte) 后面可以考虑内存复用
+				if rtps, err := j.toGB28181er.ConvertToGB28181(data[:n]); err != nil {
+					slog.Error("convert to gb28181 packet fail",
+						slog.String("address", conn.RemoteAddr().String()),
+						slog.String("data", fmt.Sprintf("%x", data)),
+						slog.Any("err", err))
+					return
+				} else {
+					j.rtpChan <- rtps
+				}
 			}
 		}
 	}
@@ -115,16 +125,7 @@ func (j *adapterServer) writeGB28181Packet(conn net.Conn) {
 		select {
 		case <-j.stopChan:
 			return
-		case data := <-j.dataChan:
-			// 转gb28181的ps包发送
-			rtps, err := j.toGB28181er.ConvertToGB28181(data)
-			if err != nil {
-				slog.Error("convert to gb28181 packet fail",
-					slog.String("address", conn.RemoteAddr().String()),
-					slog.String("data", fmt.Sprintf("%x", data)),
-					slog.Any("err", err))
-				return
-			}
+		case rtps := <-j.rtpChan:
 			for _, rtp := range rtps {
 				if len(rtp) > 0 {
 					if _, err := conn.Write(rtp); err != nil {
