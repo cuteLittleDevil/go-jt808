@@ -3,7 +3,7 @@ module client
 go 1.23.2
 
 require (
-	github.com/cuteLittleDevil/go-jt808/gb28181 v0.4.1
+	github.com/cuteLittleDevil/go-jt808/gb28181 v0.5.1
 	github.com/cuteLittleDevil/go-jt808/protocol v1.16.0
 	github.com/spf13/viper v1.20.1
 )

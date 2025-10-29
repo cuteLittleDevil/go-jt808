@@ -3,7 +3,7 @@ module rtsp
 go 1.23.4
 
 require (
-	github.com/cuteLittleDevil/go-jt808/gb28181 v0.5.0
+	github.com/cuteLittleDevil/go-jt808/gb28181 v0.5.1
 	github.com/go-resty/resty/v2 v2.16.5
 	github.com/spf13/viper v1.20.1
 )
