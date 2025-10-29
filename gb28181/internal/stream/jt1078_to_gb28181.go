@@ -141,7 +141,7 @@ func (j *JT1078ToGB28181) jt1078ToGB28181(pack *jt1078.Packet) [][]byte {
 			if j.rtpInfo.count == 0 {
 				j.rtpInfo.initRandNum = packet.Timestamp
 			}
-			// todo 用固定的 不好获取到真实的采样率 动态根据间隔计算又懒得找
+			// todo 用固定的 不好获取到真实的采样率 动态根据间隔计算又懒得找.
 			if streamID == streamIDVideo {
 				// h264 90000
 				packet.Timestamp = j.rtpInfo.initRandNum + 3000*j.rtpInfo.count

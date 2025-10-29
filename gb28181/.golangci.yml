@@ -9,6 +9,7 @@ linters:
     - nlreturn # return break continue 前面需要空一行
     - wsl # 部分语句需要换行
     - mnd # 魔数
+    - godox # 检测todo等字段的使用情况
   fast: true
 
 linters-settings:
