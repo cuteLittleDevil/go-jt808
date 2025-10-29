@@ -101,8 +101,10 @@ func (j *adapterServer) readPacket(conn *net.TCPConn) {
 					slog.Any("err", err))
 				return
 			} else if n > 0 {
-				// 转gb28181的ps包发送 会新生成rtp包make([]byte) 后面可以考虑内存复用
-				if rtps, err := j.toGB28181er.ConvertToGB28181(data[:n]); err != nil {
+				// 一开始认为处理够快 数据污染就污染了 用模拟流有时间间隔可以 实际流不行 #12
+				effectData := make([]byte, n)
+				copy(effectData, data[:n])
+				if rtps, err := j.toGB28181er.ConvertToGB28181(effectData); err != nil {
 					slog.Error("convert to gb28181 packet fail",
 						slog.String("address", conn.RemoteAddr().String()),
 						slog.String("data", fmt.Sprintf("%x", data)),

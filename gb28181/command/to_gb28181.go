@@ -15,7 +15,6 @@ const (
 
 type ToGB28181er interface {
 	OnAck(info *InviteInfo)
-	// ConvertToGB28181 目前都是新生成[]byte 避免数据污染问题 #12.
 	ConvertToGB28181(data []byte) ([][]byte, error)
 	OnBye(msg string)
 }

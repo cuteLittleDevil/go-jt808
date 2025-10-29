@@ -7,10 +7,9 @@ import (
 	"github.com/cuteLittleDevil/go-jt808/protocol/jt1078"
 	"github.com/pion/rtp"
 	"log/slog"
+	"math"
 	"math/rand/v2"
 	"strconv"
-	"sync"
-	"time"
 )
 
 type JT1078ToGB28181 struct {
@@ -23,6 +22,10 @@ type JT1078ToGB28181 struct {
 	sim             string
 	convertFunc     func(ptType jt1078.PTType) (byte, bool)
 	packHandle      *packageParse
+	rtpInfo         struct {
+		initRandNum uint32
+		count       uint32
+	}
 }
 
 func NewJT1078T0GB28181(opts ...func(gb28181 *JT1078ToGB28181)) *JT1078ToGB28181 {
@@ -86,6 +89,7 @@ func (j *JT1078ToGB28181) jt1078ToGB28181(pack *jt1078.Packet) [][]byte {
 	if pack.Flag.PT == jt1078.PTH264 || pack.Flag.PT == jt1078.PTH265 {
 		streamID = streamIDVideo
 	}
+
 	pts := uint32(pack.Timestamp)
 	// 如果jt1078包的时间不准确 就使用本地时间
 	//if cur := time.Now().UnixMilli(); uint64(cur)-pack.Timestamp > 10*1000 {
@@ -95,18 +99,19 @@ func (j *JT1078ToGB28181) jt1078ToGB28181(pack *jt1078.Packet) [][]byte {
 	var (
 		offset = 0
 		end    = len(pack.Body)
-		result = make([][]byte, 0, 1)
-		once   sync.Once
+		rtps   = make([][]byte, 0, 1)
+		isLast = false
 	)
 
-	for end > 0 {
+	for !isLast {
 		chunkSize := 1350
 		//chunkSize = len(pack.Body)
-		if offset+chunkSize >= len(pack.Body) {
-			chunkSize = len(pack.Body) - offset
+		if offset+chunkSize >= end {
+			chunkSize = end - offset
+			isLast = true
 		}
 		data := make([]byte, 0, 1460)
-		once.Do(func() {
+		if offset == 0 {
 			// 第一个包 I帧 psh + sys + psm + pes + h.264
 			// 第一个包 P帧或者B帧 psh + pes + h.264
 			// 音频 psh + pes + g711
@@ -120,23 +125,38 @@ func (j *JT1078ToGB28181) jt1078ToGB28181(pack *jt1078.Packet) [][]byte {
 				psm := NewProgramStreamMap(j.createStreamMap()...)
 				data = append(data, psm.Encode()...)
 			}
-			pes := NewPESPacket(streamID, uint16(len(pack.Body)), pts)
+			bodyLen := len(pack.Body)
+			if bodyLen > math.MaxUint16 {
+				bodyLen = 0
+			}
+			pes := NewPESPacket(streamID, uint16(bodyLen), pts)
 			data = append(data, pes.Encode()...)
-		})
+		}
 		data = append(data, pack.Body[offset:offset+chunkSize]...)
 
 		offset += chunkSize
-		end -= chunkSize
-		result = append(result, createRTPPacket(data, func(packet *rtp.Packet) {
+		rtps = append(rtps, createRTPPacket(data, func(packet *rtp.Packet) {
 			packet.PayloadType = j.getRtpType(pack.Flag.PT)
 			packet.SSRC = j.ssrc32
-			packet.Timestamp = uint32(time.Now().UnixMilli())
+			if j.rtpInfo.count == 0 {
+				j.rtpInfo.initRandNum = packet.Timestamp
+			}
+			// todo 用固定的 不好获取到真实的采样率 动态根据间隔计算又懒得找
+			if streamID == streamIDVideo {
+				// h264 90000
+				packet.Timestamp = j.rtpInfo.initRandNum + 3000*j.rtpInfo.count
+			} else {
+				// g711a 8000
+				packet.Timestamp = j.rtpInfo.initRandNum + 160*j.rtpInfo.count
+			}
 			packet.SequenceNumber = j.seq
-			packet.Marker = end == 0
+			packet.Marker = isLast
 			j.seq++
 		}))
 	}
-	return result
+
+	j.rtpInfo.count++
+	return rtps
 }
 
 func (j *JT1078ToGB28181) getRtpType(pt jt1078.PTType) byte {
