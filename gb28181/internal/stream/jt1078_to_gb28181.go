@@ -103,6 +103,7 @@ func (j *JT1078ToGB28181) jt1078ToGB28181(pack *jt1078.Packet) [][]byte {
 		isLast = false
 	)
 
+	//now := time.Now().UnixMilli()
 	for !isLast {
 		chunkSize := 1350
 		//chunkSize = len(pack.Body)
@@ -135,22 +136,27 @@ func (j *JT1078ToGB28181) jt1078ToGB28181(pack *jt1078.Packet) [][]byte {
 		data = append(data, pack.Body[offset:offset+chunkSize]...)
 
 		offset += chunkSize
-		rtps = append(rtps, createRTPPacket(data, func(packet *rtp.Packet) {
-			packet.PayloadType = j.getRtpType(pack.Flag.PT)
-			packet.SSRC = j.ssrc32
-			if j.rtpInfo.count == 0 {
-				j.rtpInfo.initRandNum = packet.Timestamp
+		rtps = append(rtps, createRTPPacket(data, func(rtp *rtp.Packet) {
+			rtp.PayloadType = j.getRtpType(pack.Flag.PT)
+			rtp.SSRC = j.ssrc32
+			if j.rtpInfo.initRandNum == 0 {
+				j.rtpInfo.initRandNum = rtp.Timestamp
 			}
 			// todo 用固定的 不好获取到真实的采样率 动态根据间隔计算又懒得找.
-			if streamID == streamIDVideo {
-				// h264 90000
-				packet.Timestamp = j.rtpInfo.initRandNum + 3000*j.rtpInfo.count
-			} else {
-				// g711a 8000
-				packet.Timestamp = j.rtpInfo.initRandNum + 160*j.rtpInfo.count
+			switch pack.Flag.PT {
+			case jt1078.PTH264, jt1078.PTH265:
+				// h264 90000 hz
+				rtp.Timestamp = j.rtpInfo.initRandNum + 3000*j.rtpInfo.count
+			case jt1078.PTG711A, jt1078.PTG711U:
+				// g711 8000 hz
+				rtp.Timestamp = j.rtpInfo.initRandNum + 160*j.rtpInfo.count
+			default:
+				slog.Warn("unknown pt",
+					slog.String("sim", j.sim),
+					slog.String("pt", pack.Flag.PT.String()))
 			}
-			packet.SequenceNumber = j.seq
-			packet.Marker = isLast
+			rtp.SequenceNumber = j.seq
+			rtp.Marker = isLast
 			j.seq++
 		}))
 	}
