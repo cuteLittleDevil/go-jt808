@@ -29,6 +29,10 @@ http://127.0.0.1:12079/
 ```
 ![m7s-play](./testdata/m7s/m7s-play.jpg)
 
+<div style="background-color: #fff3cd; padding: 12px; border-radius: 4px; border-left: 4px solid #ffc107;">
+🔔 <strong>注意</strong>  当前转ps流 时间戳可能错误 使用zlm的话 需要进行配置修改 protocol.modify_stamp=1
+</div>
+
 <h2 id="gb28181"> 2. gb28181 </h2>
 
 - 信令使用gb28181 https://github.com/gowvp/gb28181

@@ -90,6 +90,7 @@ func (j *JT1078ToGB28181) jt1078ToGB28181(pack *jt1078.Packet) [][]byte {
 		streamID = streamIDVideo
 	}
 
+	// todo 如果时间戳不对 让流媒体进行处理 比如zlm修改 protocol.modify_stamp=1
 	pts := uint32(pack.Timestamp)
 	// 如果jt1078包的时间不准确 就使用本地时间
 	//if cur := time.Now().UnixMilli(); uint64(cur)-pack.Timestamp > 10*1000 {
