@@ -57,7 +57,8 @@ func (j *adapterServer) run() {
 	conn, err := in.AcceptTCP()
 	if err == nil {
 		slog.Info("jt1078 connect success",
-			slog.Any("addr", conn.RemoteAddr()))
+			slog.String("listen addr", in.Addr().String()),
+			slog.Any("conn", conn.RemoteAddr()))
 		go j.readPacket(conn)
 		gb28181Address := fmt.Sprintf("%s:%d", j.gb28181IP, j.gb28181Port)
 		if gb28181Conn, err := net.Dial("tcp", gb28181Address); err == nil {

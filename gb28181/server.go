@@ -137,7 +137,7 @@ func (c *Client) defaultInvite(inviteInfo *command.InviteInfo) *command.InviteIn
 	}
 
 	switch inviteInfo.Adapter.Type {
-	case command.JT1078ToPS:
+	case command.JT1078ToPS, command.JT1078ToPSFilterPacket:
 		// 通道就是通道ID最后一位
 		channel := inviteInfo.TargetChannelId[len(inviteInfo.TargetChannelId)-1] - '0'
 		inviteInfo.JT1078Info = struct {
@@ -150,7 +150,7 @@ func (c *Client) defaultInvite(inviteInfo *command.InviteInfo) *command.InviteIn
 			Sim:         c.Options.Sim,
 			Channel:     int(channel),
 			Port:        inviteInfo.Port - 100, // 端口默认是连接的流媒体端口-100
-			StreamTypes: []jt1078.PTType{jt1078.PTH264, jt1078.PTG711A},
+			StreamTypes: []jt1078.PTType{jt1078.PTH264},
 		}
 		inviteInfo.Adapter.Port = inviteInfo.JT1078Info.Port
 	case command.CustomPS:
