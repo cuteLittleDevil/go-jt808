@@ -65,6 +65,10 @@ func (c *connection) run() {
 func (c *connection) reader() {
 	var (
 		// 消息体长度最大为 10bit 也就是 1023 的字节
+		// 实际上reader相当于同步执行的 因此无需拷贝一份新的
+		// 1. onReadExecutionEvent 这里处理后在read读取因此不会污染 如果onRead事件需要的话 用户自行拷贝一份
+		// 2. 历史的图片数据是make一份新的 因此一样不会有污染
+		// 3. write异步的情况 即使污染了也不影响 因为实际用不到（仅需要已经序列化的头部)
 		curData = make([]byte, 1023)
 		pack    = newPackageParse()
 		join    = false

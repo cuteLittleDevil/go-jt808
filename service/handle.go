@@ -33,6 +33,8 @@ type (
 		// OnReadExecutionEvent 读事件 以下两种情况触发
 		// 1. 终端上传的报文到平台完成时 如0x0200位置信息
 		// 2. 平台主动下发报文到终端后 如0x9101实时视频
+		// 注意这里面的msg.JTMessage.Body在指令的情况[]byte是复用的（因此需要使用请自己深拷贝)
+		// 仅在分包完成的总包时是新[]byte
 		OnReadExecutionEvent(msg *Message)
 		// OnWriteExecutionEvent 写事件 以下情况触发
 		// 1. 回复终端主动上传的报文 如0x0200 -> 0x8001 收到设备位置信息 平台回复通用应答

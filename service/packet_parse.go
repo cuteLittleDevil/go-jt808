@@ -127,8 +127,8 @@ func (p *packageParse) completePack(msg *Message) (*Message, bool) {
 			p.add(id, header)
 		}
 
-		if seq > len(p.subcontractingRecord[id]) {
-			slog.Warn("abnormal packet length",
+		if seq > len(p.subcontractingRecord[id]) || seq <= 0 {
+			slog.Warn("completePack",
 				slog.Int("seq", seq),
 				slog.Int("record sum", len(p.subcontractingRecord[id])),
 				slog.String("phone", header.TerminalPhoneNo),
@@ -136,7 +136,10 @@ func (p *packageParse) completePack(msg *Message) (*Message, bool) {
 			return nil, false
 		}
 
-		p.subcontractingRecord[id][seq-1] = msg.JTMessage.Body
+		// 分包的情况 每一次都确保是新的
+		p.subcontractingRecord[id][seq-1] = make([]byte, len(msg.JTMessage.Body))
+		copy(p.subcontractingRecord[id][seq-1], msg.JTMessage.Body)
+
 		p.timeoutRecord[id].updateTime = time.Now()
 		receivedSum := 0
 		for _, data := range p.subcontractingRecord[id] {
