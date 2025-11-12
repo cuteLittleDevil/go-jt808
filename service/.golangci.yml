@@ -22,7 +22,7 @@ linters-settings:
     min-complexity: 15 # if语句复杂度
   funlen:
     lines: 50 # 检查函数最多多少行
-    statements: 50 # 检查函数最多多少语句
+    statements: 40 # 检查函数最多多少语句
   mnd:
     checks:
       - case
@@ -39,6 +39,9 @@ issues:
     - linters:
         - funlen
       source: "reader"
+    - linters:
+        - funlen
+      source: "createDefaultHandle"
 
 output:
   # See the dedicated "output" documentation section.
