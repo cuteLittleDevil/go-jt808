@@ -1,0 +1,10 @@
+attach:
+  # 附件服务地址
+  addr: '0.0.0.0:17017'
+  # 1-苏标 2-黑标 3-广东标 4-湖南标 5-四川标
+  # 实际只测试了苏标 其他标准有问题提issues
+  type: 1
+  # 反正是内网使用 目前只支持http 需要https的话提issues
+  onEventURL: "http://127.0.0.1:17018/api/v1/attach/event"
+  # 最终是目录前缀+sim卡号+文件名 如/home/attachment/295696659617/test.jpg
+  dirPrefix: "/home/attachment/"

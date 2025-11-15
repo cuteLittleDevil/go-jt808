@@ -190,10 +190,15 @@ func parseDetails(_ context.Context, c *app.RequestContext) {
 			consts.T0200LocationReport:         &location{},
 			consts.T0805CameraShootImmediately: &model.T0x0805{},
 			consts.T0801MultimediaDataUpload:   &model.T0x0801{},
+			consts.P9208AlarmAttachUpload:      &model.P0x9208{},
 		}
 	}))
-	c.String(http.StatusOK, "[终端]%s \n",
-		t.ProtocolDetails(req.Message))
+	reply := t.ProtocolDetails(req.Message)
+	if reply == "" {
+		c.String(http.StatusOK, "[终端] 可能是未实现的指令 请联系QQ 792192820")
+	} else {
+		c.String(http.StatusOK, "[终端]%s \n", reply)
+	}
 }
 
 type location struct {
