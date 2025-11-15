@@ -5,8 +5,8 @@ go 1.23.2
 require (
 	github.com/cloudwego/hertz v0.9.4
 	github.com/cuteLittleDevil/go-jt808/attachment v0.3.0
-	github.com/cuteLittleDevil/go-jt808/protocol v1.14.0
-	github.com/cuteLittleDevil/go-jt808/service v1.11.0
+	github.com/cuteLittleDevil/go-jt808/protocol v1.16.0
+	github.com/cuteLittleDevil/go-jt808/service v1.11.5
 	github.com/cuteLittleDevil/go-jt808/shared v1.6.0
 	github.com/cuteLittleDevil/go-jt808/terminal v1.2.0
 	github.com/go-resty/resty/v2 v2.16.2
@@ -75,9 +75,9 @@ require (
 	golang.org/x/crypto v0.36.0 // indirect
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
 	golang.org/x/net v0.38.0 // indirect
-	golang.org/x/sync v0.12.0 // indirect
+	golang.org/x/sync v0.15.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
-	golang.org/x/text v0.23.0 // indirect
+	golang.org/x/text v0.26.0 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

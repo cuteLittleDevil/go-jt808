@@ -46,7 +46,7 @@ func main() {
 			return &meFileEvent{file: f}
 		}),
 	)
-	go client()
+	go client(address)
 	attach.Run()
 }
 
@@ -55,7 +55,7 @@ type JT808Dataer interface {
 	Encode() []byte
 }
 
-func client() {
+func client(address string) {
 	time.Sleep(time.Second) // 等待文件服务完全启动
 	t := terminal.New(
 		terminal.WithHeader(consts.JT808Protocol2013, phone),
@@ -64,7 +64,7 @@ func client() {
 	fmt.Println("传输的文件数量", len(t0x1211s))
 	t0x1210 := uploadNotice(t0x1211s)
 
-	conn, err := net.Dial("tcp", "0.0.0.0:17017")
+	conn, err := net.Dial("tcp", address)
 	if err != nil {
 		return
 	}

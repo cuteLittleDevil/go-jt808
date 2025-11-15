@@ -4,8 +4,8 @@ go 1.23.2
 
 require (
 	github.com/cloudwego/hertz v0.9.5
-	github.com/cuteLittleDevil/go-jt808/protocol v1.14.0
-	github.com/cuteLittleDevil/go-jt808/service v1.11.0
+	github.com/cuteLittleDevil/go-jt808/protocol v1.16.0
+	github.com/cuteLittleDevil/go-jt808/service v1.11.5
 	github.com/cuteLittleDevil/go-jt808/shared v1.6.0
 	github.com/cuteLittleDevil/go-jt808/terminal v1.2.0
 	github.com/jlaffaye/ftp v0.2.0
@@ -29,6 +29,6 @@ require (
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	golang.org/x/arch v0.0.0-20210923205945-b76863e36670 // indirect
 	golang.org/x/sys v0.24.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/text v0.26.0 // indirect
 	google.golang.org/protobuf v1.36.5 // indirect
 )

@@ -55,7 +55,7 @@ func (f *meFileEvent) OnEvent(progress *attachment.PackageProgress) {
 	case attachment.ProgressStageStreamDataComplete:
 		str += " 目前传输文件整体进度:\n"
 		for name, v := range progress.Record {
-			str += fmt.Sprintf("name=[%s] progres=[%d/%d]\n", name, v.CurrentSize, v.FileSize)
+			str += fmt.Sprintf("name=[%s] progress=[%d/%d]\n", name, v.CurrentSize, v.FileSize)
 		}
 	case attachment.ProgressStageComplete:
 		var t0x1212 model.T0x1212

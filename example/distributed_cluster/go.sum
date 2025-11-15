@@ -1,9 +1,9 @@
-github.com/cuteLittleDevil/go-jt808/protocol v1.12.0 h1:vwNZ7mcSpQt9VExjtjgBKzMqKdh8Ey6qOViFYgJOin8=
-github.com/cuteLittleDevil/go-jt808/protocol v1.12.0/go.mod h1:8N/nkymtt1XHIbLQT8zmB77hKizg7wsTDnSSfEjcnMs=
+github.com/cuteLittleDevil/go-jt808/protocol v1.16.0 h1:svWxOTAfKLchDp/5kwwVVhoFprLM98QJUgmYCs5ixj8=
+github.com/cuteLittleDevil/go-jt808/protocol v1.16.0/go.mod h1:5wF2o2JCjVVj/oAqkwvCzgu23UYMrnDO+PkhiS0/egs=
 github.com/cuteLittleDevil/go-jt808/service v1.6.0 h1:1tHLtQTkJ8SLbKo78giVOUHgLZr9Rm6uft8aJnVMw3o=
 github.com/cuteLittleDevil/go-jt808/service v1.6.0/go.mod h1:8TLDKKltcrTYyQ/RUIHVpvhFHxJqIGrzaiVivrqKPA0=
-github.com/cuteLittleDevil/go-jt808/shared v1.5.0 h1:iKlFsH5HvwUC//9tCq4GEDRUIvpmCfu/Li1oa6jNTYs=
-github.com/cuteLittleDevil/go-jt808/shared v1.5.0/go.mod h1:BMWFmkDRLNjcXcuiPm/yphfWfZ6xNuTAJDkDDNhysOM=
+github.com/cuteLittleDevil/go-jt808/shared v1.6.0 h1:aJ6a8f3AVS47p5Nja7+/kLRqhnRcv+j/7Jmd+SpnkQ4=
+github.com/cuteLittleDevil/go-jt808/shared v1.6.0/go.mod h1:BMWFmkDRLNjcXcuiPm/yphfWfZ6xNuTAJDkDDNhysOM=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
 github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/klauspost/compress v1.17.2 h1:RlWWUY/Dr4fL8qk9YG7DTZ7PDgME2V4csBXA8L/ixi4=

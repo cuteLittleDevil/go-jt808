@@ -6,7 +6,7 @@ require (
 	github.com/cuteLittleDevil/go-jt808/adapter v0.2.0
 	github.com/cuteLittleDevil/go-jt808/gb28181 v0.5.1
 	github.com/cuteLittleDevil/go-jt808/protocol v1.16.0
-	github.com/cuteLittleDevil/go-jt808/service v1.11.4
+	github.com/cuteLittleDevil/go-jt808/service v1.11.5
 	github.com/cuteLittleDevil/go-jt808/shared v1.6.0
 	github.com/cuteLittleDevil/go-jt808/terminal v1.2.0
 	github.com/gin-gonic/gin v1.10.1

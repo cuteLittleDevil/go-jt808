@@ -50,7 +50,7 @@ func init() {
 func main() {
 	attach := attachment.New(
 		attachment.WithNetwork("tcp"),
-		attachment.WithHostPorts(fmt.Sprintf("%s:%d", attachIP, attachPort)),
+		attachment.WithHostPorts(fmt.Sprintf("0.0.0.0:%d", attachPort)),
 	)
 	attach.Run()
 }
