@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
+	"github.com/cuteLittleDevil/go-jt808/protocol/model"
 	"os"
 	"path/filepath"
 	"time"
@@ -24,11 +26,11 @@ func init() {
 	fmt.Println(string(b))
 
 	writeSyncer := &lumberjack.Logger{
-		Filename:   "./app.log",
-		MaxSize:    1,    // 单位是MB，日志文件最大为1MB
-		MaxBackups: 3,    // 最多保留3个旧文件
-		MaxAge:     28,   // 最大保存天数为28天
-		Compress:   true, // 是否压缩旧文件
+		Filename:   viper.GetString("attach.log.name"),
+		MaxSize:    viper.GetInt("attach.log.maxSize"),    // 单位是MB，日志文件最大为xMB
+		MaxBackups: viper.GetInt("attach.log.maxBackups"), // 最多保留x个旧文件
+		MaxAge:     viper.GetInt("attach.log.maxAge"),     // 最大保存天数为x天
+		Compress:   viper.GetBool("attach.log.compress"),  // 是否压缩旧文件
 	}
 	slog.SetDefault(slog.New(slog.NewTextHandler(writeSyncer, &slog.HandlerOptions{
 		AddSource: true,
@@ -54,6 +56,7 @@ func main() {
 type FileUploadEventHandler struct {
 	eventURL  string
 	dirPrefix string
+	alarmID   string
 }
 
 func (h *FileUploadEventHandler) OnEvent(progress *attachment.PackageProgress) {
@@ -63,48 +66,67 @@ func (h *FileUploadEventHandler) OnEvent(progress *attachment.PackageProgress) {
 	}
 
 	event := map[string]any{
-		"phone":  phoneNo,
-		"status": progress.ProgressStage,
-		"remark": progress.ProgressStage.String(),
+		"phone":   phoneNo,
+		"status":  progress.ProgressStage,
+		"remark":  progress.ProgressStage.String(),
+		"alarmID": h.alarmID,
 	}
-	// 只有成功完成才保存文件并上报文件信息
-	if progress.ProgressStage == attachment.ProgressStageSuccessQuit {
+
+	switch progress.ProgressStage {
+	case attachment.ProgressStageInit:
+		h.alarmID = h.getAlarmID(progress.ExtensionFields.RecentTerminalMessage)
+		event["alarmID"] = h.alarmID
+	case attachment.ProgressStageSuccessQuit:
 		saveDir := filepath.Join(h.dirPrefix, phoneNo)
-		if err := os.MkdirAll(saveDir, os.ModePerm); err != nil {
-			slog.Error("mkdir failed",
-				slog.String("dir", saveDir),
-				slog.Any("err", err))
-		}
-		type FileSaveResult struct {
-			Name string `json:"name"`
-			Path string `json:"path"`
-			Size uint32 `json:"size"`
-			Err  string `json:"err,omitempty"` // 只有出错时才输出
-		}
-
-		fileResults := make([]FileSaveResult, 0, len(progress.Record))
-		for fileName, pack := range progress.Record {
-			savePath := filepath.Join(saveDir, fileName)
-			result := FileSaveResult{
-				Name: fileName,
-				Path: savePath,
-				Size: pack.FileSize,
-			}
-			if err := os.WriteFile(savePath, pack.StreamBody, 0o644); err != nil {
-				result.Err = err.Error()
-				slog.Error("save file failed",
-					slog.String("path", savePath),
-					slog.Any("err", err))
-			}
-			fileResults = append(fileResults, result)
-		}
-
-		event["files"] = fileResults
+		event["files"] = h.handleFiles(saveDir, progress.Record)
+	default:
 	}
 
 	if h.eventURL != "" {
 		go h.reportEvent(event)
 	}
+}
+
+func (h *FileUploadEventHandler) getAlarmID(msg *jt808.JTMessage) string {
+	var t0x1210 model.T0x1210
+	if err := t0x1210.Parse(msg); err != nil {
+		slog.Error("parse t0x1210 failed",
+			slog.Any("error", err))
+		return ""
+	}
+	return t0x1210.AlarmID
+}
+
+func (h *FileUploadEventHandler) handleFiles(saveDir string, record map[string]*attachment.Package) any {
+	if err := os.MkdirAll(saveDir, os.ModePerm); err != nil {
+		slog.Error("mkdir failed",
+			slog.String("dir", saveDir),
+			slog.Any("err", err))
+	}
+	type FileSaveResult struct {
+		Name string `json:"name"`
+		Path string `json:"path"`
+		Size uint32 `json:"size"`
+		Err  string `json:"err,omitempty"` // 只有出错时才输出
+	}
+
+	fileResults := make([]FileSaveResult, 0, len(record))
+	for fileName, pack := range record {
+		savePath := filepath.Join(saveDir, fileName)
+		result := FileSaveResult{
+			Name: fileName,
+			Path: savePath,
+			Size: pack.FileSize,
+		}
+		if err := os.WriteFile(savePath, pack.StreamBody, 0o644); err != nil {
+			result.Err = err.Error()
+			slog.Error("save file failed",
+				slog.String("path", savePath),
+				slog.Any("err", err))
+		}
+		fileResults = append(fileResults, result)
+	}
+	return fileResults
 }
 
 func (h *FileUploadEventHandler) reportEvent(event map[string]any) {

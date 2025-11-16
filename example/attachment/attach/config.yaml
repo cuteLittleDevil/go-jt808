@@ -1,6 +1,16 @@
 attach:
   # 附件服务地址
   addr: '0.0.0.0:17017'
+  log:
+    name: 'app.log'
+    # 单位是MB，日志文件最大为1MB
+    maxSize: 1
+    # 最大保存天数为30天
+    maxAge: 30
+    # 最多保留3个旧文件
+    maxBackups: 3
+    # 是否压缩旧文件
+    compress: true
   # 1-苏标 2-黑标 3-广东标 4-湖南标 5-四川标
   # 实际只测试了苏标 其他标准有问题提issues
   type: 1
