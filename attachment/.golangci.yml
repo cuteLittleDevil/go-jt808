@@ -28,6 +28,9 @@ issues:
     - linters:
         - funlen
       source: "OnEvent"
+    - linters:
+        - funlen
+      source: "run"
 
 output:
   # See the dedicated "output" documentation section.

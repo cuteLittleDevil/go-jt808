@@ -43,13 +43,27 @@ func (c *connection) run() {
 				RecentPlatformData:    nil,
 				ActiveSafetyType:      c.activeSafetyType,
 				Err:                   nil,
+				TerminalPhoneNo:       "",
+				Debug: struct {
+					RemoteAddr  string
+					NetErr      error
+					HistoryData []byte
+				}{
+					RemoteAddr:  c.conn.RemoteAddr().String(),
+					NetErr:      nil,
+					HistoryData: nil,
+				},
 			},
 		}
 	)
 	defer func() {
-		progress.ProgressStage = ProgressStageSuccessQuit
-		if progress.ExtensionFields.Err != nil {
-			progress.ProgressStage = ProgressStageFailQuit
+		if progress.ExtensionFields.TerminalPhoneNo == "" {
+			progress.ProgressStage = ProgressStageUnexpectedExit
+		} else {
+			progress.ProgressStage = ProgressStageSuccessQuit
+			if progress.ExtensionFields.Err != nil {
+				progress.ProgressStage = ProgressStageFailQuit
+			}
 		}
 		c.fileEventer.OnEvent(progress)
 		clear(curData)
@@ -58,6 +72,8 @@ func (c *connection) run() {
 
 	for {
 		if n, err := c.conn.Read(curData); err != nil {
+			progress.ExtensionFields.Debug.NetErr = err
+			progress.ExtensionFields.Debug.HistoryData = progress.historyData
 			if errors.Is(err, net.ErrClosed) || errors.Is(err, io.EOF) {
 				return
 			}

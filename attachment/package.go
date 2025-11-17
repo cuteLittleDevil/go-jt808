@@ -34,6 +34,14 @@ type (
 		consts.ActiveSafetyType
 		// Err 异常情况
 		Err error
+		// TerminalPhoneNo 手机号 解析1210时记录
+		TerminalPhoneNo string
+		// Debug 记录tcp异常的详情
+		Debug struct {
+			RemoteAddr  string
+			NetErr      error
+			HistoryData []byte
+		}
 	}
 
 	Package struct {
@@ -195,6 +203,7 @@ func (p *PackageProgress) stageJT808Data() error {
 		return err
 	}
 	p.ExtensionFields.RecentTerminalMessage = jtMsg
+	p.ExtensionFields.TerminalPhoneNo = jtMsg.Header.TerminalPhoneNo
 	p.handle.OnPackageProgressEvent(p)
 	return nil
 }

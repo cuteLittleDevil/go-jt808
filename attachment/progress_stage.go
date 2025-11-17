@@ -11,6 +11,7 @@ const (
 	ProgressStageComplete
 	ProgressStageSuccessQuit
 	ProgressStageFailQuit
+	ProgressStageUnexpectedExit
 )
 
 func (p ProgressStage) String() string {
@@ -31,6 +32,8 @@ func (p ProgressStage) String() string {
 		return "成功退出状态-所有的文件都接收完成"
 	case ProgressStageFailQuit:
 		return "异常退出状态-文件没有全部接收完成"
+	case ProgressStageUnexpectedExit:
+		return "意外退出状态-手机号都未解析"
 	}
 	return ""
 }
