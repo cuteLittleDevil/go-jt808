@@ -71,7 +71,7 @@ func (f *meFileEvent) OnEvent(progress *attachment.PackageProgress) {
 	case attachment.ProgressStageFailQuit:
 		str += fmt.Sprintf(" 文件传输异常 [%v]", extension.Err)
 	case attachment.ProgressStageSuccessQuit:
-		phone := progress.ExtensionFields.RecentTerminalMessage.Header.TerminalPhoneNo
+		phone := progress.ExtensionFields.TerminalPhoneNo
 		str += fmt.Sprintf(" 文件传输成功 开始保存 保存数量[%d]\n", len(progress.Record))
 		_ = os.MkdirAll(phone, os.ModePerm)
 		for name, pack := range progress.Record {
@@ -80,5 +80,9 @@ func (f *meFileEvent) OnEvent(progress *attachment.PackageProgress) {
 			str += fmt.Sprintf("保存文件[%s] 文件大小[%d byte] 保存情况[%v]\n",
 				savePath, len(pack.StreamBody), err)
 		}
+	case attachment.ProgressStageUnexpectedExit:
+		str += fmt.Sprintf(" ip=[%s] 未知错误=[%v] data=[%x]",
+			extension.Debug.RemoteAddr, extension.Debug.NetErr, extension.Debug.HistoryData)
+	default:
 	}
 }

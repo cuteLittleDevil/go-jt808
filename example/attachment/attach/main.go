@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
 	"github.com/cuteLittleDevil/go-jt808/protocol/model"
+	"github.com/go-resty/resty/v2"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/cuteLittleDevil/go-jt808/attachment"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
-	"github.com/go-resty/resty/v2"
 	"github.com/natefinch/lumberjack"
 	"github.com/spf13/viper"
 	"log/slog"
@@ -34,19 +34,30 @@ func init() {
 	}
 	slog.SetDefault(slog.New(slog.NewTextHandler(writeSyncer, &slog.HandlerOptions{
 		AddSource: true,
-		Level:     slog.LevelDebug,
+		Level:     slog.Level(viper.GetInt("attach.log.level")),
+		ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
+			if a.Key == "source" {
+				if source, ok := a.Value.Any().(*slog.Source); ok {
+					// 只保留文件名部分
+					a.Value = slog.AnyValue(filepath.Base(source.File))
+				}
+			}
+			return a
+		},
 	})))
 }
 
 func main() {
+	afType := consts.ActiveSafetyType(viper.GetInt("attach.type"))
 	attach := attachment.New(
 		attachment.WithNetwork("tcp"),
-		attachment.WithActiveSafetyType(consts.ActiveSafetyType(viper.GetInt("attach.type"))),
+		attachment.WithActiveSafetyType(afType),
 		attachment.WithHostPorts(viper.GetString("attach.addr")),
 		attachment.WithFileEventerFunc(func() attachment.FileEventer {
 			return &FileUploadEventHandler{
-				eventURL:  viper.GetString("attach.onEventURL"),
-				dirPrefix: viper.GetString("attach.dirPrefix"),
+				eventURL:         viper.GetString("attach.onEventURL"),
+				dirPrefix:        viper.GetString("attach.dirPrefix"),
+				ActiveSafetyType: afType,
 			}
 		}),
 	)
@@ -57,19 +68,30 @@ type FileUploadEventHandler struct {
 	eventURL  string
 	dirPrefix string
 	alarmID   string
+	consts.ActiveSafetyType
 }
 
 func (h *FileUploadEventHandler) OnEvent(progress *attachment.PackageProgress) {
-	phoneNo := ""
-	if msg := progress.ExtensionFields.RecentTerminalMessage; msg != nil && msg.Header != nil {
-		phoneNo = msg.Header.TerminalPhoneNo
-	}
+	phoneNo := progress.ExtensionFields.TerminalPhoneNo
 
 	event := map[string]any{
 		"phone":   phoneNo,
-		"status":  progress.ProgressStage,
+		"status":  int(progress.ProgressStage),
 		"remark":  progress.ProgressStage.String(),
 		"alarmID": h.alarmID,
+	}
+
+	if debug := progress.ExtensionFields.Debug; debug.NetErr != nil {
+		event["addr"] = debug.RemoteAddr
+		event["netErr"] = debug.NetErr
+		event["historyData"] = fmt.Sprintf("%x", debug.HistoryData)
+	}
+
+	if err := progress.ExtensionFields.Err; err != nil {
+		slog.Error("on event",
+			slog.String("phone", phoneNo),
+			slog.Any("error", err))
+		event["error"] = err.Error()
 	}
 
 	switch progress.ProgressStage {
@@ -82,13 +104,19 @@ func (h *FileUploadEventHandler) OnEvent(progress *attachment.PackageProgress) {
 	default:
 	}
 
+	slog.Debug("on event",
+		slog.Any("event", event))
 	if h.eventURL != "" {
 		go h.reportEvent(event)
 	}
 }
 
 func (h *FileUploadEventHandler) getAlarmID(msg *jt808.JTMessage) string {
-	var t0x1210 model.T0x1210
+	t0x1210 := model.T0x1210{
+		P9208AlarmSign: model.P9208AlarmSign{
+			ActiveSafetyType: h.ActiveSafetyType,
+		},
+	}
 	if err := t0x1210.Parse(msg); err != nil {
 		slog.Error("parse t0x1210 failed",
 			slog.Any("error", err))

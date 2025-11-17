@@ -11,6 +11,8 @@ attach:
     maxBackups: 3
     # 是否压缩旧文件
     compress: true
+    # -4=debug 0=info 4=warn 8=error
+    level: -4
   # 1-苏标 2-黑标 3-广东标 4-湖南标 5-四川标
   # 实际只测试了苏标 其他标准有问题提issues
   type: 1
