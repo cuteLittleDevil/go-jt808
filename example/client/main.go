@@ -9,16 +9,20 @@ import (
 	"github.com/cuteLittleDevil/go-jt808/terminal"
 	"github.com/natefinch/lumberjack"
 	"github.com/spf13/viper"
+	"log"
 	"log/slog"
 	"net"
+	"net/http"
+	"sort"
 	"sync"
 	"time"
 )
 
 type (
 	Config struct {
-		Server ServerConfig `yaml:"server"`
-		Client ClientConfig `yaml:"client"`
+		HTTPAddr string       `yaml:"httpAddr"`
+		Server   ServerConfig `yaml:"server"`
+		Client   ClientConfig `yaml:"client"`
 	}
 
 	ServerConfig struct {
@@ -42,7 +46,26 @@ type (
 	}
 )
 
-var GlobalConfig = &Config{}
+type (
+	// key=sim卡号
+	sessionOperationFunc func(record map[string]*Record)
+
+	Record struct {
+		Sim string `json:"sim"`
+		Sum int    `json:"sum"`
+		// key是指令名称 如终端-位置上报
+		Commands   map[string]int `json:"commands"`
+		CreateTime time.Time      `json:"createTime"`
+		UpdateTime time.Time      `json:"updateTime"`
+	}
+)
+
+var (
+	GlobalConfig = &Config{}
+	Manage       = &Manager{
+		operationFuncChan: make(chan sessionOperationFunc, 100),
+	}
+)
 
 func init() {
 	v := viper.New()
@@ -69,15 +92,16 @@ func init() {
 
 	b, _ := json.MarshalIndent(GlobalConfig, "", "  ")
 	fmt.Println(string(b))
+	go Manage.Run()
 }
 
 func main() {
+	go httpApi()
 	var wg sync.WaitGroup
 	for i := 0; i < GlobalConfig.Client.Sum; i++ {
 		wg.Add(1)
 		sim := fmt.Sprintf("%d", GlobalConfig.Client.Sim+i)
 		go func(sim string) {
-			defer wg.Done()
 			client(sim)
 		}(sim)
 		time.Sleep(time.Duration(GlobalConfig.Client.IntervalMicrosecond) * time.Microsecond)
@@ -141,6 +165,8 @@ func client(phone string) {
 			_, _ = conn.Write(auth)
 		}
 	}
+
+	Manage.Add(phone)
 	writeChan := make(chan []byte, 10)
 	for _, v := range GlobalConfig.Client.Commands {
 		if v.Enable {
@@ -160,6 +186,8 @@ func client(phone string) {
 					if command.Sum != 0 && count == command.Sum {
 						return
 					}
+					tmp := fmt.Sprintf("%04x:%s", command.Name, consts.JT808CommandType(command.Name))
+					Manage.Update(phone, tmp)
 				}
 			}(v)
 		}
@@ -167,4 +195,91 @@ func client(phone string) {
 	for sendData := range writeChan {
 		_, _ = conn.Write(sendData)
 	}
+}
+
+type Manager struct {
+	operationFuncChan chan sessionOperationFunc
+}
+
+func (m *Manager) Run() {
+	records := make(map[string]*Record)
+	for op := range m.operationFuncChan {
+		op(records)
+	}
+}
+
+func (m *Manager) Add(sim string) {
+	ch := make(chan struct{})
+	m.operationFuncChan <- func(records map[string]*Record) {
+		defer close(ch)
+		records[sim] = &Record{
+			Sim:        sim,
+			Commands:   map[string]int{},
+			CreateTime: time.Now(),
+		}
+	}
+	<-ch
+}
+
+func (m *Manager) Update(sim string, command string) {
+	ch := make(chan struct{})
+	m.operationFuncChan <- func(records map[string]*Record) {
+		defer close(ch)
+		if v, ok := records[sim]; ok {
+			v.Sum++
+			v.Commands[command]++
+			v.UpdateTime = time.Now()
+			records[sim] = v
+		}
+	}
+	<-ch
+}
+
+func (m *Manager) ShowAll(sim string) any {
+	reply := make([]Record, 0, 100)
+	ch := make(chan int, 1)
+	m.operationFuncChan <- func(records map[string]*Record) {
+		defer close(ch)
+		allSum := 0
+		if sim == "" {
+			for _, v := range records {
+				reply = append(reply, *v)
+				allSum += v.Sum
+			}
+		} else if v, ok := records[sim]; ok {
+			reply = append(reply, *v)
+			allSum = v.Sum
+		}
+		ch <- allSum
+	}
+	allSum := <-ch
+	type Result struct {
+		AllSum  int      `json:"all_sum"`
+		Records []Record `json:"records"`
+	}
+	sort.Slice(reply, func(i, j int) bool {
+		return reply[i].CreateTime.After(reply[j].CreateTime)
+	})
+	return Result{
+		AllSum:  allSum,
+		Records: reply,
+	}
+}
+
+func httpApi() {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v1/all", func(w http.ResponseWriter, r *http.Request) {
+		sim := r.URL.Query().Get("sim")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(Manage.ShowAll(sim)); err != nil {
+			http.Error(w, "encode json failed", http.StatusInternalServerError)
+			return
+		}
+	})
+	api := &http.Server{
+		Addr:    GlobalConfig.HTTPAddr,
+		Handler: mux,
+	}
+	log.Fatal(api.ListenAndServe())
 }
