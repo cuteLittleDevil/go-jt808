@@ -1,0 +1,18 @@
+server:
+  addr: "0.0.0.0:808" # 服务端地址
+
+client:
+  ip: "127.0.0.1" # 客户端ip
+  intervalMicrosecond: 1000 # 多久生成一个新客户端 默认1毫秒一个
+  sum: 1 # 测试的最大客户端数量
+  sim: 1 # 初始的sim卡号 后面的就一直+1
+  version: 2013 # 客户端版本 2013 2019
+  commands: # 按周期循环的指令
+    - name: 0x0200 #位置信息
+      enable: true # 是否启用
+      intervalSecond: 5 # 5秒钟发送一次
+      sum: 1000 # 至多发送多少报文 0-不限制 到了sum后就不发了
+    - name: 0x0002 #心跳
+      enable: true
+      intervalSecond: 30
+      sum: 0

@@ -130,6 +130,11 @@ jt808服务端 模拟器 消息队列 数据库都运行在2核4G腾讯云服务
 把atop_cpu.png传输到ftp目录 (需要ftp服务)
 ```
 
+### 12. 并发测试例子 [详情](./example/client/README.md)
+``` txt
+默认创建1000个客户端 循环30秒心跳 5秒位置信息测试
+```
+
 [快速开始](./example/quick_start) [完整项目例子](./example/web)
 ``` go
 package main
