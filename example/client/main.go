@@ -96,12 +96,14 @@ func init() {
 }
 
 func main() {
-	go httpApi()
+	go httpApi(GlobalConfig.HTTPAddr)
 	var wg sync.WaitGroup
 	for i := 0; i < GlobalConfig.Client.Sum; i++ {
 		wg.Add(1)
 		sim := fmt.Sprintf("%d", GlobalConfig.Client.Sim+i)
 		go func(sim string) {
+			defer wg.Done()
+			// 实际目前永远不会结束
 			client(sim)
 		}(sim)
 		time.Sleep(time.Duration(GlobalConfig.Client.IntervalMicrosecond) * time.Microsecond)
@@ -110,11 +112,6 @@ func main() {
 }
 
 func client(phone string) {
-	version := consts.JT808Protocol2013
-	if GlobalConfig.Client.Version == 2019 {
-		version = consts.JT808Protocol2019
-	}
-	t := terminal.New(terminal.WithHeader(version, phone))
 	localAddr, err := net.ResolveTCPAddr("tcp", GlobalConfig.Client.IP+":0") // 端口设置为0以让系统分配
 	if err != nil {
 		slog.Warn("invalid local address",
@@ -143,6 +140,28 @@ func client(phone string) {
 	defer func() {
 		_ = conn.Close()
 	}()
+	version := consts.JT808Protocol2013
+	if GlobalConfig.Client.Version == 2019 {
+		version = consts.JT808Protocol2019
+	}
+	t := terminal.New(terminal.WithHeader(version, phone))
+	t.CreateCustomMessageFunc = func(commandType consts.JT808CommandType) (terminal.Handler, bool) {
+		if commandType == consts.T0200LocationReport {
+			return &model.T0x0200{
+				T0x0200LocationItem: model.T0x0200LocationItem{
+					AlarmSign:  1024,
+					StatusSign: 2048,
+					Latitude:   116307629,
+					Longitude:  40058359,
+					Altitude:   312,
+					Speed:      3,
+					Direction:  99,
+					DateTime:   time.Now().Format(time.DateTime),
+				},
+			}, true
+		}
+		return nil, false
+	}
 	register := t.CreateDefaultCommandData(consts.T0100Register)
 	_, _ = conn.Write(register)
 	data := make([]byte, 1023)
@@ -159,8 +178,6 @@ func client(phone string) {
 				SoftwareVersion: "3.7.15",
 				Version:         version,
 			}
-			t0x0102.AuthCode = p08100.AuthCode
-			t0x0102.Encode()
 			auth := t.CreateCommandData(consts.T0102RegisterAuth, t0x0102.Encode())
 			_, _ = conn.Write(auth)
 		}
@@ -254,7 +271,7 @@ func (m *Manager) ShowAll(sim string) any {
 	}
 	allSum := <-ch
 	type Result struct {
-		AllSum  int      `json:"all_sum"`
+		AllSum  int      `json:"allSum"`
 		Records []Record `json:"records"`
 	}
 	sort.Slice(reply, func(i, j int) bool {
@@ -266,7 +283,7 @@ func (m *Manager) ShowAll(sim string) any {
 	}
 }
 
-func httpApi() {
+func httpApi(addr string) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/v1/all", func(w http.ResponseWriter, r *http.Request) {
 		sim := r.URL.Query().Get("sim")
@@ -278,7 +295,7 @@ func httpApi() {
 		}
 	})
 	api := &http.Server{
-		Addr:    GlobalConfig.HTTPAddr,
+		Addr:    addr,
 		Handler: mux,
 	}
 	log.Fatal(api.ListenAndServe())

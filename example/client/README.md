@@ -40,7 +40,7 @@ sysctl -a
 - 获取发送的报文信息的url http://127.0.0.1:8080/api/v1/all
 ```
 {
-    "all_sum": 54,
+    "allSum": 54,
     "records": [
         {
             "sim": "3",

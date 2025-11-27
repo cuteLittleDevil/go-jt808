@@ -4,8 +4,8 @@ github.com/cuteLittleDevil/go-jt808/protocol v1.16.0 h1:svWxOTAfKLchDp/5kwwVVhoF
 github.com/cuteLittleDevil/go-jt808/protocol v1.16.0/go.mod h1:5wF2o2JCjVVj/oAqkwvCzgu23UYMrnDO+PkhiS0/egs=
 github.com/cuteLittleDevil/go-jt808/shared v1.6.0 h1:aJ6a8f3AVS47p5Nja7+/kLRqhnRcv+j/7Jmd+SpnkQ4=
 github.com/cuteLittleDevil/go-jt808/shared v1.6.0/go.mod h1:BMWFmkDRLNjcXcuiPm/yphfWfZ6xNuTAJDkDDNhysOM=
-github.com/cuteLittleDevil/go-jt808/terminal v1.2.0 h1:yEeRTJM/V/EiIct1BoRr4zifxRYEwEE1NmKEz0U6cME=
-github.com/cuteLittleDevil/go-jt808/terminal v1.2.0/go.mod h1:1GbC4DcH6vTTINJo0q4/s/yq+aC3JwrR0yJjexGgPBU=
+github.com/cuteLittleDevil/go-jt808/terminal v1.3.0 h1:vo/AbRc7qX+vCdVyftM/47AgztwwTNt2FXlJTGrWCG0=
+github.com/cuteLittleDevil/go-jt808/terminal v1.3.0/go.mod h1:1GbC4DcH6vTTINJo0q4/s/yq+aC3JwrR0yJjexGgPBU=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/frankban/quicktest v1.14.6 h1:7Xjx+VpznH+oBnejlPUj8oUpdxnVs4f8XU8WnHkI4W8=
