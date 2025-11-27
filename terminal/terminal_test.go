@@ -1,11 +1,14 @@
 package terminal
 
 import (
+	"bytes"
 	"fmt"
+	"github.com/cuteLittleDevil/go-jt808/protocol/model"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 	"io"
 	"os"
 	"testing"
+	"time"
 )
 
 func TestTerminal_CreateDefaultCommandData(t *testing.T) {
@@ -72,5 +75,34 @@ func TestTerminal_CreateDefaultCommandData(t *testing.T) {
 			}
 		})
 
+	}
+}
+
+func TestTerminal_CreateCustomMessageFunc(t *testing.T) {
+	t1 := New(WithHeader(consts.JT808Protocol2013, "1"))
+	body1 := t1.CreateDefaultCommandData(consts.T0200LocationReport)
+
+	t2 := New(WithHeader(consts.JT808Protocol2013, "1"))
+	t2.CreateCustomMessageFunc = func(commandType consts.JT808CommandType) (Handler, bool) {
+		if commandType == consts.T0200LocationReport {
+			return &model.T0x0200{
+				T0x0200LocationItem: model.T0x0200LocationItem{
+					AlarmSign:  1024,
+					StatusSign: 2048,
+					Latitude:   116307629,
+					Longitude:  40058359,
+					Altitude:   312,
+					Speed:      3,
+					Direction:  99,
+					DateTime:   time.Now().Format(time.DateTime),
+				},
+			}, true
+		}
+		return nil, false
+	}
+	body2 := t2.CreateDefaultCommandData(consts.T0200LocationReport)
+
+	if bytes.Compare(body1, body2) == 0 {
+		t.Errorf("CreateCustomMessageFunc body1=[%x]\n body2=[%x]\n", body1, body2)
 	}
 }

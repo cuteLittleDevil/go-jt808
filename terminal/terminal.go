@@ -11,8 +11,10 @@ import (
 
 type Terminal struct {
 	TerminalPhoneNo string
-	header          *jt808.Header
-	protocolHandles map[consts.JT808CommandType]Handler
+	// CreateCustomMessageFunc  用于CreateDefaultCommandData 优先使用自定义的报文.
+	CreateCustomMessageFunc func(commandType consts.JT808CommandType) (Handler, bool)
+	header                  *jt808.Header
+	protocolHandles         map[consts.JT808CommandType]Handler
 }
 
 func New(opts ...Option) *Terminal {
@@ -43,6 +45,14 @@ func New(opts ...Option) *Terminal {
 
 // CreateDefaultCommandData 创建默认指令.
 func (t *Terminal) CreateDefaultCommandData(commandType consts.JT808CommandType) []byte {
+	if t.CreateCustomMessageFunc != nil {
+		if v, ok := t.CreateCustomMessageFunc(commandType); ok {
+			body := v.Encode()
+			t.header.ReplyID = uint16(commandType)
+			t.header.PlatformSerialNumber++
+			return t.header.Encode(body)
+		}
+	}
 	if v, ok := t.protocolHandles[commandType]; ok {
 		body := v.Encode()
 		t.header.ReplyID = uint16(commandType)
