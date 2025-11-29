@@ -53,7 +53,7 @@ type (
 	Record struct {
 		Sim string `json:"sim"`
 		Sum int    `json:"sum"`
-		// key是指令名称 如终端-位置上报
+		// key是指令名称 如0200:终端-位置上报
 		Commands   map[string]int `json:"commands"`
 		CreateTime time.Time      `json:"createTime"`
 		UpdateTime time.Time      `json:"updateTime"`
@@ -200,11 +200,11 @@ func client(phone string) {
 					} else {
 						writeChan <- sendData
 					}
+					tmp := fmt.Sprintf("%04x:%s", command.Name, consts.JT808CommandType(command.Name))
+					Manage.Update(phone, tmp)
 					if command.Sum != 0 && count == command.Sum {
 						return
 					}
-					tmp := fmt.Sprintf("%04x:%s", command.Name, consts.JT808CommandType(command.Name))
-					Manage.Update(phone, tmp)
 				}
 			}(v)
 		}

@@ -25,6 +25,9 @@ func init() {
 func main() {
 	goJt808 := service.New(
 		service.WithHostPorts("0.0.0.0:808"),
+		//service.WithCustomTerminalEventer(func() service.TerminalEventer {
+		//	// 自定义终端事件 包括加入 离开 读取报文等
+		//}),
 		service.WithCustomHandleFunc(func() map[consts.JT808CommandType]service.Handler {
 			return map[consts.JT808CommandType]service.Handler{
 				consts.T0200LocationReport: &meLocation{}, // 自定义0x0200位置解析等
