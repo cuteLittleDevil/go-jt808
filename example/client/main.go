@@ -3,19 +3,19 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
+	"log/slog"
+	"net"
+	"net/http"
+	"sort"
+	"time"
+
 	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
 	"github.com/cuteLittleDevil/go-jt808/protocol/model"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 	"github.com/cuteLittleDevil/go-jt808/terminal"
 	"github.com/natefinch/lumberjack"
 	"github.com/spf13/viper"
-	"log"
-	"log/slog"
-	"net"
-	"net/http"
-	"sort"
-	"sync"
-	"time"
 )
 
 type (
@@ -39,10 +39,10 @@ type (
 	}
 
 	Command struct {
-		Name           int  `yaml:"name"`           // 指令名称（如 0x0200、0x0002）
-		Enable         bool `yaml:"enable"`         // 是否启用该指令
-		IntervalSecond int  `yaml:"intervalSecond"` // 发送间隔，单位：秒
-		Sum            int  `yaml:"sum"`            // 最多发送次数，0 表示不限制
+		Name                int  `yaml:"name"`                // 指令名称（如 0x0200、0x0002）
+		Enable              bool `yaml:"enable"`              // 是否启用该指令
+		IntervalMillisecond int  `yaml:"intervalMillisecond"` // 发送间隔，单位：毫秒
+		Sum                 int  `yaml:"sum"`                 // 最多发送次数，0 表示不限制
 	}
 )
 
@@ -97,18 +97,12 @@ func init() {
 
 func main() {
 	go httpApi(GlobalConfig.HTTPAddr)
-	var wg sync.WaitGroup
 	for i := 0; i < GlobalConfig.Client.Sum; i++ {
-		wg.Add(1)
 		sim := fmt.Sprintf("%d", GlobalConfig.Client.Sim+i)
-		go func(sim string) {
-			defer wg.Done()
-			// 实际目前永远不会结束
-			client(sim)
-		}(sim)
+		go client(sim)
 		time.Sleep(time.Duration(GlobalConfig.Client.IntervalMicrosecond) * time.Microsecond)
 	}
-	wg.Wait()
+	select {}
 }
 
 func client(phone string) {
@@ -145,23 +139,6 @@ func client(phone string) {
 		version = consts.JT808Protocol2019
 	}
 	t := terminal.New(terminal.WithHeader(version, phone))
-	t.CreateCustomMessageFunc = func(commandType consts.JT808CommandType) (terminal.Handler, bool) {
-		if commandType == consts.T0200LocationReport {
-			return &model.T0x0200{
-				T0x0200LocationItem: model.T0x0200LocationItem{
-					AlarmSign:  1024,
-					StatusSign: 2048,
-					Latitude:   116307629,
-					Longitude:  40058359,
-					Altitude:   312,
-					Speed:      3,
-					Direction:  99,
-					DateTime:   time.Now().Format(time.DateTime),
-				},
-			}, true
-		}
-		return nil, false
-	}
 	register := t.CreateDefaultCommandData(consts.T0100Register)
 	_, _ = conn.Write(register)
 	data := make([]byte, 1023)
@@ -184,33 +161,55 @@ func client(phone string) {
 	}
 
 	Manage.Add(phone)
-	writeChan := make(chan []byte, 10)
 	for _, v := range GlobalConfig.Client.Commands {
 		if v.Enable {
-			go func(command Command) {
-				ticker := time.NewTicker(time.Duration(command.IntervalSecond) * time.Second)
-				defer ticker.Stop()
-				count := 0
-				for range ticker.C {
-					count++
-					sendData := t.CreateDefaultCommandData(consts.JT808CommandType(command.Name))
-					if len(sendData) == 0 {
-						slog.Warn("invalid command",
-							slog.Any("command", command.Name))
-					} else {
-						writeChan <- sendData
-					}
-					tmp := fmt.Sprintf("%04x:%s", command.Name, consts.JT808CommandType(command.Name))
-					Manage.Update(phone, tmp)
-					if command.Sum != 0 && count == command.Sum {
-						return
-					}
-				}
-			}(v)
+			// todo 这个终端设计是单线程的 不并发安全 需要发多个指令的话 需要都新建一个
+			go commandHandler(phone, version, v, conn)
 		}
 	}
-	for sendData := range writeChan {
-		_, _ = conn.Write(sendData)
+	select {}
+}
+
+func commandHandler(phone string, version consts.ProtocolVersionType, command Command, conn *net.TCPConn) {
+	t1 := terminal.New(terminal.WithHeader(version, phone))
+	t1.CreateCustomMessageFunc = func(commandType consts.JT808CommandType) (terminal.Handler, bool) {
+		if commandType == consts.T0200LocationReport {
+			return &model.T0x0200{
+				T0x0200LocationItem: model.T0x0200LocationItem{
+					AlarmSign:  1024,
+					StatusSign: 2048,
+					Latitude:   116307629,
+					Longitude:  40058359,
+					Altitude:   312,
+					Speed:      3,
+					Direction:  99,
+					DateTime:   time.Now().Format(time.DateTime),
+				},
+			}, true
+		}
+		return nil, false
+	}
+	ticker := time.NewTicker(time.Duration(command.IntervalMillisecond) * time.Millisecond)
+	defer ticker.Stop()
+	count := 0
+	for range ticker.C {
+		sendData := t1.CreateDefaultCommandData(consts.JT808CommandType(command.Name))
+		if len(sendData) == 0 {
+			slog.Warn("invalid command",
+				slog.Any("command", command.Name))
+		} else if _, err := conn.Write(sendData); err != nil {
+			slog.Warn("conn write fail",
+				slog.String("sim", phone),
+				slog.Any("command", command.Name),
+				slog.Any("error", err))
+			return
+		}
+		count++
+		tmp := fmt.Sprintf("%04x:%s", command.Name, consts.JT808CommandType(command.Name))
+		Manage.Update(phone, tmp)
+		if command.Sum != 0 && count == command.Sum {
+			return
+		}
 	}
 }
 

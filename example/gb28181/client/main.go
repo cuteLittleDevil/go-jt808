@@ -54,6 +54,7 @@ func main() {
 	}),
 		gb28181.WithTransport(conf.GetData().GB28181.Transport), // 信令默认使用UDP 也可以TCP
 		gb28181.WithKeepAliveSecond(30),                         // 心跳保活周期30秒
+		gb28181.WithToGBType(command.JT1078ToPSFilterPacket),
 		gb28181.WithInviteEventFunc(func(info *command.InviteInfo) *command.InviteInfo {
 			// 默认jt1078收流端口是 gb28181 - 100
 			// 如gb28181收流端口是10100 则jt1078收流端口是10000
@@ -65,6 +66,8 @@ func main() {
 				// 默认是按照h264=98的国标 但是zlm会失败 因此可以自行修改
 				if pt == jt1078.PTH264 {
 					return 96, true
+				} else if pt == jt1078.PTH265 {
+					return 98, true
 				}
 				// 其他情况使用默认的国标规范
 				return 0, false
@@ -100,7 +103,7 @@ func sendJT1078Packet(port int) {
 				start = i * groupSum
 				end = start + groupSum
 				_, _ = conn.Write(data[start:end])
-				time.Sleep(20 * time.Millisecond)
+				time.Sleep(10 * time.Millisecond)
 			}
 			_, _ = conn.Write(data[end:])
 		}

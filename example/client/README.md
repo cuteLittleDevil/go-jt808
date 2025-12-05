@@ -90,10 +90,10 @@ client:
   commands: # 按周期循环的指令
     - name: 0x0200 #位置信息
       enable: true # 是否启用
-      interval: 5 # 5秒钟发送一次
+      intervalMillisecond: 5000 # 5秒钟发送一次
       sum: 1000 # 至多发送多少报文 0-不限制 到了sum后就不发了
     - name: 0x0002 #心跳
       enable: true
-      interval: 30
+      intervalMillisecond: 30000
       sum: 0
 ```

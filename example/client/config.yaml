@@ -13,13 +13,13 @@ client:
     # 支持的指令 https://github.com/cuteLittleDevil/go-jt808?tab=readme-ov-file#jt808%E7%BB%88%E7%AB%AF%E9%80%9A%E8%AE%AF%E5%8D%8F%E8%AE%AE
     - name: 0x0200 #位置信息
       enable: true # 是否启用
-      intervalSecond: 5 # 5秒钟发送一次
+      intervalMillisecond: 5000 # 5秒钟发送一次
       sum: 1000 # 一共发送多少次 到了sum后就不发了 0不限制
     - name: 0x0002 #心跳
       enable: true
-      intervalSecond: 30
-      sum: 0
+      intervalMillisecond: 30000
+      sum:
     - name: 0x0704 #批量位置 (默认实际里面就1个位置)
       enable: true
-      intervalSecond: 60
+      intervalMillisecond: 60000
       sum: 100
