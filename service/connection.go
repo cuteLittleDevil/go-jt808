@@ -8,52 +8,71 @@ import (
 	"io"
 	"log/slog"
 	"net"
-	"sync"
 	"sync/atomic"
 	"time"
 )
 
+// connection 表示与一个终端（车载设备）保持的长连接的会话对象.
+// 负责终端的上下行消息处理、主动下发指令管理、流水号维护、终端上下线回调等.
 type connection struct {
-	conn     *net.TCPConn
-	handles  map[consts.JT808CommandType]Handler
-	stopOnce sync.Once
-	// stopChan 读终端数据异常时退出
-	stopChan chan struct{}
-	// finallyCompleteChan 读终端数据异常后 等待主动下发的全部指令完成或者超时
-	finallyCompleteChan   chan struct{}
-	msgChan               chan *Message
-	activeMsgChan         chan *ActiveMessage
-	activeMsgCompleteChan chan *Message
-	reissuePackChan       chan *Message
-	// platformSerialNumber 平台流水号 到了math.MaxUint16后+1重新变成0
+	conn *net.TCPConn
+	// 每一个连接都是独立的map, 不会影响其他的.
+	handles map[consts.JT808CommandType]Handler
+	// 用于等待当前所有正在主动下发的指令完成或超时后才真正关闭连接.
+	finallyCompleteChan chan struct{}
+	// 终端上报的普通消息（上行）会放入此通道，随后由消费者统一处理.
+	msgChan chan *Message
+	// 需要补发的包.
+	reissuePackChan chan *Message
+	// 平台侧流水号，自增到 math.MaxUint16 后归 0.
 	platformSerialNumber uint16
-	joinFunc             func(message *Message, activeChan chan<- *ActiveMessage) (string, error)
-	leaveFunc            func(key string)
-	key                  string
-	filter               bool
-	// activeUnfinishedSum 当前主动下发未完成的指令数量
+
+	// 主动下发给终端的指令会包装成 ActiveMessage 放入此通道.
+	activeMsgChan chan *ActiveMessage
+	// 主动下发指令收到终端应答后，会把完整的 Message 放进此通道.
+	// 用于通知等待应答的协程指令已完成.
+	activeMsgCompleteChan chan *Message
+	// 当前仍在等待终端应答的主动下发指令数量.
 	activeUnfinishedSum int32
-	terminalEvent       TerminalEventer
+
+	// 终端上线时的回调函数.
+	joinFunc func(message *Message, activeChan chan<- *ActiveMessage) (string, error)
+	// 终端下线时的回调函数.
+	leaveFunc func(key string)
+	// 当前连接对应的终端唯一标识（默认是sim卡号）由 joinFunc 返回后赋值.
+	key string
+	// 是否启用消息过滤（例如重复消息过滤、黑名单等）.
+	filter bool
+	// 终端事件处理器，用于推送终端上下线、心跳、位置上报等事件给上层业务.
+	terminalEvent TerminalEventer
 }
 
-func newConnection(conn *net.TCPConn, handles map[consts.JT808CommandType]Handler, terminalEvent TerminalEventer, filter bool,
-	join func(message *Message, activeChan chan<- *ActiveMessage) (string, error), leave func(key string)) *connection {
+func newConnection(
+	conn *net.TCPConn,
+	handles map[consts.JT808CommandType]Handler,
+	terminalEvent TerminalEventer,
+	filter bool,
+	join func(message *Message, activeChan chan<- *ActiveMessage) (string, error),
+	leave func(key string),
+) *connection {
 	return &connection{
-		conn:                  conn,
-		handles:               handles,
-		stopOnce:              sync.Once{},
-		stopChan:              make(chan struct{}),
-		finallyCompleteChan:   make(chan struct{}),
-		msgChan:               make(chan *Message, 10),
-		activeMsgChan:         make(chan *ActiveMessage, 10),
-		activeMsgCompleteChan: make(chan *Message, 10),
-		reissuePackChan:       make(chan *Message, 10),
-		platformSerialNumber:  uint16(0),
-		joinFunc:              join,
-		leaveFunc:             leave,
-		filter:                filter,
-		activeUnfinishedSum:   int32(0),
-		terminalEvent:         terminalEvent,
+		conn:          conn,
+		handles:       handles,
+		terminalEvent: terminalEvent,
+		filter:        filter,
+		joinFunc:      join,
+		leaveFunc:     leave,
+
+		finallyCompleteChan:   make(chan struct{}),           // 等待所有主动下发完成
+		msgChan:               make(chan *Message, 10),       // 上行普通消息队列
+		activeMsgChan:         make(chan *ActiveMessage, 10), // 主动下发指令队列
+		activeMsgCompleteChan: make(chan *Message, 10),       // 主动下发应答通知队列
+		reissuePackChan:       make(chan *Message, 10),       // 补发包队列
+
+		// 初始状态
+		platformSerialNumber: 0,        // 平台流水号从0开始
+		key:                  "",       // 终端唯一标识，注册成功后由 joinFunc 填充
+		activeUnfinishedSum:  int32(0), // 当前未完成的下发指令计数
 	}
 }
 
@@ -69,61 +88,59 @@ func (c *connection) reader() {
 		// 1. onReadExecutionEvent 这里处理后在read读取因此不会污染 如果onRead事件需要的话 用户自行拷贝一份
 		// 2. 历史的图片数据是make一份新的 因此一样不会有污染
 		// 3. write异步的情况 即使污染了也不影响 因为实际用不到（仅需要已经序列化的头部)
-		curData = make([]byte, 1023)
-		pack    = newPackageParse()
-		join    = false
+		data = make([]byte, 1023)
+		pack = newPackageParse()
+		join = false
 	)
 
 	defer func() {
-		clear(curData)
 		pack.clear()
 		c.stop()
 	}()
 
 	for {
-		select {
-		case <-c.stopChan:
-			return
-		default:
-			if n, err := c.conn.Read(curData); err != nil {
-				if errors.Is(err, net.ErrClosed) || errors.Is(err, io.EOF) {
-					slog.Debug("connection close",
-						slog.Bool("join", join),
-						slog.Any("platform num", c.platformSerialNumber),
-						slog.Any("err", err))
-					return
+		// https://pkg.go.dev/io#Reader
+		n, err := c.conn.Read(data)
+		if n > 0 {
+			effectiveData := data[:n]
+			msgs, err := pack.parse(effectiveData)
+			if err != nil {
+				slog.Error("parse data",
+					slog.Bool("join", join),
+					slog.Any("platform num", c.platformSerialNumber),
+					slog.String("effective data", fmt.Sprintf("%x", effectiveData)),
+					slog.Any("err", err))
+				return
+			}
+			if len(msgs) > 0 {
+				if !join {
+					if err := c.joinHandle(msgs[0]); err == nil {
+						join = true
+					} else if errors.Is(err, _errKeyExist) {
+						slog.Warn("key",
+							slog.String("effective data", fmt.Sprintf("%x", effectiveData)),
+							slog.Any("err", err))
+						return
+					}
 				}
+
+				c.handleMessages(msgs)
+			}
+		}
+
+		if err != nil {
+			if errors.Is(err, net.ErrClosed) || errors.Is(err, io.EOF) {
+				slog.Debug("connection close",
+					slog.Bool("join", join),
+					slog.Any("platform num", c.platformSerialNumber),
+					slog.Any("err", err))
+			} else {
 				slog.Error("read data",
 					slog.Bool("join", join),
 					slog.Any("platform num", c.platformSerialNumber),
 					slog.Any("err", err))
-				return
-			} else if n > 0 {
-				effectiveData := curData[:n]
-				msgs, err := pack.parse(effectiveData)
-				if err != nil {
-					slog.Error("parse data",
-						slog.Bool("join", join),
-						slog.Any("platform num", c.platformSerialNumber),
-						slog.String("effective data", fmt.Sprintf("%x", effectiveData)),
-						slog.Any("err", err))
-					return
-				}
-				if len(msgs) > 0 {
-					if !join {
-						if err := c.joinHandle(msgs[0]); err == nil {
-							join = true
-						} else if errors.Is(err, _errKeyExist) {
-							slog.Warn("key",
-								slog.String("effective data", fmt.Sprintf("%x", effectiveData)),
-								slog.Any("err", err))
-							return
-						}
-					}
-
-					c.handleMessages(msgs)
-				}
 			}
+			return
 		}
 	}
 }
@@ -201,16 +218,18 @@ func (c *connection) write() {
 }
 
 func (c *connection) stop() {
-	c.stopOnce.Do(func() {
-		c.leaveFunc(c.key)
-		c.terminalEvent.OnLeaveEvent(c.key)
-		close(c.stopChan)
-		_ = c.conn.Close()
-		for atomic.LoadInt32(&c.activeUnfinishedSum) != 0 {
-			time.Sleep(time.Second)
-		}
-		close(c.finallyCompleteChan)
-	})
+	c.leaveFunc(c.key)
+	c.terminalEvent.OnLeaveEvent(c.key)
+	if err := c.conn.Close(); err != nil {
+		slog.Warn("conn close fail",
+			slog.String("key", c.key),
+			slog.Any("err", err))
+	}
+	time.Sleep(time.Second)
+	for atomic.LoadInt32(&c.activeUnfinishedSum) != 0 {
+		time.Sleep(time.Second)
+	}
+	close(c.finallyCompleteChan)
 }
 
 func (c *connection) defaultReplyEvent(msg *Message) {
