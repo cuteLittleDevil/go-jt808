@@ -167,7 +167,10 @@ func client(phone string) {
 			go commandHandler(phone, version, v, conn)
 		}
 	}
-	select {}
+	for {
+		// win系统如果不读的话，内存会一直增加
+		_, _ = conn.Read(data)
+	}
 }
 
 func commandHandler(phone string, version consts.ProtocolVersionType, command Command, conn *net.TCPConn) {
