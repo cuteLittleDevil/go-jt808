@@ -3,8 +3,9 @@ package service
 import (
 	"errors"
 	"fmt"
-	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
 	"time"
+
+	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
 )
 
 type sessionOperationFunc func(record map[string]*session)
@@ -38,6 +39,7 @@ func (s *sessionManager) run() {
 	}
 }
 
+// join 将终端会话注册到会话管理器中.
 func (s *sessionManager) join(message *Message, activeChan chan<- *ActiveMessage) (string, error) {
 	key, ok := s.keyFunc(message)
 	if !ok {
@@ -61,6 +63,7 @@ func (s *sessionManager) join(message *Message, activeChan chan<- *ActiveMessage
 	return key, <-ch
 }
 
+// leave 将指定 key 的终端会话从会话管理器中移除.
 func (s *sessionManager) leave(key string) {
 	ch := make(chan struct{})
 	s.operationFuncChan <- func(record map[string]*session) {
@@ -70,6 +73,7 @@ func (s *sessionManager) leave(key string) {
 	<-ch
 }
 
+// write 将主动消息分配到目标终端会话并返回应答结果.
 func (s *sessionManager) write(activeMsg *ActiveMessage) *Message {
 	replyChan := make(chan *Message)
 	defer close(replyChan)

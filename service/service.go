@@ -1,17 +1,21 @@
 package service
 
 import (
-	"github.com/cuteLittleDevil/go-jt808/protocol/model"
-	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 	"log/slog"
 	"net"
+	"time"
+
+	"github.com/cuteLittleDevil/go-jt808/protocol/model"
+	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 )
 
+// GoJT808 是 JT808 服务的核心入口对象。
 type GoJT808 struct {
 	opts *Options
 	*sessionManager
 }
 
+// New 创建 JT808 服务实例并初始化会话管理器.
 func New(opts ...Option) *GoJT808 {
 	options := newOptions(opts)
 	g := &GoJT808{
@@ -23,6 +27,7 @@ func New(opts ...Option) *GoJT808 {
 	return g
 }
 
+// Run 启动 TCP 服务并持续接收终端连接.
 func (g *GoJT808) Run() {
 	addr, err := net.ResolveTCPAddr(g.opts.Network, g.opts.Addr)
 	if err != nil {
@@ -53,12 +58,41 @@ func (g *GoJT808) Run() {
 			handles[k] = v
 		}
 		terminalEvent := g.opts.CustomTerminalEventerFunc()
-		conn := newConnection(c, handles, terminalEvent, g.opts.FilterSubcontract,
-			g.sessionManager.join, g.sessionManager.leave)
-		go conn.run()
+
+		client := newConnection(connectionParams{
+			conn:                   c,
+			handles:                handles,
+			terminalEvent:          terminalEvent,
+			filter:                 g.opts.FilterSubcontract,
+			onTerminalTimeoutEvent: g.opts.OnTerminalTimeoutEvent,
+			timeout: TerminalTimeout{
+				ConnectionStartTime: time.Now(),
+				Address:             c.RemoteAddr().String(),
+				IdleTimeout:         g.opts.IdleTimeout,
+			},
+			onJoinEvent:  g.sessionManager.join,
+			onLeaveEvent: g.sessionManager.leave,
+		})
+		go client.run()
 	}
 }
 
+// SendActiveMessage 将平台主动消息（下行指令）路由到对应的终端会话，并等待终端应答结果。
+//
+// 路由策略与流程（按顺序执行）：
+//  1. 根据 activeMsg.Key 在会话管理器中查找对应终端的在线会话
+//  2. 若找到在线会话：
+//     - 注入会话 Header（包含手机号、终端ID等信息）
+//     - 设置 replyChan 用于接收应答结果
+//     - 将主动消息转发到该终端的 activeMsgChan 下行通道
+//  3. 若未找到对应会话：立即返回 ErrNotExistKey 错误
+//
+// 返回值 *Message：
+//   - 成功时：ExtensionFields.Err == nil，且包含终端的应答数据（例如 0x0001 通用应答）
+//   - 失败时：ExtensionFields.Err 携带具体失败原因，例如：
+//   - ErrNotExistKey：终端不在线或 Key 不存在
+//   - ErrWriteDataOverTime：下发超时
+//   - 其他网络错误
 func (g *GoJT808) SendActiveMessage(activeMsg *ActiveMessage) *Message {
 	return g.sessionManager.write(activeMsg)
 }

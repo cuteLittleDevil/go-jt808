@@ -23,7 +23,7 @@ address是设备连接的地址 webAddress是页面的
 ```
 <br/>
 
-1. 测试部署网页 https://go-jt808.online:44300/index.html (目前go-jt808.online的ip为124.221.30.46)
+1. 测试部署网页 https://124.221.30.46:44300/index.html (目前124.221.30.46的ip为124.221.30.46)
 2. 让终端(模拟器)默认连接到了124.221.30.46:8082地址
 3. 根据测试部署网页进行测试 如点击9101观看在线视频
 <br/>
@@ -37,7 +37,7 @@ address是设备连接的地址 webAddress是页面的
 <h2 id="lal"> 2. LAL流媒体服务 </h2>
 
 1. 使用模拟器默认的数据 持续推送到LAL服务
-2. 在线播放地址 http://go-jt808.online:8080/live/1001_1.flv
+2. 在线播放地址 http://124.221.30.46:8080/live/1001_1.flv
 <br/>
 
 ip是外网的ip用于下发9101的1078的ip 可以用phone新建一个模拟终端 使用dataPath的数据推送1078流
@@ -166,7 +166,7 @@ on_publish=http://127.0.0.1:17002/api/v1/on_publish
 
 ```
 对讲使用webrtc 因此需要https
-目前申请的域名go-jt808.online(ip为124.221.30.46) icp备案为三周左右
+目前申请的域名124.221.30.46(ip为124.221.30.46) icp备案为三周左右
 
 ```
 
@@ -203,7 +203,7 @@ curl --location --request POST 'http://124.221.30.46:17002/api/v1/start_send_rtp
 ```
 
 3. 重新发起一次808请求 让设备推送音视频流
-- 如https://go-jt808.online/rtp/000000001003_1_0_0.live.mp4
+- 如https://124.221.30.46/rtp/000000001003_1_0_0.live.mp4
 
 <h3> 多端口模式 </h3>
 

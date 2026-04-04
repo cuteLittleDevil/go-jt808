@@ -56,11 +56,11 @@ web例子在线网页 http://124.221.30.46:18000/
 
 | 流媒体 | 语言 | 描述       | 说明 |
 |----------|-----|-------------------|-----|
-| rtvs | 不开源<br/> 可使用  | 在线测试页面 https://go-jt808.online:44300/index.html <br/> 点击实时视频(0x9101)按钮播放| [详情点击](./example/jt1078/README.md#rtvs)  |
-| lal | go  | 在线播放地址 http://go-jt808.online:8080/live/1001_1.flv | [详情点击](./example/jt1078/README.md#lal)  |
+| rtvs | 不开源<br/> 可使用  | 在线测试页面 https://124.221.30.46:44300/index.html <br/> 点击实时视频(0x9101)按钮播放| [详情点击](./example/jt1078/README.md#rtvs)  |
+| lal | go  | 在线播放地址 http://124.221.30.46:8080/live/1001_1.flv | [详情点击](./example/jt1078/README.md#lal)  |
 | sky-java | java  | 需要部署后 HTTP请求 10秒内拉流 参考格式如下 <br/> http://222.244.144.181:7777/video/1001-1-0-0.live.mp4 | [详情点击](./example/jt1078/README.md#sky-java)  |
-| monibuca | go  | 对讲示例 https://go-jt808.online:12000 | [详情点击](https://github.com/cuteLittleDevil/m7s-jt1078)  |
-| ZLMediaKit | c++  | 对讲测试 https://go-jt808.online/static/?type=push <br/> http://go-jt808.online:80/rtp/000000001003_1_0_0.live.mp4 | [详情点击](./example/jt1078/README.md#zlm)  |
+| monibuca | go  | 对讲示例 https://124.221.30.46:12000 | [详情点击](https://github.com/cuteLittleDevil/m7s-jt1078)  |
+| ZLMediaKit | c++  | 对讲测试 https://124.221.30.46/static/?type=push <br/> http://124.221.30.46:80/rtp/000000001003_1_0_0.live.mp4 | [详情点击](./example/jt1078/README.md#zlm)  |
 | srs | c++  | http://101.35.2.3:8080/live/realtime--924654669559-1.flv | [详情点击](./example/jt1078/README.md#srs) |
 
 ### 3. jt808模拟gb28181客户端 [gb28181使用](./gb28181/example_test.go) [jt1078转ps流](./gb28181/internal/stream/jt1078_to_gb28181.go)
@@ -167,7 +167,7 @@ func main() {
 		service.WithHostPorts("0.0.0.0:808"),
 		service.WithCustomHandleFunc(func() map[consts.JT808CommandType]service.Handler {
 			return map[consts.JT808CommandType]service.Handler{
-				consts.T0200LocationReport: &meLocation{}, // 自定义0x0200位置解析等
+				consts.T0200LocationReport: &meLocation{}, // 自定义0x0200位置解析等,每一个连接是独立的map.
 			}
 		}),
 	)

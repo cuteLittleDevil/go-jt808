@@ -2,12 +2,14 @@ package service
 
 import (
 	"fmt"
-	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
-	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 	"strings"
 	"time"
+
+	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
+	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 )
 
+// ActiveMessage 表示平台主动下发到终端的一条消息请求.
 type ActiveMessage struct {
 	// header 设备消息固体头 使用的是第一次报文的固定头
 	header *jt808.Header
@@ -31,6 +33,7 @@ type ActiveMessage struct {
 	}
 }
 
+// NewActiveMessage 创建一条主动下发消息.
 func NewActiveMessage(key string, command consts.JT808CommandType, body []byte, overTimeDuration time.Duration) *ActiveMessage {
 	return &ActiveMessage{Key: key, Command: command, Body: body, OverTimeDuration: overTimeDuration}
 }

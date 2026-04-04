@@ -8,63 +8,72 @@ import (
 	"io"
 	"log/slog"
 	"net"
+	"os"
+	"sync"
 	"sync/atomic"
 	"time"
 )
 
-// connection 表示与一个终端（车载设备）保持的长连接的会话对象.
-// 负责终端的上下行消息处理、主动下发指令管理、流水号维护、终端上下线回调等.
-type connection struct {
-	conn *net.TCPConn
-	// 每一个连接都是独立的map, 不会影响其他的.
-	handles map[consts.JT808CommandType]Handler
-	// 用于等待当前所有正在主动下发的指令完成或超时后才真正关闭连接.
-	finallyCompleteChan chan struct{}
-	// 终端上报的普通消息（上行）会放入此通道，随后由消费者统一处理.
-	msgChan chan *Message
-	// 需要补发的包.
-	reissuePackChan chan *Message
-	// 平台侧流水号，自增到 math.MaxUint16 后归 0.
-	platformSerialNumber uint16
+type (
+	// connection 表示与一个终端（车载设备）保持的长连接会话对象。
+	// 它是 JT808 协议服务端的核心会话管理结构，负责：
+	//   - 终端上下行消息的处理
+	//   - 平台主动下发指令的管理与超时控制
+	//   - 流水号维护
+	//   - 终端上下线事件回调
+	//   - 分包补传处理等
+	connection struct {
+		connectionParams
 
-	// 主动下发给终端的指令会包装成 ActiveMessage 放入此通道.
-	activeMsgChan chan *ActiveMessage
-	// 主动下发指令收到终端应答后，会把完整的 Message 放进此通道.
-	// 用于通知等待应答的协程指令已完成.
-	activeMsgCompleteChan chan *Message
-	// 当前仍在等待终端应答的主动下发指令数量.
-	activeUnfinishedSum int32
+		// finallyCompleteChan 用于等待当前所有正在主动下发的指令完成或超时后才真正关闭连接.
+		finallyCompleteChan chan struct{}
+		// terminalUplinkMsgChan 终端上报的普通消息（上行消息）会放入此通道，
+		// 随后由 write 协程统一处理回复逻辑.
+		terminalUplinkMsgChan chan *Message
+		// reissuePackChan 需要补发的分包消息通道.
+		reissuePackChan chan *Message
+		// platformSerialNumber 平台侧流水号（0~65535），自增后循环使用.
+		platformSerialNumber uint16
 
-	// 终端上线时的回调函数.
-	joinFunc func(message *Message, activeChan chan<- *ActiveMessage) (string, error)
-	// 终端下线时的回调函数.
-	leaveFunc func(key string)
-	// 当前连接对应的终端唯一标识（默认是sim卡号）由 joinFunc 返回后赋值.
-	key string
-	// 是否启用消息过滤（例如重复消息过滤、黑名单等）.
-	filter bool
-	// 终端事件处理器，用于推送终端上下线、心跳、位置上报等事件给上层业务.
-	terminalEvent TerminalEventer
-}
+		// activeMsgChan 平台主动下发给终端的指令会包装成 ActiveMessage 放入此通道.
+		activeMsgChan chan *ActiveMessage
+		// activeMsgCompleteChan 当平台主动下发的指令收到终端应答（或超时）后，
+		// 会把完整的 Message 放入此通道，用于通知等待应答的协程.
+		activeMsgCompleteChan chan *Message
+		// activeUnfinishedSum 当前仍在等待终端应答的主动下发指令数量（原子操作）.
+		activeUnfinishedSum int32
+		// key 当前连接对应的终端唯一标识（默认是 SIM 卡号），
+		// 由 onJoinEvent 回调函数返回后赋值.
+		key string
+	}
 
-func newConnection(
-	conn *net.TCPConn,
-	handles map[consts.JT808CommandType]Handler,
-	terminalEvent TerminalEventer,
-	filter bool,
-	join func(message *Message, activeChan chan<- *ActiveMessage) (string, error),
-	leave func(key string),
-) *connection {
+	// connectionParams 连接所需的配置参数集合.
+	connectionParams struct {
+		// conn 与终端建立的 TCP 连接
+		conn *net.TCPConn
+		// handles 信令处理.每一个连接都是独立的map, 不会影响其他的.
+		handles map[consts.JT808CommandType]Handler
+		// 终端事件处理器，用于推送终端上下线、心跳、位置上报等事件给上层业务.
+		terminalEvent TerminalEventer
+		// filter 是否启用消息过滤,过滤分包情况的事件，默认过滤.
+		filter bool
+		// timeout 超时相关配置(空闲超时、首次包时间、最后包时间等).
+		timeout TerminalTimeout
+		// onTerminalTimeoutEvent 空闲超时事件，设置IdleTimeout时触发.
+		onTerminalTimeoutEvent func(timeout TerminalTimeout)
+		// 终端上线时的回调函数.
+		onJoinEvent func(message *Message, activeChan chan<- *ActiveMessage) (string, error)
+		// 终端下线时的回调函数.
+		onLeaveEvent func(key string)
+	}
+)
+
+func newConnection(params connectionParams) *connection {
 	return &connection{
-		conn:          conn,
-		handles:       handles,
-		terminalEvent: terminalEvent,
-		filter:        filter,
-		joinFunc:      join,
-		leaveFunc:     leave,
+		connectionParams: params,
 
 		finallyCompleteChan:   make(chan struct{}),           // 等待所有主动下发完成
-		msgChan:               make(chan *Message, 10),       // 上行普通消息队列
+		terminalUplinkMsgChan: make(chan *Message, 10),       // 上行普通消息队列
 		activeMsgChan:         make(chan *ActiveMessage, 10), // 主动下发指令队列
 		activeMsgCompleteChan: make(chan *Message, 10),       // 主动下发应答通知队列
 		reissuePackChan:       make(chan *Message, 10),       // 补发包队列
@@ -91,6 +100,7 @@ func (c *connection) reader() {
 		data = make([]byte, 1023)
 		pack = newPackageParse()
 		join = false
+		once sync.Once
 	)
 
 	defer func() {
@@ -99,11 +109,15 @@ func (c *connection) reader() {
 	}()
 
 	for {
+		// 设置读取超时（仅当配置了 IdleTimeout 时生效）
+		if c.timeout.IdleTimeout > 0 {
+			_ = c.conn.SetReadDeadline(time.Now().Add(c.timeout.IdleTimeout))
+		}
 		// https://pkg.go.dev/io#Reader
 		n, err := c.conn.Read(data)
 		if n > 0 {
 			effectiveData := data[:n]
-			msgs, err := pack.parse(effectiveData)
+			msgs, err := pack.parse(effectiveData) // 解析 JT808 协议包（支持分包重组）
 			if err != nil {
 				slog.Error("parse data",
 					slog.Bool("join", join),
@@ -116,6 +130,7 @@ func (c *connection) reader() {
 				if !join {
 					if err := c.joinHandle(msgs[0]); err == nil {
 						join = true
+						c.timeout.Key = c.key
 					} else if errors.Is(err, _errKeyExist) {
 						slog.Warn("key",
 							slog.String("effective data", fmt.Sprintf("%x", effectiveData)),
@@ -124,12 +139,20 @@ func (c *connection) reader() {
 					}
 				}
 
+				once.Do(func() {
+					c.timeout.FirstPacketTime = time.Now()
+				})
+				c.timeout.LastPacketTime = time.Now()
 				c.handleMessages(msgs)
 			}
 		}
 
 		if err != nil {
-			if errors.Is(err, net.ErrClosed) || errors.Is(err, io.EOF) {
+			if errors.Is(err, os.ErrDeadlineExceeded) { // 读取超时,仅当设置 idleTimeout 时生效
+				if c.onTerminalTimeoutEvent != nil {
+					c.onTerminalTimeoutEvent(c.timeout)
+				}
+			} else if errors.Is(err, net.ErrClosed) || errors.Is(err, io.EOF) {
 				slog.Debug("connection close",
 					slog.Bool("join", join),
 					slog.Any("platform num", c.platformSerialNumber),
@@ -146,7 +169,7 @@ func (c *connection) reader() {
 }
 
 func (c *connection) joinHandle(msg *Message) error {
-	key, err := c.joinFunc(msg, c.activeMsgChan)
+	key, err := c.onJoinEvent(msg, c.activeMsgChan)
 	if err == nil {
 		c.key = key
 	}
@@ -169,17 +192,22 @@ func (c *connection) handleMessages(msgs []*Message) {
 			c.terminalEvent.OnNotSupportedEvent(msg)
 			continue
 		}
-		c.msgChan <- msg
+		c.terminalUplinkMsgChan <- msg
 	}
 }
 
+// write 是连接的核心处理协程，负责统一处理以下事件：
+//  1. 平台主动下发指令
+//  2. 主动下发指令的应答/超时
+//  3. 分包补传
+//  4. 终端上报消息的默认回复.
 func (c *connection) write() {
 	record := map[uint16]*ActiveMessage{}
 	defer func() {
 		close(c.activeMsgChan)
 		close(c.activeMsgCompleteChan)
 		close(c.reissuePackChan)
-		close(c.msgChan)
+		close(c.terminalUplinkMsgChan)
 		clear(record)
 		clear(c.handles)
 	}()
@@ -204,7 +232,7 @@ func (c *connection) write() {
 		case subPackMsg := <-c.reissuePackChan: // 分包补传的
 			c.onSubPackReplyEvent(subPackMsg)
 
-		case msg := <-c.msgChan: // 终端上传的
+		case msg := <-c.terminalUplinkMsgChan: // 终端上传的
 			if len(record) > 0 && msg.hasComplete() { // 说明现在有主动的请求 等待回复中
 				if c.onActiveRespondEvent(record, msg) {
 					continue
@@ -217,8 +245,9 @@ func (c *connection) write() {
 	}
 }
 
+// stop 执行连接关闭流程：下线通知、关闭 TCP 连接、等待未完成指令.
 func (c *connection) stop() {
-	c.leaveFunc(c.key)
+	c.onLeaveEvent(c.key)
 	c.terminalEvent.OnLeaveEvent(c.key)
 	if err := c.conn.Close(); err != nil {
 		slog.Warn("conn close fail",

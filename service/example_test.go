@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/cuteLittleDevil/go-jt808/protocol/model"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
+	"time"
 )
 
 func Example() {
@@ -15,6 +16,12 @@ func Example() {
 		// 自定义终端key
 		WithKeyFunc(func(message *Message) (string, bool) {
 			return message.JTMessage.Header.TerminalPhoneNo, true
+		}),
+		// 自定义报文超时时间
+		WithTerminalTimeout(30*time.Second, func(t TerminalTimeout) {
+			fmt.Println(fmt.Sprintf("key=[%s] addr[%s] 首次报文时间[%s] 最后一次报文时间[%s] 运行时间[%v]",
+				t.Key, t.Address, t.FirstPacketTime.Format(time.DateTime),
+				t.LastPacketTime.Format(time.DateTime), time.Since(t.ConnectionStartTime)))
 		}),
 		// 是否过滤分包 默认过滤 这样读写事件就是完整的包
 		WithHasSubcontract(true),

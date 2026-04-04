@@ -5,6 +5,7 @@ import (
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 )
 
+// Message 表示一次终端上行或平台下发的统一消息结构.
 type Message struct {
 	*jt808.JTMessage
 	Handler `json:"-"`
