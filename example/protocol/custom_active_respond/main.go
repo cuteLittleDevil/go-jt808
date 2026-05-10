@@ -24,26 +24,28 @@ func init() {
 }
 
 func main() {
-	activeRespondHandlers := map[consts.JT808CommandType]func(activeMsg *service.ActiveMessage, terminalMsg *service.Message) bool{
-		0x6661: func(activeMsg *service.ActiveMessage, terminalMsg *service.Message) bool {
-			var tmp CustomTerminalReply
-			if err := tmp.Parse(terminalMsg.JTMessage); err != nil {
-				return false
-			}
-			fmt.Println("平台发的序列号", activeMsg.ExtensionFields.PlatformSeq)
-			return tmp.RespondSerialNumber == activeMsg.ExtensionFields.PlatformSeq
-		}, // 自定义指令,发0x6660 -> 收到0x6661
-	}
 	goJt808 := service.New(
 		service.WithHostPorts("0.0.0.0:808"),
 		service.WithCustomHandleFunc(func() map[consts.JT808CommandType]service.Handler {
 			return map[consts.JT808CommandType]service.Handler{
+				// 自定义的，需要先加一下处理，表示这些指令支持了
 				consts.JT808CommandType(0x6660): &CustomTerminalRequest{},
 				consts.JT808CommandType(0x6661): &CustomTerminalReply{},
 			}
 		}),
 		service.WithCustomActiveRespondHandlerFunc(func() map[consts.JT808CommandType]func(*service.ActiveMessage, *service.Message) bool {
-			return activeRespondHandlers
+			// 自定义的，需要自己去实现主动下发和回复的映射关系。不设置则默认超时
+			// 每次都新建一个map，一个协程一个map
+			return map[consts.JT808CommandType]func(activeMsg *service.ActiveMessage, terminalMsg *service.Message) bool{
+				0x6661: func(activeMsg *service.ActiveMessage, terminalMsg *service.Message) bool {
+					var tmp CustomTerminalReply
+					if err := tmp.Parse(terminalMsg.JTMessage); err != nil {
+						return false
+					}
+					fmt.Println("平台发的序列号", activeMsg.ExtensionFields.PlatformSeq)
+					return tmp.RespondSerialNumber == activeMsg.ExtensionFields.PlatformSeq
+				}, // 自定义指令,发0x6660 -> 收到0x6661
+			}
 		}),
 	)
 	key := "1001"
