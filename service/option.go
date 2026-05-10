@@ -30,6 +30,9 @@ type (
 		CustomTerminalEventerFunc func() TerminalEventer
 		// CustomHandleFunc 自定义消息处理.
 		CustomHandleFunc func() map[consts.JT808CommandType]Handler
+		// CustomActiveRespondHandlerFunc 自定义消息回复处理
+		CustomActiveRespondHandlerFunc func() map[consts.JT808CommandType]func(
+			platformMsg *ActiveMessage, terminalMsg *Message) bool
 		// IdleTimeout 空闲超时,默认0，不设置
 		IdleTimeout time.Duration
 		// OnTerminalTimeoutEvent 空闲超时事件，设置IdleTimeout时触发
@@ -67,6 +70,10 @@ func newOptions(opts []Option) *Options {
 		CustomHandleFunc: func() map[consts.JT808CommandType]Handler {
 			return map[consts.JT808CommandType]Handler{}
 		},
+		CustomActiveRespondHandlerFunc: func() map[consts.JT808CommandType]func(
+			activeMsg *ActiveMessage, terminalMsg *Message) bool {
+			return map[consts.JT808CommandType]func(activeMsg *ActiveMessage, terminalMsg *Message) bool{}
+		},
 	}
 	for _, op := range opts {
 		op.F(options)
@@ -97,9 +104,17 @@ func WithHasSubcontract(filter bool) Option {
 
 // WithCustomHandleFunc 自定义报文处理方式.
 // 用于覆盖或扩展默认的 JT808 指令处理逻辑,每一个连接都是独立的.
-func WithCustomHandleFunc(customHandleFunc func() map[consts.JT808CommandType]Handler) Option {
+func WithCustomHandleFunc(customFunc func() map[consts.JT808CommandType]Handler) Option {
 	return Option{F: func(o *Options) {
-		o.CustomHandleFunc = customHandleFunc
+		o.CustomHandleFunc = customFunc
+	}}
+}
+
+// WithCustomActiveRespondHandlerFunc 自定义主动消息回复报文处理.
+func WithCustomActiveRespondHandlerFunc(customFunc func() map[consts.JT808CommandType]func(
+	activeMsg *ActiveMessage, terminalMsg *Message) bool) Option {
+	return Option{F: func(o *Options) {
+		o.CustomActiveRespondHandlerFunc = customFunc
 	}}
 }
 

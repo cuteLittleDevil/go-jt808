@@ -35,6 +35,9 @@ func Example() {
 				consts.T0200LocationReport: &meLocation{},
 			}
 		}),
+		WithCustomActiveRespondHandlerFunc(func() map[consts.JT808CommandType]func(activeMsg *ActiveMessage, terminalMsg *Message) bool {
+			return map[consts.JT808CommandType]func(activeMsg *ActiveMessage, terminalMsg *Message) bool{}
+		}),
 	)
 	go goJt808.Run()
 

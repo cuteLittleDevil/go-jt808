@@ -1,6 +1,7 @@
 package service
 
 import (
+	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
 	"log/slog"
 	"net"
 	"time"
@@ -46,28 +47,22 @@ func (g *GoJT808) Run() {
 	}
 
 	for {
-		c, err := in.AcceptTCP()
+		conn, err := in.AcceptTCP()
 		if err != nil {
 			slog.Warn("accept fail",
 				slog.Any("err", err))
 			continue
 		}
-		handles := g.createDefaultHandle()
-		customHandles := g.opts.CustomHandleFunc()
-		for k, v := range customHandles {
-			handles[k] = v
-		}
-		terminalEvent := g.opts.CustomTerminalEventerFunc()
-
 		client := newConnection(connectionParams{
-			conn:                   c,
-			handles:                handles,
-			terminalEvent:          terminalEvent,
+			conn:                   conn,
+			handles:                g.createCommandHandle(),
+			activeRespondHandles:   g.createActiveRespondHandle(),
+			terminalEvent:          g.opts.CustomTerminalEventerFunc(),
 			filter:                 g.opts.FilterSubcontract,
 			onTerminalTimeoutEvent: g.opts.OnTerminalTimeoutEvent,
 			timeout: TerminalTimeout{
 				ConnectionStartTime: time.Now(),
-				Address:             c.RemoteAddr().String(),
+				Address:             conn.RemoteAddr().String(),
 				IdleTimeout:         g.opts.IdleTimeout,
 			},
 			onJoinEvent:  g.sessionManager.join,
@@ -95,6 +90,25 @@ func (g *GoJT808) Run() {
 //   - 其他网络错误
 func (g *GoJT808) SendActiveMessage(activeMsg *ActiveMessage) *Message {
 	return g.sessionManager.write(activeMsg)
+}
+
+func (g *GoJT808) createCommandHandle() map[consts.JT808CommandType]Handler {
+	handles := g.createDefaultHandle()
+	customHandles := g.opts.CustomHandleFunc()
+	for k, v := range customHandles {
+		handles[k] = v
+	}
+	return handles
+}
+
+func (g *GoJT808) createActiveRespondHandle() map[consts.JT808CommandType]func(
+	platformMsg *ActiveMessage, terminalMsg *Message) bool {
+	handles := g.createDefaultRespondHandle()
+	customHandles := g.opts.CustomActiveRespondHandlerFunc()
+	for k, v := range customHandles {
+		handles[k] = v
+	}
+	return handles
 }
 
 func (g *GoJT808) createDefaultHandle() map[consts.JT808CommandType]Handler {
@@ -149,4 +163,93 @@ func (g *GoJT808) createDefaultHandle() map[consts.JT808CommandType]Handler {
 		consts.T1211FileInfoUpload:     newDefaultHandle(&model.T0x1211{}),
 		consts.T1212FileUploadComplete: newDefaultHandle(&model.T0x1212{}),
 	}
+}
+
+// HasMatch 判断当前应答是否匹配某条平台下发的主动指令.
+func (g *GoJT808) createDefaultRespondHandle() map[consts.JT808CommandType]func(
+	platformMsg *ActiveMessage, terminalMsg *Message) bool {
+	return map[consts.JT808CommandType]func(*ActiveMessage, *Message) bool{
+		// 平台-查询终端音视频属性 (只需要匹配指令)
+		consts.T1003UploadAudioVideoAttr: func(activeMsg *ActiveMessage, _ *Message) bool {
+			return activeMsg.Command == consts.P9003QueryTerminalAudioVideoProperties
+		},
+		// 通用应答，有部分指令先忽略，如8801 -> 0001(跳过) -> 8805
+		consts.T0001GeneralRespond: g.makeSerialMatchHandler(func(jtMsg *jt808.JTMessage) (uint16, error) {
+			var tmp model.T0x0001
+			if err := tmp.Parse(jtMsg); err != nil {
+				return 0, err
+			}
+			return tmp.SerialNumber, nil
+		}),
+		// 以下情况匹配下发指令的序列号
+		consts.T0104QueryParameter: g.makeSerialMatchHandler(func(jtMsg *jt808.JTMessage) (uint16, error) {
+			var tmp model.T0x0104
+			if err := tmp.Parse(jtMsg); err != nil {
+				return 0, err
+			}
+			return tmp.RespondSerialNumber, nil
+		}),
+		consts.T0201QueryLocation: g.makeSerialMatchHandler(func(jtMsg *jt808.JTMessage) (uint16, error) {
+			var tmp model.T0x0201
+			if err := tmp.Parse(jtMsg); err != nil {
+				return 0, err
+			}
+			return tmp.RespondSerialNumber, nil
+		}),
+		consts.T0302QuestionAnswer: g.makeSerialMatchHandler(func(jtMsg *jt808.JTMessage) (uint16, error) {
+			var tmp model.T0x0302
+			if err := tmp.Parse(jtMsg); err != nil {
+				return 0, err
+			}
+			return tmp.SerialNumber, nil
+		}),
+		consts.T1205UploadAudioVideoResourceList: g.makeSerialMatchHandler(func(jtMsg *jt808.JTMessage) (uint16, error) {
+			var tmp model.T0x1205
+			if err := tmp.Parse(jtMsg); err != nil {
+				return 0, err
+			}
+			return tmp.SerialNumber, nil
+		}),
+		consts.T1206FileUploadCompleteNotice: g.makeSerialMatchHandler(func(jtMsg *jt808.JTMessage) (uint16, error) {
+			var tmp model.T0x1206
+			if err := tmp.Parse(jtMsg); err != nil {
+				return 0, err
+			}
+			return tmp.RespondSerialNumber, nil
+		}),
+		consts.T0805CameraShootImmediately: g.makeSerialMatchHandler(func(jtMsg *jt808.JTMessage) (uint16, error) {
+			var tmp model.T0x0805
+			if err := tmp.Parse(jtMsg); err != nil {
+				return 0, err
+			}
+			return tmp.RespondSerialNumber, nil
+		}),
+	}
+}
+
+// makeSerialMatchHandler 匹配流水号.
+func (g *GoJT808) makeSerialMatchHandler(parseSerial func(*jt808.JTMessage) (uint16, error)) func(*ActiveMessage, *Message) bool {
+	return func(platformMsg *ActiveMessage, terminalMsg *Message) bool {
+		if terminalMsg.Command == consts.T0001GeneralRespond && isWaitingCommand(platformMsg.Command) {
+			return false
+		}
+
+		serial, err := parseSerial(terminalMsg.JTMessage)
+		if err != nil {
+			return false
+		}
+		return platformMsg.ExtensionFields.PlatformSeq == serial
+	}
+}
+
+func isWaitingCommand(cmd consts.JT808CommandType) bool {
+	// 如果是这些命令的话 等待后续应答 如 8801 -> 8805
+	switch cmd {
+	case consts.P8801CameraShootImmediateCommand,
+		consts.P9003QueryTerminalAudioVideoProperties,
+		consts.P9205QueryResourceList,
+		consts.P9206FileUploadInstructions:
+		return true
+	}
+	return false
 }

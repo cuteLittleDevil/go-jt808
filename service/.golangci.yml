@@ -42,6 +42,9 @@ issues:
     - linters:
         - funlen
       source: "createDefaultHandle"
+    - linters:
+        - funlen
+      source: "createDefaultRespondHandle"
 
 output:
   # See the dedicated "output" documentation section.

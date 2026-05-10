@@ -3,7 +3,6 @@ package service
 import (
 	"errors"
 	"fmt"
-	"github.com/cuteLittleDevil/go-jt808/protocol/model"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 	"io"
 	"log/slog"
@@ -53,6 +52,8 @@ type (
 		conn *net.TCPConn
 		// handles 信令处理.每一个连接都是独立的map, 不会影响其他的.
 		handles map[consts.JT808CommandType]Handler
+		// activeRespondHandles 主动下发，自定义处理回复相关的指令
+		activeRespondHandles map[consts.JT808CommandType]func(platformMsg *ActiveMessage, terminalMsg *Message) bool
 		// 终端事件处理器，用于推送终端上下线、心跳、位置上报等事件给上层业务.
 		terminalEvent TerminalEventer
 		// filter 是否启用消息过滤,过滤分包情况的事件，默认过滤.
@@ -347,89 +348,18 @@ func (c *connection) onActiveEvent(activeMsg *ActiveMessage, record map[uint16]*
 	}
 }
 
-func (c *connection) onActiveRespondEvent(record map[uint16]*ActiveMessage, msg *Message) bool {
-	type respond struct {
-		JT808Handler
-		HasRespondFunc func(seq uint16) bool
-	}
-	tmp := respond{
-		JT808Handler:   nil,
-		HasRespondFunc: nil,
-	}
-	switch msg.Command {
-	case consts.T0001GeneralRespond:
-		t0x0001 := &model.T0x0001{}
-		tmp.JT808Handler = t0x0001
-		tmp.HasRespondFunc = func(seq uint16) bool {
-			// 如果是这些命令的话 等待后续应答 如 8801 -> 8805
-			switch record[seq].Command {
-			case consts.P8801CameraShootImmediateCommand, consts.P9003QueryTerminalAudioVideoProperties,
-				consts.P9205QueryResourceList, consts.P9206FileUploadInstructions:
-				return false
-			default:
-				return seq == t0x0001.SerialNumber
-			}
-		}
-	case consts.T0104QueryParameter:
-		t0x0104 := &model.T0x0104{}
-		tmp.JT808Handler = t0x0104
-		tmp.HasRespondFunc = func(seq uint16) bool {
-			return seq == t0x0104.RespondSerialNumber
-		}
-	case consts.T1003UploadAudioVideoAttr:
-		t0x1003 := &model.T0x1003{}
-		tmp.JT808Handler = t0x1003
-		tmp.HasRespondFunc = func(_ uint16) bool {
-			return true
-		}
-	case consts.T0201QueryLocation:
-		t0x0201 := &model.T0x0201{}
-		tmp.JT808Handler = t0x0201
-		tmp.HasRespondFunc = func(seq uint16) bool {
-			return seq == t0x0201.RespondSerialNumber
-		}
-	case consts.T0302QuestionAnswer:
-		t0x0302 := &model.T0x0302{}
-		tmp.JT808Handler = t0x0302
-		tmp.HasRespondFunc = func(seq uint16) bool {
-			return seq == t0x0302.SerialNumber
-		}
-	case consts.T1205UploadAudioVideoResourceList:
-		t0x1205 := &model.T0x1205{}
-		tmp.JT808Handler = t0x1205
-		tmp.HasRespondFunc = func(seq uint16) bool {
-			return seq == t0x1205.SerialNumber
-		}
-	case consts.T1206FileUploadCompleteNotice:
-		t0x1206 := &model.T0x1206{}
-		tmp.JT808Handler = t0x1206
-		tmp.HasRespondFunc = func(seq uint16) bool {
-			return seq == t0x1206.RespondSerialNumber
-		}
-	case consts.T0805CameraShootImmediately:
-		t0x0805 := &model.T0x0805{}
-		tmp.JT808Handler = t0x0805
-		tmp.HasRespondFunc = func(seq uint16) bool {
-			return seq == t0x0805.RespondSerialNumber
-		}
-	}
-	if tmp.HasRespondFunc != nil {
-		if err := tmp.Parse(msg.JTMessage); err != nil {
-			slog.Warn("parse fail",
-				slog.String("terminal data", fmt.Sprintf("%x", msg.ExtensionFields.TerminalData)),
-				slog.Any("err", err))
-			return true
-		}
-		for k := range record {
-			if tmp.HasRespondFunc(k) {
-				msg.ExtensionFields.PlatformSeq = k
-				msg.ExtensionFields.TerminalCommand = tmp.Protocol()
-				c.activeMsgCompleteChan <- msg
+func (c *connection) onActiveRespondEvent(record map[uint16]*ActiveMessage, terminalMsg *Message) bool {
+	matchFunc, ok := c.activeRespondHandles[terminalMsg.Command]
+	if ok {
+		for seq, platformMessage := range record {
+			if matchFunc(platformMessage, terminalMsg) {
+				terminalMsg.ExtensionFields.PlatformSeq = seq
+				terminalMsg.ExtensionFields.TerminalCommand = terminalMsg.Protocol()
+				c.activeMsgCompleteChan <- terminalMsg
 				return true
 			}
 		}
 	}
-
 	return false
 }
 
