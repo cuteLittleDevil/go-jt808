@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 	"io"
 	"log/slog"
@@ -215,15 +216,15 @@ func (c *connection) write() {
 
 	for {
 		select {
-		case <-c.finallyCompleteChan: // 如果现在有平台主动下发的 需要等待完成在退出
+		case <-c.finallyCompleteChan: // 如果现在有平台主动下发的, 需要等待完成在退出
 			return
 		case activeMsg := <-c.activeMsgChan: // 平台主动下发的
 			atomic.AddInt32(&c.activeUnfinishedSum, 1)
-			c.onActiveEvent(activeMsg, record)
+			c.onActiveSendEvent(activeMsg, record)
 
 		case msg := <-c.activeMsgCompleteChan: // 平台主动下发的完成情况
 			seq := msg.ExtensionFields.PlatformSeq
-			// 超时的情况一定执行一次 如果完成了 还可能执行一次
+			// 超时的情况一定执行一次, 如果完成了,还可能在执行一次超时的回调
 			if v, ok := record[seq]; ok {
 				c.onActiveEventComplete(msg, v)
 				delete(record, seq)
@@ -231,7 +232,7 @@ func (c *connection) write() {
 			}
 
 		case subPackMsg := <-c.reissuePackChan: // 分包补传的
-			c.onSubPackReplyEvent(subPackMsg)
+			c.onReissueSubcontractingEvent(subPackMsg)
 
 		case msg := <-c.terminalUplinkMsgChan: // 终端上传的
 			if len(record) > 0 && msg.hasComplete() { // 说明现在有主动的请求 等待回复中
@@ -275,64 +276,107 @@ func (c *connection) defaultReplyEvent(msg *Message) {
 	}
 	header := msg.JTMessage.Header
 	header.ReplyID = uint16(msg.ReplyProtocol())
-	seq := c.curSeq()
-	header.PlatformSerialNumber = seq
-	data := header.Encode(body)
+	platformSeq, _ := c.allocSeq(0)
+	header.PlatformSerialNumber = platformSeq
 
-	if _, err = c.conn.Write(data); err != nil {
-		slog.Warn("write fail",
-			slog.String("data", fmt.Sprintf("%x", data)),
-			slog.Any("err", err))
-		msg.ExtensionFields.Err = errors.Join(ErrWriteDataFail, err)
+	packets := header.EncodePackets(body)
+	for _, data := range packets {
+		if _, err = c.conn.Write(data); err != nil {
+			slog.Warn("write fail",
+				slog.String("data", fmt.Sprintf("%x", data)),
+				slog.Any("err", err))
+			msg.ExtensionFields.Err = errors.Join(ErrWriteDataFail, err)
+		}
+		msg.ExtensionFields.PlatformData = append(msg.ExtensionFields.PlatformData, data...)
 	}
+	if _, seq := c.allocSeq(len(packets)); len(packets) > 1 {
+		platformSeq = seq - 1
+	}
+
 	msg.ExtensionFields.PlatformCommand = msg.ReplyProtocol()
-	msg.ExtensionFields.PlatformSeq = seq
-	msg.ExtensionFields.PlatformData = data
+	msg.ExtensionFields.PlatformSeq = platformSeq
+
 	c.onWriteExecutionEvent(msg)
 }
 
-func (c *connection) onSubPackReplyEvent(msg *Message) {
+func (c *connection) onReissueSubcontractingEvent(msg *Message) {
 	header := msg.JTMessage.Header
-	seq := c.curSeq()
-	header.PlatformSerialNumber = seq
+	original, _ := c.allocSeq(1)
+	header.PlatformSerialNumber = original
 	header.ReplyID = uint16(consts.P8003ReissueSubcontractingRequest)
-	data := header.Encode(msg.JTMessage.Body)
+	packets := header.EncodePackets(msg.JTMessage.Body)
 
+	if len(packets) != 1 { // 分包补传的报文固定大小，不会分包
+		slog.Warn("onReissueSubcontractingEvent",
+			slog.String("key", c.key),
+			slog.Int("packets", len(packets)),
+			slog.Any("data", fmt.Sprintf("%x", msg.JTMessage.Body)))
+		return
+	}
+
+	data := packets[0]
 	if _, err := c.conn.Write(data); err != nil {
 		slog.Warn("write fail",
 			slog.String("data", fmt.Sprintf("%x", data)),
 			slog.Any("err", err))
 		msg.ExtensionFields.Err = errors.Join(ErrWriteDataFail, err)
 	}
-	msg.ExtensionFields.PlatformSeq = seq
+
+	msg.ExtensionFields.PlatformSeq = original
 	msg.ExtensionFields.PlatformData = data
 	c.onWriteExecutionEvent(msg)
 }
 
-func (c *connection) onActiveEvent(activeMsg *ActiveMessage, record map[uint16]*ActiveMessage) {
+func (c *connection) onActiveSendEvent(activeMsg *ActiveMessage, record map[uint16]*ActiveMessage) {
 	header := activeMsg.header
-	seq := c.curSeq()
-	header.PlatformSerialNumber = seq
+	platformSeq, _ := c.allocSeq(0)
+	header.PlatformSerialNumber = platformSeq
 	header.ReplyID = uint16(activeMsg.Command)
-	data := header.Encode(activeMsg.Body)
+	packets := header.EncodePackets(activeMsg.Body)
+
+	var (
+		platformData = make([]byte, 0, len(activeMsg.Body)+10)
+		writeErr     error
+		jtMsg        = jt808.NewJTMessage()
+	)
+
+	for _, data := range packets {
+		if _, err := c.conn.Write(data); err != nil {
+			writeErr = errors.Join(ErrWriteDataFail, err)
+		}
+		_ = jtMsg.Decode(data)
+		platformData = append(platformData, jtMsg.Body...)
+	}
+	if len(packets) > 0 {
+		_ = jtMsg.Decode(platformData)
+	}
+	if _, seq := c.allocSeq(len(packets)); len(packets) > 1 {
+		// 如果分包了，使用分包最后的一个流水号做标记, 当前终端回复使用的是分包的最后流水号的包
+		platformSeq = seq - 1
+	}
+
+	replyMsg := newActiveSendMessage(jtMsg, activeMsg.Command, func(message *Message) {
+		message.ExtensionFields.PlatformData = platformData
+		message.ExtensionFields.Err = writeErr
+		message.ExtensionFields.PlatformSeq = platformSeq
+	})
+	if v, ok := c.handles[activeMsg.Command]; ok {
+		replyMsg.Handler = v
+		c.onReadExecutionEvent(replyMsg)
+	} else {
+		c.terminalEvent.OnNotSupportedEvent(replyMsg)
+	}
 	activeMsg.ExtensionFields = struct {
 		PlatformSeq uint16 `json:"platformSeq,omitempty"`
 		Data        []byte `json:"data,omitempty"`
 	}{
-		PlatformSeq: seq,
-		Data:        data,
+		PlatformSeq: platformSeq,
+		Data:        platformData,
 	}
-	_, err := c.conn.Write(data)
-	replyMsg := newActiveMessage(seq, activeMsg.Command, data, err)
-	if v, ok := c.handles[activeMsg.Command]; ok {
-		replyMsg.Handler = v
-	}
-	c.onReadExecutionEvent(replyMsg)
 
 	activeMsg.convertMessage = replyMsg
-	record[seq] = activeMsg
-	if err != nil {
-		replyMsg.ExtensionFields.Err = errors.Join(ErrWriteDataFail, err)
+	record[platformSeq] = activeMsg
+	if writeErr != nil {
 		c.activeMsgCompleteChan <- replyMsg
 	} else {
 		duration := 3 * time.Second
@@ -341,8 +385,13 @@ func (c *connection) onActiveEvent(activeMsg *ActiveMessage, record map[uint16]*
 		}
 		go func(overtimeMsg *Message, timeout time.Duration) {
 			time.Sleep(timeout)
+			select {
+			case <-c.finallyCompleteChan:
+				return
+			default:
+			}
 			overtimeMsg.ExtensionFields.Err = errors.Join(ErrWriteDataOverTime,
-				fmt.Errorf("overtime is [%.2f]second", duration.Seconds()))
+				fmt.Errorf("overtime is [%.2f]second", timeout.Seconds()))
 			c.activeMsgCompleteChan <- overtimeMsg
 		}(replyMsg, duration)
 	}
@@ -406,9 +455,8 @@ func (c *connection) onWriteExecutionEvent(msg *Message) {
 	c.terminalEvent.OnWriteExecutionEvent(*msg)
 }
 
-func (c *connection) curSeq() uint16 {
-	defer func() {
-		c.platformSerialNumber++
-	}()
-	return c.platformSerialNumber
+func (c *connection) allocSeq(n int) (uint16, uint16) {
+	original := c.platformSerialNumber
+	c.platformSerialNumber += uint16(n)
+	return original, c.platformSerialNumber
 }

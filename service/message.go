@@ -60,10 +60,8 @@ func newTerminalMessage(jtMsg *jt808.JTMessage, terminalData []byte) *Message {
 	}
 }
 
-func newActiveMessage(seq uint16, command consts.JT808CommandType, platformData []byte, err error) *Message {
-	jtMsg := jt808.NewJTMessage()
-	_ = jtMsg.Decode(platformData)
-	return &Message{
+func newActiveSendMessage(jtMsg *jt808.JTMessage, command consts.JT808CommandType, changFunc func(message *Message)) *Message {
+	msg := &Message{
 		JTMessage: jtMsg,
 		Command:   command,
 		ExtensionFields: struct {
@@ -78,13 +76,15 @@ func newActiveMessage(seq uint16, command consts.JT808CommandType, platformData 
 			CustomData          any                     `json:"customData,omitempty"`
 			Err                 error                   `json:"err,omitempty"`
 		}{
-			PlatformSeq:     seq,
-			PlatformData:    platformData,
 			ActiveSend:      true,
 			PlatformCommand: command,
-			Err:             err,
 		},
 	}
+	if changFunc != nil {
+		changFunc(msg)
+	}
+
+	return msg
 }
 
 func newErrMessage(err error) *Message {
