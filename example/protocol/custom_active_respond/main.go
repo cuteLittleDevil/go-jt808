@@ -29,15 +29,15 @@ func main() {
 		service.WithCustomHandleFunc(func() map[consts.JT808CommandType]service.Handler {
 			return map[consts.JT808CommandType]service.Handler{
 				// 自定义的，需要先加一下处理，表示这些指令支持了
-				consts.JT808CommandType(0x6660): &CustomTerminalRequest{},
-				consts.JT808CommandType(0x6661): &CustomTerminalReply{},
+				custom6666:      &CustomTerminalRequest{},
+				custom6666Reply: &CustomTerminalReply{},
 			}
 		}),
 		service.WithCustomActiveRespondHandlerFunc(func() map[consts.JT808CommandType]func(*service.ActiveMessage, *service.Message) bool {
 			// 自定义的，需要自己去实现主动下发和回复的映射关系。不设置则默认超时
 			// 每次都新建一个map，一个协程一个map
 			return map[consts.JT808CommandType]func(activeMsg *service.ActiveMessage, terminalMsg *service.Message) bool{
-				0x6661: func(activeMsg *service.ActiveMessage, terminalMsg *service.Message) bool {
+				custom6666Reply: func(activeMsg *service.ActiveMessage, terminalMsg *service.Message) bool {
 					var tmp CustomTerminalReply
 					if err := tmp.Parse(terminalMsg.JTMessage); err != nil {
 						return false
@@ -157,12 +157,12 @@ func main() {
 
 	reply6661Msg := goJt808.SendActiveMessage(&service.ActiveMessage{
 		Key:              key,
-		Command:          consts.JT808CommandType(0x6660),
+		Command:          custom6666,
 		OverTimeDuration: 5 * time.Second,
 	})
 	var customReply CustomTerminalReply
 	err = customReply.Parse(reply6661Msg.JTMessage)
-	fmt.Println("自定义指令 0x6660 -> 0x6661", customReply.RespondSerialNumber, err, reply6661Msg.ExtensionFields.Err)
+	fmt.Println("自定义指令 0x6666 -> 0x6667", customReply.RespondSerialNumber, err, reply6661Msg.ExtensionFields.Err)
 }
 
 func client(phone string, address string) {
@@ -279,7 +279,7 @@ func client(phone string, address string) {
 					_, _ = conn.Write(jtMsg.Header.Encode(tmp.Encode()))
 				}
 
-			case consts.JT808CommandType(0x6660):
+			case custom6666:
 				tmp := CustomTerminalReply{
 					RespondSerialNumber: seq,
 				}

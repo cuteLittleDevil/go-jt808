@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	custom6666      consts.JT808CommandType = 0x6666
-	custom6666Reply consts.JT808CommandType = 0x6667
+	custom3333      consts.JT808CommandType = 0x3333
+	custom3333Reply consts.JT808CommandType = 0x3334
 )
 
 type CustomTerminalReply struct {
@@ -35,7 +35,7 @@ func (m *CustomTerminalReply) Encode() []byte {
 }
 
 func (m *CustomTerminalReply) Protocol() consts.JT808CommandType {
-	return custom6666Reply
+	return custom3333Reply
 }
 
 func (m *CustomTerminalReply) OnReadExecutionEvent(msg *service.Message) {}
@@ -58,9 +58,9 @@ func (c *CustomTerminalRequest) OnWriteExecutionEvent(msg service.Message) {
 }
 
 func (c *CustomTerminalRequest) Protocol() consts.JT808CommandType {
-	return custom6666
+	return custom3333
 }
 
 func (c *CustomTerminalRequest) ReplyProtocol() consts.JT808CommandType {
-	return custom6666Reply
+	return custom3333Reply
 }
