@@ -328,37 +328,11 @@ func (c *connection) onReissueSubcontractingEvent(msg *Message) {
 }
 
 func (c *connection) onActiveSendEvent(activeMsg *ActiveMessage, record map[uint16]*ActiveMessage) {
-	header := activeMsg.header
-	platformSeq, _ := c.allocSeq(0)
-	header.PlatformSerialNumber = platformSeq
-	header.ReplyID = uint16(activeMsg.Command)
-	packets := header.EncodePackets(activeMsg.Body)
-
-	var (
-		platformData = make([]byte, 0, len(activeMsg.Body)+10)
-		writeErr     error
-		jtMsg        = jt808.NewJTMessage()
-	)
-
-	for _, data := range packets {
-		if _, err := c.conn.Write(data); err != nil {
-			writeErr = errors.Join(ErrWriteDataFail, err)
-		}
-		_ = jtMsg.Decode(data)
-		platformData = append(platformData, jtMsg.Body...)
-	}
-	if len(packets) > 0 {
-		_ = jtMsg.Decode(platformData)
-	}
-	if _, seq := c.allocSeq(len(packets)); len(packets) > 1 {
-		// 如果分包了，使用分包最后的一个流水号做标记, 当前终端回复使用的是分包的最后流水号的包
-		platformSeq = seq - 1
-	}
-
+	jtMsg, data, err := c.activeWritePackets(activeMsg)
+	platformSeq := jtMsg.Header.SerialNumber
 	replyMsg := newActiveSendMessage(jtMsg, activeMsg.Command, func(message *Message) {
-		message.ExtensionFields.PlatformData = platformData
-		message.ExtensionFields.Err = writeErr
-		message.ExtensionFields.PlatformSeq = platformSeq
+		message.ExtensionFields.PlatformData = data
+		message.ExtensionFields.Err = err
 	})
 	if v, ok := c.handles[activeMsg.Command]; ok {
 		replyMsg.Handler = v
@@ -371,12 +345,12 @@ func (c *connection) onActiveSendEvent(activeMsg *ActiveMessage, record map[uint
 		Data        []byte `json:"data,omitempty"`
 	}{
 		PlatformSeq: platformSeq,
-		Data:        platformData,
+		Data:        data,
 	}
 
 	activeMsg.convertMessage = replyMsg
 	record[platformSeq] = activeMsg
-	if writeErr != nil {
+	if err != nil {
 		c.activeMsgCompleteChan <- replyMsg
 	} else {
 		duration := 3 * time.Second
@@ -395,6 +369,34 @@ func (c *connection) onActiveSendEvent(activeMsg *ActiveMessage, record map[uint
 			c.activeMsgCompleteChan <- overtimeMsg
 		}(replyMsg, duration)
 	}
+}
+
+func (c *connection) activeWritePackets(activeMsg *ActiveMessage) (*jt808.JTMessage, []byte, error) {
+	var (
+		platformData = make([]byte, 0, len(activeMsg.Body)+10)
+		writeErr     error
+		jtMsg        = jt808.NewJTMessage()
+	)
+	header := activeMsg.header
+	platformSeq, _ := c.allocSeq(0)
+	header.PlatformSerialNumber = platformSeq
+	header.ReplyID = uint16(activeMsg.Command)
+	packets := header.EncodePackets(activeMsg.Body)
+
+	for _, data := range packets {
+		if _, err := c.conn.Write(data); err != nil {
+			writeErr = errors.Join(ErrWriteDataFail, err)
+		}
+		if err := jtMsg.Decode(data); err == nil {
+			platformData = append(platformData, jtMsg.Body...)
+		}
+	}
+
+	if len(packets) > 0 {
+		_ = jtMsg.Decode(platformData)
+	}
+	_, _ = c.allocSeq(len(packets))
+	return jtMsg, platformData, writeErr
 }
 
 func (c *connection) onActiveRespondEvent(record map[uint16]*ActiveMessage, terminalMsg *Message) bool {

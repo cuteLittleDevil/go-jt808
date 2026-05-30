@@ -78,6 +78,7 @@ func newActiveSendMessage(jtMsg *jt808.JTMessage, command consts.JT808CommandTyp
 		}{
 			ActiveSend:      true,
 			PlatformCommand: command,
+			PlatformSeq:     jtMsg.Header.SerialNumber,
 		},
 	}
 	if changFunc != nil {
