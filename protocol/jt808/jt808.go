@@ -142,33 +142,50 @@ func (h *Header) decode(data []byte) error {
 	return nil
 }
 
+// Encode 已废弃。
+//
+// Deprecated: 该方法仅为兼容旧版本而保留，会把所有分包拼接成一个大 []byte 返回.
+// 请改用 EncodePackets 方法，分包情况它会返回多个独立的协议包，推荐使用.
 func (h *Header) Encode(body []byte) []byte {
-	if len(body) < maxBodyLength {
+	if len(body) <= maxBodyLength {
 		return h.createPackage(body, 0, 0)
 	} else {
-		return h.subPackageStatistics(body)
+		packets := h.splitIntoPackets(body)
+		result := make([]byte, 0, len(packets)*maxBodyLength)
+		for _, b := range packets {
+			result = append(result, b...)
+		}
+		return result
 	}
 }
 
-func (h *Header) subPackageStatistics(body []byte) []byte {
+// EncodePackets 推荐的编码方法，返回分包的结果.
+func (h *Header) EncodePackets(body []byte) [][]byte {
+	if len(body) <= maxBodyLength {
+		return [][]byte{h.createPackage(body, 0, 0)}
+	}
+	return h.splitIntoPackets(body)
+}
+
+func (h *Header) splitIntoPackets(body []byte) [][]byte {
 	bodyLen := len(body)
-	data := make([]byte, 0, bodyLen+maxBodyLength)
 	fullGroups := bodyLen / maxBodyLength
 	remaining := bodyLen % maxBodyLength
 	sum := fullGroups
 	if remaining > 0 {
 		sum++
 	}
+	packages := make([][]byte, 0, sum)
 	for i := 0; i < fullGroups; i++ {
 		start := i * maxBodyLength
 		end := start + maxBodyLength
-		data = append(data, h.createPackage(body[start:end], uint16(i+1), uint16(sum))...)
+		packages = append(packages, h.createPackage(body[start:end], uint16(i+1), uint16(sum)))
 	}
 	if remaining > 0 {
 		start := fullGroups * maxBodyLength
-		data = append(data, h.createPackage(body[start:], uint16(sum), uint16(sum))...)
+		packages = append(packages, h.createPackage(body[start:], uint16(sum), uint16(sum)))
 	}
-	return data
+	return packages
 }
 
 func (h *Header) createPackage(body []byte, num, sum uint16) []byte {

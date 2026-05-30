@@ -114,9 +114,115 @@ func TestEncode(t *testing.T) {
 	}
 }
 
-func TestEncode2(t *testing.T) {
-	type args struct {
+func TestHeader_EncodePackets(t *testing.T) {
+	type want struct {
+		decodeCount int
+		encodeCount int
+	}
+	tests := []struct {
 		name    string
+		bodyLen int
+		want    want
+	}{
+		{
+			name:    "1. 单包_小于1000字节",
+			bodyLen: 256,
+			want: want{
+				decodeCount: 1,
+				encodeCount: 1,
+			},
+		},
+		{
+			name:    "2. 边界_刚好1000字节",
+			bodyLen: 1000,
+			want: want{
+				decodeCount: 1,
+				encodeCount: 1,
+			},
+		},
+		{
+			name:    "3. 两包_1001字节",
+			bodyLen: 1001,
+			want: want{
+				decodeCount: 2,
+				encodeCount: 2,
+			},
+		},
+		{
+			name:    "4. 多包_2500字节",
+			bodyLen: 2500,
+			want: want{
+				decodeCount: 3,
+				encodeCount: 3,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			jtMsg := NewJTMessage()
+			data, _ := hex.DecodeString("7e0002400001000000000172998417380000027e")
+			_ = jtMsg.Decode(data)
+
+			body := make([]byte, tt.bodyLen)
+			for i := range body {
+				body[i] = byte(i % 255)
+			}
+
+			packets := jtMsg.Header.EncodePackets(body)
+			if len(packets) != tt.want.encodeCount {
+				t.Fatalf("EncodePackets() 返回包数量 = %d, want %d", len(packets), tt.want.decodeCount)
+			}
+
+			// 验证每个包都能正常解码 + 分包信息正确
+			var reconstructed []byte
+			for i, pkt := range packets {
+				msg := NewJTMessage()
+				if err := msg.Decode(pkt); err != nil {
+					t.Fatalf("第 %d 个包解码失败: %v", i+1, err)
+				}
+
+				reconstructed = append(reconstructed, msg.Body...)
+
+				// 检查分包标识
+				if tt.want.decodeCount == 1 {
+					if msg.Header.Property.PacketFragmented != 0 {
+						t.Errorf("单包情况下 PacketFragmented 应为 0，实际为 %d", msg.Header.Property.PacketFragmented)
+					}
+					if msg.Header.SubPackageSum != 0 || msg.Header.SubPackageNo != 0 {
+						t.Errorf("单包情况下 SubPackageSum/No 应为 0")
+					}
+				} else {
+					if msg.Header.Property.PacketFragmented != 1 {
+						t.Errorf("多包情况下 PacketFragmented 应为 1")
+					}
+					if msg.Header.SubPackageSum != uint16(tt.want.decodeCount) {
+						t.Errorf("第[%d]包 SubPackageSum = %d, want %d", i+1, msg.Header.SubPackageSum, tt.want.decodeCount)
+					}
+					expectedNo := uint16(i + 1)
+					if msg.Header.SubPackageNo != expectedNo {
+						t.Errorf("第[%d]包 SubPackageNo = %d, want %d", i+1, msg.Header.SubPackageNo, expectedNo)
+					}
+				}
+
+				// 检查流水号偏移是否正确 (PlatformSerialNumber + num-1)
+				expectedSerial := jtMsg.Header.PlatformSerialNumber + uint16(i)
+				if msg.Header.SerialNumber != expectedSerial {
+					t.Errorf("第[%d]包 SerialNumber = %d, want %d", i+1, msg.Header.SerialNumber, expectedSerial)
+				}
+			}
+
+			// 所有包解码后 body 能还原
+			if !bytes.Equal(reconstructed, body) {
+				t.Errorf("分包后重新拼接的 body 与原始 body 不一致！\n got=[%x] \n want[%x]", reconstructed, body)
+			}
+		})
+	}
+}
+
+func TestEncodeSubpackage(t *testing.T) {
+	type args struct {
+		path    string
 		command uint16
 		seq     uint16
 	}
@@ -128,7 +234,7 @@ func TestEncode2(t *testing.T) {
 		{
 			name: "0x1205 指令分包",
 			args: args{
-				name:    "./testdata/0x1205_src.txt",
+				path:    "./testdata/0x1205_src.txt",
 				command: uint16(consts.T1205UploadAudioVideoResourceList),
 				seq:     17148,
 			},
@@ -142,7 +248,7 @@ func TestEncode2(t *testing.T) {
 			data, _ := hex.DecodeString(msg)
 			_ = jtMsg.Decode(data)
 
-			src, err := os.ReadFile(tt.args.name)
+			src, err := os.ReadFile(tt.args.path)
 			if err != nil {
 				t.Fatal(err)
 			}
