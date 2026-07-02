@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>协议交互</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #06111f;
+            --panel: rgba(8, 25, 46, 0.92);
+            --panel-strong: rgba(10, 35, 64, 0.96);
+            --line: rgba(82, 168, 255, 0.22);
+            --text: #e8f3ff;
+            --muted: #8ca8c8;
+            --primary: #3ec7ff;
+            --success: #27d17f;
+            --warning: #ffbf47;
+            --danger: #ff6b6b;
+            --shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top left, rgba(62, 199, 255, 0.18), transparent 24%),
+                radial-gradient(circle at top right, rgba(39, 209, 127, 0.14), transparent 20%),
+                linear-gradient(180deg, #08111d 0%, #040a13 100%);
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(62, 199, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(62, 199, 255, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+        }
+
+        .page {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        .hero,
+        .panel {
+            background: linear-gradient(180deg, rgba(10, 32, 58, 0.92), rgba(5, 19, 36, 0.92));
+            border: 1px solid var(--line);
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .hero {
+            display: grid;
+            grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+            gap: 20px;
+            padding: 24px;
+            margin-bottom: 18px;
+        }
+
+        .hero h1 {
+            margin: 0 0 10px;
+            font-size: 34px;
+            letter-spacing: 2px;
+        }
+
+        .hero p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .hero-tips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .tip {
+            padding: 8px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(82, 168, 255, 0.2);
+            background: rgba(8, 24, 45, 0.75);
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .hero-actions,
+        .control-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: flex-end;
+            align-content: start;
+        }
+
+        .link-button,
+        .control-actions button {
+            height: 42px;
+            padding: 0 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(62, 199, 255, 0.26);
+            background: rgba(10, 27, 48, 0.9);
+            color: var(--text);
+            text-decoration: none;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .control-actions button.primary,
+        .link-button.primary {
+            background: linear-gradient(135deg, rgba(62, 199, 255, 0.28), rgba(23, 105, 255, 0.24));
+            border-color: rgba(62, 199, 255, 0.5);
+        }
+
+        .control-actions button.ghost {
+            background: transparent;
+        }
+
+        .control-actions button:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .control-panel {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 20px;
+            padding: 20px 22px;
+            margin-bottom: 16px;
+        }
+
+        .control-fields {
+            display: grid;
+            grid-template-columns: minmax(220px, 340px) minmax(0, 1fr);
+            gap: 16px;
+            align-items: end;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .field label,
+        .meta-label,
+        .section-label {
+            color: var(--muted);
+            font-size: 12px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .field input {
+            width: 100%;
+            height: 46px;
+            padding: 0 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(62, 199, 255, 0.2);
+            background: rgba(6, 18, 33, 0.88);
+            color: var(--text);
+            font-size: 16px;
+        }
+
+        .field input:focus {
+            outline: none;
+            border-color: rgba(62, 199, 255, 0.55);
+            box-shadow: 0 0 0 3px rgba(62, 199, 255, 0.12);
+        }
+
+        .preview-box {
+            width: 100%;
+            height: 46px;
+            padding: 0 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(82, 168, 255, 0.16);
+            background: rgba(5, 16, 30, 0.88);
+            color: var(--primary);
+            font-size: 13px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+        }
+
+        .preview-box:focus {
+            outline: none;
+            border-color: rgba(62, 199, 255, 0.55);
+            box-shadow: 0 0 0 3px rgba(62, 199, 255, 0.12);
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .summary-card {
+            padding: 18px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .summary-card::after {
+            content: "";
+            position: absolute;
+            top: -30px;
+            right: -20px;
+            width: 96px;
+            height: 96px;
+            background: radial-gradient(circle, rgba(62, 199, 255, 0.14), transparent 70%);
+        }
+
+        .summary-card .meta-label {
+            margin-bottom: 12px;
+        }
+
+        .summary-value {
+            font-size: 28px;
+            font-weight: bold;
+            line-height: 1.1;
+        }
+
+        .summary-foot {
+            margin-top: 10px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .status-open {
+            background: rgba(39, 209, 127, 0.15);
+            color: #8ef0bc;
+        }
+
+        .status-closed {
+            background: rgba(255, 107, 107, 0.14);
+            color: #ff9b9b;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: minmax(360px, 420px) minmax(0, 1fr);
+            gap: 16px;
+            min-height: 58vh;
+            align-items: start;
+        }
+
+        .panel {
+            padding: 18px;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .panel-title {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .panel-subtitle {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .timeline-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: calc(100vh - 320px);
+            overflow: auto;
+            padding-right: 4px;
+        }
+
+        .timeline-empty {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            min-height: 320px;
+            padding: 18px;
+            border-radius: 18px;
+            border: 1px dashed rgba(82, 168, 255, 0.22);
+            background:
+                linear-gradient(180deg, rgba(10, 29, 52, 0.56), rgba(5, 16, 30, 0.48)),
+                radial-gradient(circle at top right, rgba(62, 199, 255, 0.12), transparent 35%);
+        }
+
+        .timeline-empty-top {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .timeline-empty-badge {
+            width: 46px;
+            height: 46px;
+            border-radius: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(62, 199, 255, 0.14);
+            border: 1px solid rgba(62, 199, 255, 0.24);
+            color: var(--primary);
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .timeline-empty-title {
+            margin: 0 0 6px;
+            font-size: 16px;
+        }
+
+        .timeline-empty-text {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.7;
+            font-size: 13px;
+        }
+
+        .timeline-empty-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .timeline-empty-card {
+            padding: 14px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .timeline-empty-card strong {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: var(--text);
+        }
+
+        .timeline-empty-card span {
+            display: block;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.7;
+        }
+
+        .timeline-empty-steps {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .timeline-step {
+            padding: 8px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(82, 168, 255, 0.16);
+            background: rgba(8, 24, 45, 0.72);
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .timeline-item {
+            border: 1px solid rgba(82, 168, 255, 0.14);
+            border-radius: 16px;
+            background: rgba(6, 18, 33, 0.82);
+            padding: 14px;
+            cursor: pointer;
+            transition: border-color 0.2s ease, transform 0.2s ease, background 0.2s ease;
+        }
+
+        .timeline-item:hover {
+            border-color: rgba(62, 199, 255, 0.32);
+            transform: translateY(-1px);
+        }
+
+        .timeline-item.active {
+            border-color: rgba(62, 199, 255, 0.58);
+            background: rgba(10, 29, 52, 0.96);
+            box-shadow: inset 0 0 0 1px rgba(62, 199, 255, 0.14);
+        }
+
+        .timeline-top,
+        .timeline-meta {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .timeline-top {
+            margin-bottom: 10px;
+        }
+
+        .timeline-title {
+            font-size: 15px;
+            font-weight: bold;
+            line-height: 1.5;
+        }
+
+        .timeline-command {
+            color: var(--primary);
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .timeline-meta {
+            color: var(--muted);
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+
+        .timeline-row {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .mini-card {
+            padding: 10px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .mini-card .section-label {
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .hex-preview {
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 12px;
+            color: #b5cbe8;
+            line-height: 1.5;
+            word-break: break-all;
+        }
+
+        .detail-column {
+            display: grid;
+            grid-template-rows: auto auto;
+            gap: 16px;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .detail-card {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            min-height: 320px;
+        }
+
+        .detail-block {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-height: 0;
+        }
+
+        pre {
+            margin: 0;
+            padding: 14px;
+            border-radius: 14px;
+            background: rgba(5, 16, 30, 0.9);
+            border: 1px solid rgba(82, 168, 255, 0.12);
+            color: #dbeaff;
+            font-size: 12px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+            overflow: auto;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+        }
+
+        .raw-card {
+            min-height: 220px;
+        }
+
+        .empty-state {
+            border: 1px dashed rgba(82, 168, 255, 0.24);
+            border-radius: 16px;
+            min-height: 220px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: var(--muted);
+            padding: 24px;
+            line-height: 1.7;
+        }
+
+        @media (max-width: 1200px) {
+            .summary-grid,
+            .detail-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .content-grid,
+            .hero,
+            .control-panel {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .page {
+                padding: 16px;
+            }
+
+            .control-fields,
+            .summary-grid,
+            .detail-grid,
+            .timeline-row,
+            .timeline-empty-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .hero h1 {
+                font-size: 28px;
+            }
+
+            .timeline-list {
+                max-height: none;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+    <section class="hero">
+        <div>
+            <h1>协议交互</h1>
+            <p>连接设备对应的 WebSocket 通知流，实时查看终端上行、平台下行、原始十六进制报文和解析详情。</p>
+            <div class="hero-tips">
+                <span class="tip" id="inputHint">正在加载配置...</span>
+                <span class="tip">实时订阅 `notice/ws`</span>
+                <span class="tip">自动展示设备上报与平台回复</span>
+            </div>
+        </div>
+        <div class="hero-actions">
+            <a id="apifoxLink" class="link-button primary" target="_blank">Apifox文档</a>
+            <a id="streamingLink" class="link-button" target="_blank">流媒体页面</a>
+            <a href="/static/ui/index.html" class="link-button" target="_blank">车辆监控大屏</a>
+        </div>
+    </section>
+
+    <section class="panel control-panel">
+        <div class="control-fields">
+            <div class="field">
+                <label for="simInput">SIM 卡号</label>
+                <input type="text" id="simInput" placeholder="例如 14419999999">
+            </div>
+            <div class="field">
+                <label for="wsPreview">WebSocket 地址预览</label>
+                <input type="text" id="wsPreview" class="preview-box" placeholder="可按需修改 WebSocket 地址">
+            </div>
+        </div>
+        <div class="control-actions">
+            <button id="connectButton" class="primary" type="button">连接设备</button>
+            <button id="disconnectButton" type="button">断开连接</button>
+            <button id="clearButton" class="ghost" type="button">清空记录</button>
+        </div>
+    </section>
+
+    <section class="summary-grid">
+        <article class="panel summary-card">
+            <div class="meta-label">连接状态</div>
+            <div id="connectionStatus" class="status-pill status-closed">未连接</div>
+            <div id="statusDetail" class="summary-foot">等待输入 SIM 卡号后建立连接</div>
+        </article>
+        <article class="panel summary-card">
+            <div class="meta-label">当前设备</div>
+            <div id="currentSim" class="summary-value">-</div>
+            <div class="summary-foot">当前订阅的设备 SIM</div>
+        </article>
+        <article class="panel summary-card">
+            <div class="meta-label">交互数量</div>
+            <div id="messageCount" class="summary-value">0</div>
+            <div class="summary-foot">已接收的协议交互消息数</div>
+        </article>
+        <article class="panel summary-card">
+            <div class="meta-label">最新交互</div>
+            <div id="latestRemark" class="summary-value">-</div>
+            <div id="latestTime" class="summary-foot">暂无消息</div>
+        </article>
+    </section>
+
+    <section class="content-grid">
+        <section class="panel">
+            <div class="panel-header">
+                <h2 class="panel-title">交互时间线</h2>
+                <div id="timelineHint" class="panel-subtitle">需要等设备定时上传报文</div>
+            </div>
+            <div id="timelineEmpty" class="timeline-empty">
+                <div class="timeline-empty-top">
+                    <div class="timeline-empty-badge">WS</div>
+                    <div>
+                        <h3 class="timeline-empty-title">等待设备上报中</h3>
+                        <p class="timeline-empty-text">连接建立后，等设备定时上传报文，这里会按时间顺序自动追加每次协议交互。</p>
+                    </div>
+                </div>
+                <div class="timeline-empty-grid">
+                    <div class="timeline-empty-card">
+                        <strong>将展示的内容</strong>
+                        <span>指令名称、时间、SIM、设备上报 Hex、平台回复 Hex</span>
+                    </div>
+                    <div class="timeline-empty-card">
+                        <strong>查看方式</strong>
+                        <span>收到消息后点击左侧任意一条，可在右侧查看完整上报、回复和解析详情</span>
+                    </div>
+                </div>
+                <div class="timeline-empty-steps">
+                    <span class="timeline-step">1. 连接设备</span>
+                    <span class="timeline-step">2. 等待定时上报</span>
+                    <span class="timeline-step">3. 自动生成时间线</span>
+                </div>
+            </div>
+            <div id="timelineList" class="timeline-list" hidden></div>
+        </section>
+
+        <section class="detail-column">
+            <div class="detail-grid">
+                <section class="panel detail-card">
+                    <div class="panel-header">
+                        <h2 class="panel-title">设备上报</h2>
+                        <div class="panel-subtitle">终端上行报文与解析结果</div>
+                    </div>
+                    <div class="detail-block">
+                        <div class="section-label">Hex 报文</div>
+                        <pre id="terminalHex">等待消息...</pre>
+                    </div>
+                    <div class="detail-block">
+                        <div class="section-label">解析详情</div>
+                        <pre id="terminalDetails">等待消息...</pre>
+                    </div>
+                </section>
+
+                <section class="panel detail-card">
+                    <div class="panel-header">
+                        <h2 class="panel-title">平台回复</h2>
+                        <div class="panel-subtitle">平台下行报文与解析结果</div>
+                    </div>
+                    <div class="detail-block">
+                        <div class="section-label">Hex 报文</div>
+                        <pre id="platformHex">等待消息...</pre>
+                    </div>
+                    <div class="detail-block">
+                        <div class="section-label">解析详情</div>
+                        <pre id="platformDetails">等待消息...</pre>
+                    </div>
+                </section>
+            </div>
+
+            <section class="panel raw-card">
+                <div class="panel-header">
+                    <h2 class="panel-title">原始消息</h2>
+                    <div id="rawMeta" class="panel-subtitle">展示 WebSocket 原始返回内容</div>
+                </div>
+                <pre id="rawNotice">等待消息...</pre>
+            </section>
+        </section>
+    </section>
+</div>
+
+<script>
+    const DEFAULT_WS_URL = 'ws://124.221.30.46:18003/api/v1/notice/ws?sim={sim}';
+
+    const elements = {
+        simInput: document.getElementById('simInput'),
+        wsPreview: document.getElementById('wsPreview'),
+        connectButton: document.getElementById('connectButton'),
+        disconnectButton: document.getElementById('disconnectButton'),
+        clearButton: document.getElementById('clearButton'),
+        connectionStatus: document.getElementById('connectionStatus'),
+        statusDetail: document.getElementById('statusDetail'),
+        currentSim: document.getElementById('currentSim'),
+        messageCount: document.getElementById('messageCount'),
+        latestRemark: document.getElementById('latestRemark'),
+        latestTime: document.getElementById('latestTime'),
+        timelineHint: document.getElementById('timelineHint'),
+        timelineEmpty: document.getElementById('timelineEmpty'),
+        timelineList: document.getElementById('timelineList'),
+        terminalHex: document.getElementById('terminalHex'),
+        terminalDetails: document.getElementById('terminalDetails'),
+        platformHex: document.getElementById('platformHex'),
+        platformDetails: document.getElementById('platformDetails'),
+        rawNotice: document.getElementById('rawNotice'),
+        rawMeta: document.getElementById('rawMeta'),
+        inputHint: document.getElementById('inputHint'),
+        apifoxLink: document.getElementById('apifoxLink'),
+        streamingLink: document.getElementById('streamingLink')
+    };
+
+    const state = {
+        socket: null,
+        apiUrl: '',
+        wsTemplate: DEFAULT_WS_URL,
+        inputHint: '',
+        currentSim: '',
+        messages: [],
+        selectedId: null,
+        nextId: 1
+    };
+
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function formatTime(date) {
+        return new Intl.DateTimeFormat('zh-CN', {
+            hour12: false,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        }).format(date);
+    }
+
+    function truncateText(value, limit) {
+        const text = String(value || '');
+        if (text.length <= limit) {
+            return text;
+        }
+        return text.slice(0, limit) + '...';
+    }
+
+    function buildWsTemplate(wsUrl) {
+        if (!wsUrl) {
+            return DEFAULT_WS_URL;
+        }
+        if (wsUrl.indexOf('{sim}') !== -1) {
+            return wsUrl;
+        }
+        if (wsUrl.indexOf('sim=') !== -1) {
+            return wsUrl.replace(/sim=[^&]*/i, 'sim={sim}');
+        }
+        return wsUrl + (wsUrl.indexOf('?') === -1 ? '?sim={sim}' : '&sim={sim}');
+    }
+
+    function extractSimFromUrl(wsUrl) {
+        const match = String(wsUrl || '').match(/[?&]sim=([^&]+)/i);
+        return match ? decodeURIComponent(match[1]) : '';
+    }
+
+    function buildWsUrl(sim) {
+        return state.wsTemplate.replace('{sim}', encodeURIComponent(sim));
+    }
+
+    function updatePreview() {
+        const sim = elements.simInput.value.trim();
+        elements.wsPreview.value = sim ? buildWsUrl(sim) : '';
+    }
+
+    function setStatus(kind, text, detail) {
+        elements.connectionStatus.textContent = text;
+        elements.connectionStatus.className = 'status-pill ' + (kind === 'open' ? 'status-open' : 'status-closed');
+        elements.statusDetail.textContent = detail;
+    }
+
+    function setButtons(isConnected) {
+        elements.connectButton.disabled = isConnected;
+        elements.disconnectButton.disabled = !isConnected;
+    }
+
+    function splitParseResponse(message) {
+        const parts = String(message || '').split('[---]');
+        return {
+            terminal: (parts[0] || '').trim() || '暂无终端解析结果',
+            platform: (parts[1] || '').trim() || '暂无平台解析结果'
+        };
+    }
+
+    function renderSummary() {
+        const latest = state.messages[0];
+        elements.currentSim.textContent = state.currentSim || '-';
+        elements.messageCount.textContent = String(state.messages.length);
+        elements.latestRemark.textContent = latest ? truncateText(latest.remark || '未识别交互', 18) : '-';
+        elements.latestTime.textContent = latest ? formatTime(latest.arrivedAt) : '暂无消息';
+    }
+
+    function renderTimeline() {
+        if (!state.messages.length) {
+            elements.timelineEmpty.hidden = false;
+            elements.timelineList.hidden = true;
+            elements.timelineList.innerHTML = '';
+            elements.timelineHint.textContent = '需要等设备定时上传报文';
+            return;
+        }
+
+        elements.timelineEmpty.hidden = true;
+        elements.timelineList.hidden = false;
+        elements.timelineHint.textContent = '共 ' + state.messages.length + ' 条交互记录，默认选中最新一条';
+        elements.timelineList.innerHTML = state.messages.map(function (item) {
+            const activeClass = item.id === state.selectedId ? ' active' : '';
+            return '' +
+                '<article class="timeline-item' + activeClass + '" data-id="' + item.id + '">' +
+                '<div class="timeline-top">' +
+                '<div class="timeline-title">' + escapeHtml(item.remark || '未识别交互') + '</div>' +
+                '<div class="timeline-command">command ' + escapeHtml(item.commandLabel) + '</div>' +
+                '</div>' +
+                '<div class="timeline-meta">' +
+                '<span>' + escapeHtml(formatTime(item.arrivedAt)) + '</span>' +
+                '<span>' + escapeHtml(item.sim || '-') + '</span>' +
+                '</div>' +
+                '<div class="timeline-row">' +
+                '<div class="mini-card">' +
+                '<span class="section-label">设备上报</span>' +
+                '<div class="hex-preview">' + escapeHtml(truncateText(item.terminalData || '-', 72)) + '</div>' +
+                '</div>' +
+                '<div class="mini-card">' +
+                '<span class="section-label">平台回复</span>' +
+                '<div class="hex-preview">' + escapeHtml(truncateText(item.platformData || '-', 72)) + '</div>' +
+                '</div>' +
+                '</div>' +
+                '</article>';
+        }).join('');
+
+        Array.prototype.forEach.call(elements.timelineList.querySelectorAll('.timeline-item'), function (node) {
+            node.addEventListener('click', function () {
+                state.selectedId = Number(node.getAttribute('data-id'));
+                renderTimeline();
+                renderSelectedMessage();
+            });
+        });
+    }
+
+    function renderSelectedMessage() {
+        const selected = state.messages.find(function (item) {
+            return item.id === state.selectedId;
+        });
+
+        if (!selected) {
+            elements.terminalHex.textContent = '等待消息...';
+            elements.terminalDetails.textContent = '等待消息...';
+            elements.platformHex.textContent = '等待消息...';
+            elements.platformDetails.textContent = '等待消息...';
+            elements.rawNotice.textContent = '等待消息...';
+            elements.rawMeta.textContent = '展示 WebSocket 原始返回内容';
+            return;
+        }
+
+        elements.terminalHex.textContent = selected.terminalData || '暂无设备上报';
+        elements.terminalDetails.textContent = selected.terminalDetails || '正在解析设备上报...';
+        elements.platformHex.textContent = selected.platformData || '暂无平台回复';
+        elements.platformDetails.textContent = selected.platformDetails || '正在解析平台回复...';
+        elements.rawNotice.textContent = selected.rawPretty || selected.raw;
+        elements.rawMeta.textContent = '消息时间：' + formatTime(selected.arrivedAt) + ' | ' + (selected.remark || '未识别交互');
+    }
+
+    function renderAll() {
+        renderSummary();
+        renderTimeline();
+        renderSelectedMessage();
+    }
+
+    async function readConfig() {
+        try {
+            const response = await fetch('config.json');
+            return await response.json();
+        } catch (error) {
+            console.error('读取 config.json 失败:', error);
+            return {};
+        }
+    }
+
+    async function initConfig() {
+        const config = await readConfig();
+        state.wsTemplate = buildWsTemplate(config.wsUrl);
+        state.apiUrl = config.apiUrl || '';
+        state.inputHint = config.inputLabelText || '请先把设备接入通知服务，再根据 SIM 查看交互。';
+
+        const defaultSim = extractSimFromUrl(config.wsUrl || '');
+        if (defaultSim) {
+            elements.simInput.value = defaultSim;
+        }
+
+        elements.inputHint.textContent = state.inputHint;
+        elements.apifoxLink.href = config.sendCommandUrl || '/static/ui/JT808协议.html';
+        elements.streamingLink.href = config.streamingUrl || '/static/ui/tstrtvs.html';
+        updatePreview();
+        setStatus('closed', '未连接', '等待输入 SIM 卡号后建立连接');
+        setButtons(false);
+        renderAll();
+    }
+
+    function clearMessages() {
+        state.messages = [];
+        state.selectedId = null;
+        renderAll();
+    }
+
+    async function parseNoticeDetails(message, item) {
+        if (!state.apiUrl) {
+            item.terminalDetails = '未配置解析接口';
+            item.platformDetails = '未配置解析接口';
+            renderSelectedMessage();
+            return;
+        }
+
+        try {
+            const response = await fetch(state.apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: message
+            });
+            const responseText = await response.text();
+            const details = splitParseResponse(responseText);
+            item.terminalDetails = details.terminal;
+            item.platformDetails = details.platform;
+        } catch (error) {
+            const failText = '解析失败：' + error.message;
+            item.terminalDetails = failText;
+            item.platformDetails = failText;
+        }
+
+        renderSelectedMessage();
+        renderTimeline();
+    }
+
+    function addMessage(rawMessage) {
+        let notice = {};
+        let rawPretty = rawMessage;
+        try {
+            notice = JSON.parse(rawMessage);
+            rawPretty = JSON.stringify(notice, null, 2);
+        } catch (error) {
+            notice = {
+                remark: '原始消息',
+                terminalData: '',
+                platformData: '',
+                command: '-'
+            };
+        }
+
+        const item = {
+            id: state.nextId++,
+            arrivedAt: new Date(),
+            sim: state.currentSim,
+            raw: rawMessage,
+            rawPretty: rawPretty,
+            command: notice.command,
+            commandLabel: notice.command === undefined ? '-' : String(notice.command),
+            remark: notice.remark || '未识别交互',
+            terminalData: notice.terminalData || '',
+            platformData: notice.platformData || '',
+            terminalDetails: '正在解析设备上报...',
+            platformDetails: '正在解析平台回复...'
+        };
+
+        state.messages.unshift(item);
+        state.selectedId = item.id;
+        renderAll();
+        parseNoticeDetails(rawMessage, item);
+    }
+
+    function disconnectSocket(detail) {
+        if (state.socket) {
+            const socket = state.socket;
+            state.socket = null;
+            socket.onopen = null;
+            socket.onmessage = null;
+            socket.onerror = null;
+            socket.onclose = null;
+            if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+                socket.close();
+            }
+        }
+        setStatus('closed', '未连接', detail || '连接已断开');
+        setButtons(false);
+    }
+
+    function connectSocket() {
+        const sim = elements.simInput.value.trim();
+        if (!sim) {
+            setStatus('closed', '未连接', '请先输入 SIM 卡号');
+            elements.simInput.focus();
+            return;
+        }
+
+        if (!window.WebSocket) {
+            setStatus('closed', '浏览器不支持', '当前浏览器不支持 WebSocket');
+            return;
+        }
+
+        disconnectSocket('准备建立新的连接');
+        state.currentSim = sim;
+        const url = elements.wsPreview.value.trim() || buildWsUrl(sim);
+        elements.wsPreview.value = url;
+
+        try {
+            const socket = new WebSocket(url);
+            state.socket = socket;
+            setStatus('closed', '连接中', '正在连接 ' + url);
+            setButtons(true);
+
+            socket.onopen = function () {
+                setStatus('open', '已连接', '已连接到 ' + url);
+                renderSummary();
+            };
+
+            socket.onmessage = function (event) {
+                addMessage(event.data);
+            };
+
+            socket.onerror = function () {
+                setStatus('closed', '连接异常', 'WebSocket 连接发生错误，请检查服务是否在线');
+            };
+
+            socket.onclose = function (event) {
+                state.socket = null;
+                const reason = event && event.reason ? event.reason : '连接已关闭';
+                setStatus('closed', '未连接', reason);
+                setButtons(false);
+            };
+        } catch (error) {
+            state.socket = null;
+            setStatus('closed', '连接失败', error.message);
+            setButtons(false);
+        }
+    }
+
+    elements.simInput.addEventListener('input', updatePreview);
+    elements.simInput.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter') {
+            connectSocket();
+        }
+    });
+    elements.connectButton.addEventListener('click', connectSocket);
+    elements.disconnectButton.addEventListener('click', function () {
+        disconnectSocket('已手动断开连接');
+    });
+    elements.clearButton.addEventListener('click', clearMessages);
+
+    initConfig();
+</script>
+</body>
+</html>
