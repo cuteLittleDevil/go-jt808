@@ -9,14 +9,18 @@
 
 注意：本文档中的公网 IP 为作者测试环境，可能失效；建议替换为你的部署地址。
 
-## 导航
-- [RTVS-Dev（Docker）](#rtvs-devdocker)
-- [1. RTVS](#1-rtvs)
-- [2. LAL](#2-lal)
-- [3. sky-java](#3-sky-java)
-- [4. m7s-jt1078](#4-m7s-jt1078)
-- [5. ZLMediaKit](#5-zlmediakit)
-- [6. srs](#6-srs)
+<details open>
+<summary>📑 导航</summary>
+
+- 🐳 [RTVS-Dev（Docker）](#rtvs-devdocker)
+- 📹 [1. RTVS](#1-rtvs)
+- 🎥 [2. LAL](#2-lal)
+- ☕ [3. sky-java](#3-sky-java)
+- 🎬 [4. m7s-jt1078](#4-m7s-jt1078)
+- 🖥️ [5. ZLMediaKit](#5-zlmediakit)
+- 📡 [6. srs](#6-srs)
+
+</details>
 
 ## RTVS-Dev（Docker）
 
