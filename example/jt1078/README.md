@@ -1,133 +1,144 @@
-# JT1078流媒体
+# JT1078 流媒体示例
 
-<h2 id="rtvs-dev"> RTVS终端模拟器 </h2>
+本目录包含 JT1078 推流与播放的多种对接示例。
 
-```
-rtvsdev（1078终端模拟器docker版本）
-命令行运行
+典型流程：
+1. 平台下发 0x9101（实时音视频传输请求）
+2. 终端开始推送音视频流
+3. 流媒体侧提供 HTTP-FLV / MP4 / WebRTC 等播放方式
+
+注意：本文档中的公网 IP 为作者测试环境，可能失效；建议替换为你的部署地址。
+
+## 导航
+- [RTVS-Dev（Docker）](#rtvs-devdocker)
+- [1. RTVS](#1-rtvs)
+- [2. LAL](#2-lal)
+- [3. sky-java](#3-sky-java)
+- [4. m7s-jt1078](#4-m7s-jt1078)
+- [5. ZLMediaKit](#5-zlmediakit)
+- [6. srs](#6-srs)
+
+## RTVS-Dev（Docker）
+
+rtvsdev（1078 终端模拟器 Docker 版本）
+
+``` bash
 docker run --restart always -p 5288:80 -d vanjoge/rtvsdevice
-然后访问你的//IP:5288即可
-
 ```
-<br/>
-<h2 id="rtvs"> 1. RTVS </h2>
 
-- [RTVS官方地址](https://gitee.com/vanjoge/RTVS)
-- [部署文档参考](https://blog.csdn.net/vanjoge/article/details/108319078)
-- [代码参考](./rtvs/main.go)
-<br/>
+访问：
+- http://<your-ip>:5288
 
-address是设备连接的地址 webAddress是页面的
-```  go
+## 1. RTVS
+
+- RTVS 官方地址：https://gitee.com/vanjoge/RTVS
+- 部署文档参考：https://blog.csdn.net/vanjoge/article/details/108319078
+- 代码参考：[rtvs/main.go](./rtvs/main.go)
+
+address 是设备连接地址，webAddress 是 RTVS Web 页面地址：
+
+``` bash
 ./rtvs -address 0.0.0.0:8082 -webAddress 0.0.0.0:17001
 ```
-<br/>
 
-1. 测试部署网页 https://124.221.30.46:44300/index.html (目前124.221.30.46的ip为124.221.30.46)
-2. 让终端(模拟器)默认连接到了124.221.30.46:8082地址
-3. 根据测试部署网页进行测试 如点击9101观看在线视频
-<br/>
+在线测试（示例环境，可能失效）：
+1. 打开测试部署网页 https://124.221.30.46:44300/index.html
+2. 让终端（模拟器）连接到对应的 8082 地址
+3. 在测试网页点击 9101 观看在线视频
 
-测试模拟器的手机号为 013777883241
+测试模拟器手机号：013777883241
 
 ![9101实时视频测试](./data/rtvs9101.jpg)
 
-<br/>
+## 2. LAL
 
-<h2 id="lal"> 2. LAL流媒体服务 </h2>
+目标：
+1. 使用模拟器默认数据持续推送到 LAL 服务
+2. 从 LAL 获取播放地址（HTTP-FLV 等）
 
-1. 使用模拟器默认的数据 持续推送到LAL服务
-2. 在线播放地址 http://124.221.30.46:8080/live/1001_1.flv
-<br/>
+在线播放地址（示例环境，可能失效）：http://124.221.30.46:8080/live/1001_1.flv
 
-ip是外网的ip用于下发9101的1078的ip 可以用phone新建一个模拟终端 使用dataPath的数据推送1078流
-```  go
+参数说明：
+- ip：公网 IP，用于下发 9101 时填写的 1078 服务地址
+- phone：创建一个模拟终端
+- dataPath：使用指定数据推送 1078 流
+
+``` bash
 ./lal2 -ip=124.221.30.46
 ./lal2 -ip=124.221.30.46 -phone=1 -dataPath=./data.txt
 ```
 
-<br/>
+运行后说明：
+- 让设备连接到 808 端口，默认 3 秒发送一次 9101
+- 打印 flv 播放地址（其他播放地址参考 LAL 文档）
+- 默认播放地址格式：http://<ip>:8080/live/<手机号>_<通道号>.flv
+- 示例：http://124.221.30.46:8080/live/156987000796_1.flv
 
-```
-运行后 让设备连接到808端口 默认3秒发送9101
-打印flv的播放地址（其他播放地址参考lal文档）
-默认的播放地址格式 http://124.221.30.46:8080/live/手机号_通道号.flv
-如 http://124.221.30.46:8080/live/156987000796_1.flv
-```
+- LAL 官方文档：https://pengrl.com/lal/#/streamurllist
+- 代码参考：[lal/main.go](./lal/main.go)
 
-- [LAL官方文档](https://pengrl.com/lal/#/streamurllist)
-- [代码参考](./lal/main.go)
-<br/>
+## 3. sky-java
 
-<h2 id="sky-java"> 3. JT1078 sky-java </h2>
+流程：
+1. 启动 sky-java 服务
+2. 使用 RTVS 终端模拟器连接到服务
+3. 调用 sky-java 的 JT1078 HTTP 接口发送请求（默认 10 秒内需要拉流）
 
-1. 启动服务
-2. 使用RTVS终端模拟器连接到服务
-3. 调用sky-java的JT1078 HTTP接口发送请求(默认10秒内需要去拉流)
-<br/>
+- sky-java 官方地址：https://gitee.com/hui_hui_zhou/open-source-repository
+- sky-java HTTP 文档：http://222.244.144.181:9991/doc.html
+- 代码参考：[sky/java/main.go](./sky/java/main.go)
 
-- [sky-java官方地址](https://gitee.com/hui_hui_zhou/open-source-repository)
-- [sky-java HTTP文档](http://222.244.144.181:9991/doc.html)
-- [代码参考](./sky/java/main.go)
-<br/>
+## 4. m7s-jt1078
 
-<h2 id="m7s"> 4. m7s-jt1078 </h2>
+- 插件详情：https://github.com/cuteLittleDevil/m7s-jt1078
 
-- [插件详情](https://github.com/cuteLittleDevil/m7s-jt1078)
+## 5. ZLMediaKit
 
-<br/>
+- 目前 1078 推荐单端口模式
+- ZLMediaKit 试用版下载：https://github.com/ziyuexiachu/ci/actions/runs/13678145491/artifacts/2696568677
 
-<h2 id="zlm"> 5. ZLMediaKit </h2>
+启动 ZLMediaKit 并获取 secret：
 
-- 目前1078只推荐单端口模式
-- 使用ZLMediaKit试用版 [下载地址](https://github.com/ziyuexiachu/ci/actions/runs/13678145491/artifacts/2696568677)
-
-<br/>
-
-启动ZLMediaKit 复制secret
-```
+``` bash
 unzip LinuxTry_feature_1078_2025-03-05.zip -d /home/zlm
 cd /home/zlm/linux/Release
-# 可以把./example/jt1078/zlm_single_port/config.ini放到 /home/zlm/linux/Release目录 使用这个配置文件
 ./MediaServer
-# 案例的secret是5xGbdUpfXnsiW3uZq2CApzSyxSFrIWpc
 cat /home/zlm/linux/Release/config.ini | grep secret
-
 ```
 
-<h3> 单端口模式 </h3>
+### 单端口模式
 
-- [代码参考](./zlm_single_port/main.go)
+- 代码参考：[zlm_single_port/main.go](./zlm_single_port/main.go)
 
-1. 启动go zlm单端口模式示例
-```
+1) 启动 go 单端口示例
+
+``` bash
 cd ./example/jt1078/zlm_single_port
 GOOS=linux GOARCH=amd64 go build
-# config.yaml中的secret换成步骤2生成的secret
 ./zlm_single_port
-
 ```
 
-2. 使用模拟器连接到808服务
-- 测试案例的808服务默认端口是8083
-如下所示 终端sim卡号1003的加入了
-```
+2) 使用模拟器连接到 808 服务
+- 测试案例默认端口 8083
+- 示例日志（sim=1003）：
+
+``` txt
 终端加入 key=[1003] command=[7e01020004000000001003000f31303033197e] err=[nil]
-
 ```
-<br/>
 
-3. 调用http接口发送9101请求
-- ip换成部署的机器 案例云服务器ip 124.221.30.46 serverIPLen换ip的长度
+3) 调用 HTTP 接口发送 9101 请求
+- 将 `<server-ip>` 替换为你的部署 IP
+- serverIPLen 为 IP 字符串长度（例如 `124.221.30.46` 长度为 13）
+
 ``` curl
-curl --location --request POST 'http://124.221.30.46:17002/api/v1/9101' \
+curl --location --request POST 'http://<server-ip>:17002/api/v1/9101' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "key": "1003",
     "sim": "000000001003",
     "data": {
         "serverIPLen": 13,
-        "serverIPAddr": "124.221.30.46",
+        "serverIPAddr": "<server-ip>",
         "tcpPort": 10000,
         "udpPort": 0,
         "channelNo": 1,
@@ -135,62 +146,57 @@ curl --location --request POST 'http://124.221.30.46:17002/api/v1/9101' \
         "streamType": 0
     }
 }'
-
 ```
 
-- 返回结果如下
-```
+返回示例：
+
+``` json
 {
   "code": 200,
   "msg": "成功",
   "data": {
     "streamID": "000000001003_1_0_0",
-    "mp4": "http://124.221.30.46:80/rtp/000000001003_1_0_0.live.mp4"
+    "mp4": "http://<server-ip>:80/rtp/000000001003_1_0_0.live.mp4"
   }
 }
 ```
 
-4. 扩展
-```
-在config.ini的配置文件中添加
+4) 扩展（hook）
+
+``` txt
 hook.enable=1
 hook.on_stream_not_found=http://127.0.0.1:17002/api/v1/on_stream_not_found
 on_publish=http://127.0.0.1:17002/api/v1/on_publish
-
-用户访问http://124.221.30.46:80/rtp/000000001003_1_0_0.live.mp4
-当流不存在的时候 触发on_stream_not_found 主动下发9101让这个流存在
-因为zlm的流格式默认是sim卡号_通道号 触发on_publish 修改流id 格式变成 sim卡号_通道号_数据类型_主子码流
 ```
 
-<h3> 添加对讲 </h3>
+说明：
+- 当用户访问 `http://<server-ip>:80/rtp/000000001003_1_0_0.live.mp4` 且流不存在时，触发 `on_stream_not_found`，主动下发 9101
+- ZLM 默认流 ID 为 `sim卡号_通道号`，触发 `on_publish` 后可修改为 `sim卡号_通道号_数据类型_主子码流`
 
-```
-对讲使用webrtc 因此需要https
-目前申请的域名124.221.30.46(ip为124.221.30.46) icp备案为三周左右
+### 添加对讲（WebRTC）
 
-```
+对讲使用 WebRTC，因此需要 HTTPS。
 
 ![zlm对讲流程](./data/jt1078-zlm.jpg)
 
+1) nginx 代理
+- 配置参考：[zlm_single_port/nginx.conf](./zlm_single_port/nginx.conf)
 
-1. nginx代理
-- [配置文件参考](/example/jt1078/zlm_single_port/nginx.conf)
-
-2. 访问测试页面
+2) 访问测试页面
 
 ![zlm测试页面](./data/jt1078-zlm2.jpg)
 
-- 点击开始
-- 发起http请求 绑定设备对讲流
+点击开始后发起 HTTP 请求，绑定设备对讲流：
+
 ``` curl
-curl --location --request POST 'http://124.221.30.46:17002/api/v1/start_send_rtp_talk' \
+curl --location --request POST 'http://<server-ip>:17002/api/v1/start_send_rtp_talk' \
 --header 'Content-Type: application/json' \
 --data-raw '{
       "key": "1003",
       "sim": "000000001003",
       "data": {
         "serverIPLen": 13,
-        "serverIPAddr": "124.221.30.46",
+        "serverIPAddr": "<server-ip>",
         "tcpPort": 10000,
         "udpPort": 0,
         "channelNo": 1,
@@ -199,49 +205,44 @@ curl --location --request POST 'http://124.221.30.46:17002/api/v1/start_send_rtp
       },
       "stream": "test"
 }'
-
 ```
 
-3. 重新发起一次808请求 让设备推送音视频流
-- 如https://124.221.30.46/rtp/000000001003_1_0_0.live.mp4
+3) 重新发起一次 808 请求，让设备推送音视频流
+- 示例：`https://<server-ip>/rtp/000000001003_1_0_0.live.mp4`
 
-<h3> 多端口模式 </h3>
+### 多端口模式
 
-- 目前不推荐使用 (2025.3.28询问过zlm作者)
-- [代码参考](./zlm/main.go)
+- 目前不推荐使用（2025-03-28 咨询过 ZLM 作者）
+- 代码参考：[zlm/main.go](./zlm/main.go)
 
 ![9101实时视频测试](./data/zlm.jpg)
 
-1. 启动go zlm的示例
-```
+1) 启动 go zlm 示例
+
+``` bash
 cd ./example/jt1078/zlm
 GOOS=linux GOARCH=amd64 go build -o go-zlm
-# config.yaml中的secret换成步骤2生成的secret
-# 这里把go-zlm和config.yaml放到了 /home/zlm/go/ 目录
 ./go-zlm
-
 ```
-<br/>
 
-2. 使用模拟器连接到808服务
-- 测试案例的808服务默认端口是8083
-如下所示 终端sim卡号1004的加入了
-```
+2) 使用模拟器连接到 808 服务
+- 测试案例默认端口 8083
+- 示例日志（sim=1004）：
+
+``` txt
 终端加入 key=[1004] command=[7e01020004000000001004002631303034307e] err=[nil]
-
 ```
-<br/>
 
-3. 调用http接口发送9101请求
-- ip换成部署的机器 案例云服务器ip 124.221.30.46 serverIPLen换ip的长度
+3) 调用 HTTP 接口发送 9101 请求
+
 ``` curl
-curl --location --request POST 'http://124.221.30.46:17002/api/v1/9101' \
+curl --location --request POST 'http://<server-ip>:17002/api/v1/9101' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "key": "1004",
     "data": {
         "serverIPLen": 13,
-        "serverIPAddr": "124.221.30.46",
+        "serverIPAddr": "<server-ip>",
         "tcpPort": 1078,
         "udpPort": 0,
         "channelNo": 1,
@@ -249,37 +250,33 @@ curl --location --request POST 'http://124.221.30.46:17002/api/v1/9101' \
         "streamType": 0
     }
 }'
-
 ```
 
-- 返回结果如下
-```
+返回示例：
+
+``` json
 {
   "code": 200,
   "msg": "成功",
   "data": {
     "streamID": "1004-1-1078",
-    "mp4": "http://124.221.30.46:80/rtp/1004-1-1078.live.mp4"
+    "mp4": "http://<server-ip>:80/rtp/1004-1-1078.live.mp4"
   }
 }
 ```
 
-4. 扩展
-```
-在config.ini的配置文件中添加
+4) 扩展（hook）
+
+``` txt
 hook.enable=1
 hook.on_stream_not_found=http://127.0.0.1:17002/api/v1/on_stream_not_found
-
-用户访问http://124.221.30.46:80/rtp/1004-1-1078.live.mp4
-当流不存在的时候 主动下发9101让这个流存在
 ```
 
-<h2 id="srs"> 6. srs </h2>
+## 6. srs
 
-- 部署srs https://github.com/ossrs/srs
+- 部署 srs：https://github.com/ossrs/srs
 
-
-```
+``` bash
 cd ./example/jt1078/srs
 GOOS=linux GOARCH=amd64 go build
 nohup ./srs-jt1078 &
@@ -287,12 +284,10 @@ nohup ./srs-jt1078 &
 cd ./example/jt1078/srs/jt808
 GOOS=linux GOARCH=amd64 go build
 nohup ./srs-jt808 &
-
 ```
 
-- 可以在srs默认的控制台页面查看当前播放的流
+可以在 srs 默认控制台页面查看当前播放的流：
 
-```
-# 如部署在101.35.2.3机器上
-http://101.35.2.3:8080/console/ng_index.html#/streams?port=1985&schema=http&host=101.35.2.3
+``` txt
+http://<srs-ip>:8080/console/ng_index.html#/streams?port=1985&schema=http&host=<srs-ip>
 ```

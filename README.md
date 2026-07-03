@@ -9,38 +9,106 @@
 
 # go-jt808
 
-- 设计说明 https://dkpt1fpoxb.feishu.cn/docx/FUlPda09roSnN0x7SJAc7yPbnke
+JT/T 808（2011/2013/2019）车辆卫星定位系统终端通讯协议 + JT/T 1078 音视频 + 主动安全附件（苏标等）的 Go 实现。
 
-``` txt
-本项目以支持二次开发为主要目标，可通过自定义事件灵活扩展功能.
-受“飞哥单机 TCP 百万并发”启发，于2024年国庆期间测试了有实际数据流的情况.
+**设计目标**：以二次开发和生产使用为首要目标，通过事件机制灵活扩展，不侵入核心协议。
 
+- 设计说明：https://dkpt1fpoxb.feishu.cn/docx/FUlPda09roSnN0x7SJAc7yPbnke
+- 受“[飞哥单机 TCP 百万并发](https://github.com/yanfeizhang/coder-kung-fu)”启发，实际数据流压测通过。
+
+## 目录
+
+- [快速开始](#快速开始)
+- [核心特性](#核心特性)
+- [基本用法](#基本用法)
+- [常见案例](#常见案例)
+- [参考资料](#参考资料)
+- [性能测试](#性能测试)
+- [协议支持情况](#协议支持情况)
+
+要求：**Go 1.23+**
+
+## 快速开始
+
+```bash
+cd example/quick_start
+go run .
 ```
 
+更多示例：
+
+- [快速开始](./example/quick_start)
+- [完整 Web 项目 + 附件 + 告警 + 通知（推荐阅读）](./example/web)
+
+## 核心特性
+
+- 支持 JT808 2011 / 2013 / 2019 版本（含分包、重传、附加信息扩展）
+- 支持 JT1078 音视频传输扩展
+- 支持主动安全附件上传（苏标、黑标、广东标、湖南标、四川标等）
+- **高度可扩展**：通过 `WithCustomHandleFunc` 自定义回复,实现几乎任意业务逻辑
+- 无锁会话管理 + 主动消息下发（带超时回复等待）
+- 内置终端模拟器，便于协议联调
+- 提供适配器（一个设备同时对接多个 808 服务）、分布式集群示例
+
+| 包            | 说明                           | 适用场景                     |
+|---------------|--------------------------------|------------------------------|
+| `service`     | JT808 TCP 服务端               | 平台服务端核心               |
+| `protocol`    | 协议编解码 + 消息模型          | 自定义消息、报文分析         |
+| `terminal`    | 终端模拟/指令构造              | 测试、对接验证               |
+| `adapter`     | 多后端适配器                   | 灰度迁移、同时对接多个平台   |
+| `attachment`  | 主动安全附件服务               | 报警附件文件接收             |
+| `gb28181`     | GB28181 客户端 + 流转换        | 视频平台互通                 |
+
 ---
-- 支持JT808(2011/2013/2019)协议，以及JT1078视频扩展.（需配合其他流媒体服务）
-- 支持分包、重传、主动安全扩展（苏标、黑标、广东标、湖南标、四川标等）
-- 性能测试: 单机[2核4G机器]、并发10w+每日保存4亿+经纬度 [详情](./README.md#save)
 
-| 特点  |   描述   |
-| :---:   | -------- |
-|  安全可靠 | 核心协议实现测试覆盖率 100%，纯 Go 原生代码 |
-|  简洁优雅 | 核心代码不到1000行，采用无锁设计 |
-|  易于扩展 | 提供丰富的自定义事件和适配器机制，便于二次开发 |
+> 核心协议实现测试100%覆盖率，纯 Go 实现，简洁优雅（核心逻辑极简）。
 
-| 包名 |      描述       | Go Report Card |
-|----------|--------------------|-----|
-| shared | jt808和1078指令常量 | [![Go Report Card](https://goreportcard.com/badge/github.com/cuteLittleDevil/go-jt808/shared)](https://goreportcard.com/report/github.com/cuteLittleDevil/go-jt808/shared) |
-| protocol | jt808和1078协议实现 | [![Go Report Card](https://goreportcard.com/badge/github.com/cuteLittleDevil/go-jt808/protocol)](https://goreportcard.com/report/github.com/cuteLittleDevil/go-jt808/protocol) |
-| service | jt808服务端 | [![Go Report Card](https://goreportcard.com/badge/github.com/cuteLittleDevil/go-jt808/service)](https://goreportcard.com/report/github.com/cuteLittleDevil/go-jt808/service) |
-| adapter | jt808适配器 | [![Go Report Card](https://goreportcard.com/badge/github.com/cuteLittleDevil/go-jt808/adapter)](https://goreportcard.com/report/github.com/cuteLittleDevil/go-jt808/adapter) |
-| attachment | jt808附件服务 | [![Go Report Card](https://goreportcard.com/badge/github.com/cuteLittleDevil/go-jt808/attachment)](https://goreportcard.com/report/github.com/cuteLittleDevil/go-jt808/attachment) |
-| terminal | jt808客户端模拟器 | [![Go Report Card](https://goreportcard.com/badge/github.com/cuteLittleDevil/go-jt808/terminal)](https://goreportcard.com/report/github.com/cuteLittleDevil/go-jt808/terminal) |
-| gb28181 | gb28181客户端 | [![Go Report Card](https://goreportcard.com/badge/github.com/cuteLittleDevil/go-jt808/gb28181)](https://goreportcard.com/report/github.com/cuteLittleDevil/go-jt808/gb28181) |
+## 基本用法
 
----
+### 启动 JT808 服务并自定义消息处理
+
+```go
+goJt808 := service.New(
+    service.WithHostPorts("0.0.0.0:808"),
+    service.WithTerminalTimeout(30*time.Second, func(t service.TerminalTimeout) { /* 超时处理 */ }),
+    service.WithCustomHandleFunc(func() map[consts.JT808CommandType]service.Handler {
+        return map[consts.JT808CommandType]service.Handler{
+            consts.T0200LocationReport: &myLocation{}, // 自定义经纬度处理
+        }
+    }),
+)
+go goJt808.Run()
+```
+
+自定义处理器示例（推荐模式：嵌入官方 model 并实现事件）：
+
+```go
+type myLocation struct{ model.T0x0200 }
+
+func (l *myLocation) OnReadExecutionEvent(msg *service.Message) {
+    _ = l.Parse(msg.JTMessage)
+    // l.Longitude, l.Latitude, l.Speed, l.AlarmSignDetails ...
+    log.Printf("收到位置 key=%s", msg.Key)
+}
+
+func (l *myLocation) OnWriteExecutionEvent(_ service.Message) {}
+```
+
+### 平台主动下发消息（带应答）
+
+```go
+msg := service.NewActiveMessage(phone, consts.P8201QueryLocation, nil, 3*time.Second)
+reply := goJt808.SendActiveMessage(msg)
+if reply.ExtensionFields.Err != nil { /* 超时或终端不在线 */ }
+```
+
+详见：
+- [example/quick_start/main.go](./example/quick_start/main.go)
+- [example/protocol](./example/protocol) （各种主动指令、自定义回复映射）
 
 ## 常见案例
+
+按场景分类的常用示例（每个都有完整可运行代码）：
 
 ### 1. 真实项目对接 [apifox文档](https://vsh9jdgg5d.apifox.cn/) [web详情](./example/web) [releases下载](https://github.com/cuteLittleDevil/go-jt808/releases)
 ``` txt
@@ -135,95 +203,15 @@ jt808服务端、模拟器、消息队列、数据库都运行在2核4G腾讯云
 默认创建1000个客户端, 循环30秒心跳、5秒位置信息测试.
 ```
 
-[快速开始](./example/quick_start) [完整项目例子](./example/web)
-``` go
-package main
-
-import (
-	"fmt"
-	"github.com/cuteLittleDevil/go-jt808/protocol/model"
-	"github.com/cuteLittleDevil/go-jt808/service"
-	"github.com/cuteLittleDevil/go-jt808/shared/consts"
-	"github.com/cuteLittleDevil/go-jt808/terminal"
-	"log/slog"
-	"net"
-	"os"
-	"strings"
-	"time"
-)
-
-func init() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		AddSource:   true,
-		Level:       slog.LevelDebug,
-		ReplaceAttr: nil,
-	}))
-	slog.SetDefault(logger)
-}
-
-func main() {
-	goJt808 := service.New(
-		service.WithHostPorts("0.0.0.0:808"),
-		service.WithCustomHandleFunc(func() map[consts.JT808CommandType]service.Handler {
-			return map[consts.JT808CommandType]service.Handler{
-				consts.T0200LocationReport: &meLocation{}, // 自定义0x0200位置解析等,每一个连接是独立的map.
-			}
-		}),
-	)
-	go client("1001", "127.0.0.1:808") // 模拟一个设备连接
-	goJt808.Run()
-}
-
-type meLocation struct {
-	model.T0x0200
-}
-
-func (l *meLocation) OnReadExecutionEvent(msg *service.Message) {
-	_ = l.Parse(msg.JTMessage)
-	fmt.Println(time.Now().Format(time.DateTime), l.String()) // 打印经纬度等信息
-}
-
-func (l *meLocation) OnWriteExecutionEvent(_ service.Message) {}
-
-func (l *meLocation) String() string {
-	body := l.T0x0200.Encode()
-	return strings.Join([]string{
-		"数据体对象:{",
-		fmt.Sprintf("\t%s:[%x]", l.Protocol(), body),
-		l.T0x0200LocationItem.String(),
-		l.AlarmSignDetails.String(),
-		l.StatusSignDetails.String(),
-		"}",
-	}, "\n")
-}
-
-func client(phone string, address string) {
-	time.Sleep(time.Second)
-	t := terminal.New(terminal.WithHeader(consts.JT808Protocol2013, phone))
-	location := t.CreateDefaultCommandData(consts.T0200LocationReport)
-	conn, err := net.Dial("tcp", address)
-	if err != nil {
-		return
-	}
-	defer func() {
-		_ = conn.Close()
-	}()
-	ticker := time.NewTicker(5 * time.Second)
-	for range ticker.C {
-		_, _ = conn.Write(location)
-	}
-}
-
-
-```
-
----
-- 目前(2024-10-01)前的go语言版本个人觉得都不好因此都不推荐参考 推荐参考资料如下
 ## 参考资料
+
+> 2024 年 10 月前主流的 Go 实现较少或质量一般，以下为推荐参考（非 Go）。
+
 | 项目名称           | 语言   | 日期       | Star 数 | 链接                                       |
 |--------------------|--------|------------|---------|--------------------------------------------|
 | JT808           | C#     | 2024-10-01 | 534       | [JT808 C#](https://github.com/SmallChi/JT808.git) |
 | jt808-server    | Java   | 2024-10-01 | 1.4k+     | [JT808 Java](https://gitee.com/yezhihao/jt808-server.git) |
+
 
 - [飞哥的开发内功修炼](https://github.com/yanfeizhang/coder-kung-fu?tab=readme-ov-file)
 - [协议文档 (PDF整理)](https://gitee.com/yezhihao/jt808-server/tree/master/协议文档 )
@@ -232,7 +220,9 @@ func client(phone string, address string) {
 - [lal流媒体文档](https://pengrl.com/lal/#/streamurllist)
 
 ## 性能测试
-- java模拟器(QQ群下载 373203450)
+
+- java模拟器 (QQ群 373203450)
+- go模拟器 [详情](./example/simulator/client/main.go)
 - go模拟器 [详情点击](./example/simulator/client/main.go#go模拟器)
 
 ### 连接数测试
@@ -264,7 +254,7 @@ func client(phone string, address string) {
 |  taosadapter | 37% | 124.3MB | tdengine数据库适配 |
 |  taosd | 15% | 124.7MB | tdengine数据库 |
 
-## 协议对接完成情况
+## 协议支持情况
 ### JT808终端通讯协议
 
 | 序号  |    消息 ID    | 完成情况 |  测试情况  | 消息体名称       |  2019 版本   | 2011 版本 |
