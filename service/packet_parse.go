@@ -1,7 +1,6 @@
 package service
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
 	"github.com/cuteLittleDevil/go-jt808/protocol/model"
@@ -11,7 +10,7 @@ import (
 
 type (
 	packageParse struct {
-		historyData          []byte
+		frameReader          *jt808.FrameReader
 		subcontractingRecord map[uint16][][]byte
 		timeoutRecord        map[uint16]*packageComplete
 	}
@@ -25,14 +24,14 @@ type (
 
 func newPackageParse() *packageParse {
 	return &packageParse{
+		frameReader:          jt808.NewFrameReader(),
 		subcontractingRecord: make(map[uint16][][]byte),
 		timeoutRecord:        make(map[uint16]*packageComplete),
-		historyData:          make([]byte, 0),
 	}
 }
 
 func (p *packageParse) clear() {
-	clear(p.historyData)
+	p.frameReader.Clear()
 	for id, datas := range p.subcontractingRecord {
 		slog.Warn("package no complete",
 			slog.Any("id", id),
@@ -60,55 +59,30 @@ func (p *packageParse) parse(data []byte) ([]*Message, error) {
 }
 
 func (p *packageParse) unpack(data []byte) (msgs []*Message, err error) {
-	const sign = 0x7e
-	if len(p.historyData) == 0 && len(data) > 2 && data[len(data)-1] == sign {
-		// 快速路径 直接完成 从头到尾只有两个7e的情况
-		count := 0
-		index := bytes.IndexFunc(data, func(r rune) bool {
-			if r == sign {
-				count++
-			}
-			return count == 2
-		})
-		if index == len(data)-1 {
-			jtMsg := jt808.NewJTMessage()
-			if err := jtMsg.Decode(data); err != nil {
-				return nil, fmt.Errorf("%w [%x]", err, data)
-			}
-			msg := newTerminalMessage(jtMsg, data)
-			return []*Message{msg}, nil
-		}
+	if frame, ok := p.frameReader.FeedSingleComplete(data); ok {
+		return p.decodeFrame(frame, msgs)
 	}
-	p.historyData = append(p.historyData, data...)
+	p.frameReader.Append(data)
 	for {
-		end := -1
-		if len(p.historyData) > 2 && p.historyData[0] == sign {
-			for i := 1; i < len(p.historyData); i++ {
-				if p.historyData[i] == sign {
-					end = i + 1
-					break
-				}
-			}
-		}
-		if end == -1 {
+		frame, ok := p.frameReader.PopFrame()
+		if !ok {
 			break
 		}
-		originalData := p.historyData[:end]
-		jtMsg := jt808.NewJTMessage()
-		if err := jtMsg.Decode(originalData); err != nil {
-			p.historyData = p.historyData[end:]
-			return msgs, fmt.Errorf("%w [%x]", err, originalData)
+		msgs, err = p.decodeFrame(frame, msgs)
+		if err != nil {
+			return msgs, err
 		}
-		msg := newTerminalMessage(jtMsg, originalData)
-		msgs = append(msgs, msg)
-		if end == len(p.historyData) {
-			// 没有遗留的数据
-			p.historyData = p.historyData[0:0]
-			return msgs, nil
-		}
-		p.historyData = p.historyData[end:]
 	}
 	return msgs, nil
+}
+
+func (p *packageParse) decodeFrame(originalData []byte, msgs []*Message) ([]*Message, error) {
+	jtMsg := jt808.NewJTMessage()
+	if err := jtMsg.Decode(originalData); err != nil {
+		return msgs, fmt.Errorf("%w [%x]", err, originalData)
+	}
+	msg := newTerminalMessage(jtMsg, originalData)
+	return append(msgs, msg), nil
 }
 
 func (p *packageParse) completePack(msg *Message) (*Message, bool) {

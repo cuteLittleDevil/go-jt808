@@ -97,8 +97,8 @@ func Test_packageParse_unpack(t *testing.T) {
 				t.Errorf("unpack() gotMsgs len = %v, want %v", len(gotMsgs), len(tt.want.msgs))
 				return
 			}
-			if len(p.historyData) != tt.want.historyDataLen {
-				t.Errorf("unpack() historyData len = %v, want %v", len(p.historyData), tt.want.historyDataLen)
+			if p.frameReader.Pending() != tt.want.historyDataLen {
+				t.Errorf("unpack() historyData len = %v, want %v", p.frameReader.Pending(), tt.want.historyDataLen)
 				return
 			}
 			for k, v := range gotMsgs {
