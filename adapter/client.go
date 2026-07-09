@@ -66,8 +66,7 @@ func (c *client) sendData(data []byte) bool {
 		return false
 	case <-c.groupStopChan:
 		return false
-	default:
-		c.readChan <- data
+	case c.readChan <- data:
 		return true
 	}
 }
@@ -92,7 +91,13 @@ func (c *client) reader() {
 			if n, err := c.conn.Read(curData); err != nil {
 				return
 			} else if n > 0 {
-				msgs, _ := pack.unpack(curData[:n])
+				msgs, err := pack.unpack(curData[:n])
+				if err != nil {
+					slog.Warn("unpack",
+						slog.String("addr", c.terminal.TargetAddr),
+						slog.String("data", fmt.Sprintf("%x", curData[:n])),
+						slog.Any("err", err))
+				}
 				for _, msg := range msgs {
 					command := consts.JT808CommandType(msg.JTMessage.Header.ID)
 					if c.terminal.allowReply(command) {

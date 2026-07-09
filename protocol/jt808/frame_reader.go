@@ -81,28 +81,38 @@ func (r *FrameReader) Append(data []byte) {
 	r.historyData = append(r.historyData, data...)
 }
 
-// PopFrame 从粘包缓冲区取出一帧；数据不够一帧时返回 ok=false.
+// TryPopFrame 从 data 头部尝试取出一完整帧；不够一帧时 ok=false，rest 为原 data.
 //
-// 取出的 frame 是 historyData 的子切片，随后会前移缓冲区偏移，零拷贝.
-func (r *FrameReader) PopFrame() (frame []byte, ok bool) {
+// 取出的 frame 与 rest 均为 data 的子切片（零拷贝），便于在无状态缓冲场景复用切帧逻辑.
+func TryPopFrame(data []byte) (frame, rest []byte, ok bool) {
 	const sign = FrameSign
 	end := -1
-	if len(r.historyData) > 2 && r.historyData[0] == sign {
-		for i := 1; i < len(r.historyData); i++ {
-			if r.historyData[i] == sign {
+	if len(data) > 2 && data[0] == sign {
+		for i := 1; i < len(data); i++ {
+			if data[i] == sign {
 				end = i + 1
 				break
 			}
 		}
 	}
 	if end == -1 {
+		return nil, data, false
+	}
+	return data[:end], data[end:], true
+}
+
+// PopFrame 从粘包缓冲区取出一帧；数据不够一帧时返回 ok=false.
+//
+// 取出的 frame 是 historyData 的子切片，随后会前移缓冲区偏移，零拷贝.
+func (r *FrameReader) PopFrame() (frame []byte, ok bool) {
+	frame, rest, ok := TryPopFrame(r.historyData)
+	if !ok {
 		return nil, false
 	}
-	frame = r.historyData[:end]
-	if end == len(r.historyData) {
+	if len(rest) == 0 {
 		r.historyData = r.historyData[0:0]
 	} else {
-		r.historyData = r.historyData[end:]
+		r.historyData = rest
 	}
 	return frame, true
 }

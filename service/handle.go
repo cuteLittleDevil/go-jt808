@@ -59,10 +59,7 @@ func newDefaultHandle(JT808Handler JT808Handler) *defaultHandle {
 }
 
 func (d *defaultHandle) OnReadExecutionEvent(_ *Message) {}
-func (d *defaultHandle) OnWriteExecutionEvent(_ Message) {
-	//fmt.Println(fmt.Sprintf("read %x", message.OriginalData))
-	//fmt.Println(fmt.Sprintf("write %x", message.ReplyData))
-}
+func (d *defaultHandle) OnWriteExecutionEvent(_ Message) {}
 
 type defaultTerminalEvent struct {
 	createTime time.Time

@@ -183,9 +183,19 @@ func (p *packageParse) supplementarySubPackage() ([]*Message, bool) {
 			}
 			v.initHeader.ReplyID = uint16(p0x8003.Protocol())
 			v.initHeader.Property.PacketFragmented = 0
-			data := v.initHeader.Encode(p0x8003.Encode())
+			packets := v.initHeader.EncodePackets(p0x8003.Encode())
+			if len(packets) == 0 {
+				continue
+			}
+			data := packets[0]
 			jtMsg := jt808.NewJTMessage()
-			_ = jtMsg.Decode(data)
+			if err := jtMsg.Decode(data); err != nil {
+				slog.Warn("supplementary decode fail",
+					slog.Any("id", id),
+					slog.String("data", fmt.Sprintf("%x", data)),
+					slog.Any("err", err))
+				continue
+			}
 			subMsg := newTerminalMessage(jtMsg, data)
 			msgs = append(msgs, subMsg)
 			v.updateTime = time.Now()

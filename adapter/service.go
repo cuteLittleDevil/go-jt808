@@ -3,6 +3,8 @@ package adapter
 import (
 	"log/slog"
 	"net"
+
+	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 )
 
 type Adapter struct {
@@ -49,9 +51,9 @@ func (a *Adapter) Run() {
 func (a *Adapter) createTerminals() []Terminal {
 	ts := make([]Terminal, 0, len(a.opts.Terminals))
 	for _, t := range a.opts.Terminals {
-		for _, command := range a.opts.AllowCommand {
-			t.AllowCommands = append(t.AllowCommands, command)
-		}
+		cmds := append([]consts.JT808CommandType{}, t.AllowCommands...)
+		cmds = append(cmds, a.opts.AllowCommand...)
+		t.AllowCommands = cmds
 		ts = append(ts, t)
 	}
 	return ts

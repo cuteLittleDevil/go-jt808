@@ -165,7 +165,7 @@ func (g *GoJT808) createDefaultHandle() map[consts.JT808CommandType]Handler {
 	}
 }
 
-// HasMatch 判断当前应答是否匹配某条平台下发的主动指令.
+// createDefaultRespondHandle 创建默认的主动下发应答匹配处理器.
 func (g *GoJT808) createDefaultRespondHandle() map[consts.JT808CommandType]func(
 	platformMsg *ActiveMessage, terminalMsg *Message) bool {
 	return map[consts.JT808CommandType]func(*ActiveMessage, *Message) bool{

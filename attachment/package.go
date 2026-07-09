@@ -1,7 +1,6 @@
 package attachment
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
@@ -178,19 +177,15 @@ func (p *PackageProgress) parseJT808Message() (*jt808.JTMessage, error) {
 	if len(p.historyData) < minHeadLen {
 		return nil, ErrInsufficientDataLen
 	}
-	const sign = 0x7e
-	index := bytes.IndexFunc(p.historyData[1:], func(r rune) bool {
-		return r == sign
-	})
-	if index == -1 {
+	frame, rest, ok := jt808.TryPopFrame(p.historyData)
+	if !ok {
 		return nil, ErrInsufficientDataLen
 	}
-	index += 2
 	jtMsg := jt808.NewJTMessage()
-	if err := jtMsg.Decode(p.historyData[:index]); err != nil {
-		return nil, fmt.Errorf("%w [%x]", err, p.historyData[:index])
+	if err := jtMsg.Decode(frame); err != nil {
+		return nil, fmt.Errorf("%w [%x]", err, frame)
 	}
-	p.historyData = p.historyData[index:]
+	p.historyData = rest
 	return jtMsg, nil
 }
 

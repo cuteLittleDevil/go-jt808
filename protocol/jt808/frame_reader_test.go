@@ -57,6 +57,60 @@ func unpackLikeService(data []byte) (frames [][]byte, decodeErr error, pending i
 	return frames, nil, r.Pending()
 }
 
+func TestTryPopFrame(t *testing.T) {
+	tests := []struct {
+		name      string
+		data      string
+		wantFrame string
+		wantRest  string
+		wantOK    bool
+	}{
+		{
+			name:      "完整单帧",
+			data:      "7e000200000123456789017fff0a7e",
+			wantFrame: "7e000200000123456789017fff0a7e",
+			wantRest:  "",
+			wantOK:    true,
+		},
+		{
+			name:      "完整帧后有剩余",
+			data:      "7e000200000123456789017fff0a7e7e8001",
+			wantFrame: "7e000200000123456789017fff0a7e",
+			wantRest:  "7e8001",
+			wantOK:    true,
+		},
+		{
+			name:      "不完整帧",
+			data:      "7e000200000123456789017fff0a",
+			wantFrame: "",
+			wantRest:  "7e000200000123456789017fff0a",
+			wantOK:    false,
+		},
+		{
+			name:      "空数据",
+			data:      "",
+			wantFrame: "",
+			wantRest:  "",
+			wantOK:    false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data, _ := hex.DecodeString(tt.data)
+			frame, rest, ok := TryPopFrame(data)
+			if ok != tt.wantOK {
+				t.Fatalf("ok = %v, want %v", ok, tt.wantOK)
+			}
+			if fmt.Sprintf("%x", frame) != tt.wantFrame {
+				t.Fatalf("frame = %x, want %s", frame, tt.wantFrame)
+			}
+			if fmt.Sprintf("%x", rest) != tt.wantRest {
+				t.Fatalf("rest = %x, want %s", rest, tt.wantRest)
+			}
+		})
+	}
+}
+
 func TestFrameReader_ReadFrames(t *testing.T) {
 	type want struct {
 		frames         []string

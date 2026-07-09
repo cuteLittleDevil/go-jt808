@@ -5,6 +5,30 @@ import (
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 )
 
+// MessageExtensionFields 终端上行或平台下发消息的扩展字段.
+type MessageExtensionFields struct {
+	// TerminalSeq 终端流水号
+	TerminalSeq uint16 `json:"terminalSeq,omitempty"`
+	// PlatformSeq 平台下发的流水号
+	PlatformSeq uint16 `json:"platformSeq,omitempty"`
+	// TerminalData 终端主动上传的数据 分包合并的情况是全部body合在一起
+	TerminalData []byte `json:"terminalData,omitempty"`
+	// PlatformData 平台下发的数据
+	PlatformData []byte `json:"platformData,omitempty"`
+	// ActiveSend 是否是平台主动下发的
+	ActiveSend bool `json:"activeSend,omitempty"`
+	// SubcontractComplete 分包情况是否最终完成了
+	SubcontractComplete bool `json:"subcontractComplete,omitempty"`
+	// TerminalCommand 终端的指令
+	TerminalCommand consts.JT808CommandType `json:"terminalCommand,omitempty"`
+	// PlatformCommand 平台的指令
+	PlatformCommand consts.JT808CommandType `json:"platformCommand,omitempty"`
+	// CustomData 自定义数据
+	CustomData any `json:"customData,omitempty"`
+	// Err 异常情况
+	Err error `json:"err,omitempty"`
+}
+
 // Message 表示一次终端上行或平台下发的统一消息结构.
 type Message struct {
 	*jt808.JTMessage
@@ -13,46 +37,14 @@ type Message struct {
 	Key string `json:"key"`
 	// Command 当前的指令类型
 	Command         consts.JT808CommandType `json:"command"`
-	ExtensionFields struct {
-		// TerminalSeq 终端流水号
-		TerminalSeq uint16 `json:"terminalSeq,omitempty"`
-		// PlatformSeq 平台下发的流水号
-		PlatformSeq uint16 `json:"platformSeq,omitempty"`
-		// TerminalData 终端主动上传的数据 分包合并的情况是全部body合在一起
-		TerminalData []byte `json:"terminalData,omitempty"`
-		// PlatformData 平台下发的数据
-		PlatformData []byte `json:"platformData,omitempty"`
-		// ActiveSend 是否是平台主动下发的
-		ActiveSend bool `json:"activeSend,omitempty"`
-		// SubcontractComplete 分包情况是否最终完成了
-		SubcontractComplete bool `json:"subcontractComplete,omitempty"`
-		// TerminalCommand 终端的指令
-		TerminalCommand consts.JT808CommandType `json:"terminalCommand,omitempty"`
-		// PlatformCommand 平台的指令
-		PlatformCommand consts.JT808CommandType `json:"platformCommand,omitempty"`
-		// CustomData 自定义数据
-		CustomData any `json:"customData,omitempty"`
-		// Err 异常情况
-		Err error `json:"err,omitempty"`
-	}
+	ExtensionFields MessageExtensionFields
 }
 
 func newTerminalMessage(jtMsg *jt808.JTMessage, terminalData []byte) *Message {
 	return &Message{
 		JTMessage: jtMsg,
 		Command:   consts.JT808CommandType(jtMsg.Header.ID),
-		ExtensionFields: struct {
-			TerminalSeq         uint16                  `json:"terminalSeq,omitempty"`
-			PlatformSeq         uint16                  `json:"platformSeq,omitempty"`
-			TerminalData        []byte                  `json:"terminalData,omitempty"`
-			PlatformData        []byte                  `json:"platformData,omitempty"`
-			ActiveSend          bool                    `json:"activeSend,omitempty"`
-			SubcontractComplete bool                    `json:"subcontractComplete,omitempty"`
-			TerminalCommand     consts.JT808CommandType `json:"terminalCommand,omitempty"`
-			PlatformCommand     consts.JT808CommandType `json:"platformCommand,omitempty"`
-			CustomData          any                     `json:"customData,omitempty"`
-			Err                 error                   `json:"err,omitempty"`
-		}{
+		ExtensionFields: MessageExtensionFields{
 			TerminalData:    terminalData,
 			TerminalCommand: consts.JT808CommandType(jtMsg.Header.ID),
 			TerminalSeq:     jtMsg.Header.SerialNumber,
@@ -64,18 +56,7 @@ func newActiveSendMessage(jtMsg *jt808.JTMessage, command consts.JT808CommandTyp
 	msg := &Message{
 		JTMessage: jtMsg,
 		Command:   command,
-		ExtensionFields: struct {
-			TerminalSeq         uint16                  `json:"terminalSeq,omitempty"`
-			PlatformSeq         uint16                  `json:"platformSeq,omitempty"`
-			TerminalData        []byte                  `json:"terminalData,omitempty"`
-			PlatformData        []byte                  `json:"platformData,omitempty"`
-			ActiveSend          bool                    `json:"activeSend,omitempty"`
-			SubcontractComplete bool                    `json:"subcontractComplete,omitempty"`
-			TerminalCommand     consts.JT808CommandType `json:"terminalCommand,omitempty"`
-			PlatformCommand     consts.JT808CommandType `json:"platformCommand,omitempty"`
-			CustomData          any                     `json:"customData,omitempty"`
-			Err                 error                   `json:"err,omitempty"`
-		}{
+		ExtensionFields: MessageExtensionFields{
 			ActiveSend:      true,
 			PlatformCommand: command,
 			PlatformSeq:     jtMsg.Header.SerialNumber,
@@ -89,18 +70,7 @@ func newActiveSendMessage(jtMsg *jt808.JTMessage, command consts.JT808CommandTyp
 }
 
 func newErrMessage(err error) *Message {
-	return &Message{ExtensionFields: struct {
-		TerminalSeq         uint16                  `json:"terminalSeq,omitempty"`
-		PlatformSeq         uint16                  `json:"platformSeq,omitempty"`
-		TerminalData        []byte                  `json:"terminalData,omitempty"`
-		PlatformData        []byte                  `json:"platformData,omitempty"`
-		ActiveSend          bool                    `json:"activeSend,omitempty"`
-		SubcontractComplete bool                    `json:"subcontractComplete,omitempty"`
-		TerminalCommand     consts.JT808CommandType `json:"terminalCommand,omitempty"`
-		PlatformCommand     consts.JT808CommandType `json:"platformCommand,omitempty"`
-		CustomData          any                     `json:"customData,omitempty"`
-		Err                 error                   `json:"err,omitempty"`
-	}{
+	return &Message{ExtensionFields: MessageExtensionFields{
 		Err: err,
 	}}
 }

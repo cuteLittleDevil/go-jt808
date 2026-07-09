@@ -60,8 +60,6 @@ type heiBiaoStreamDataHandle struct {
 	baseStreamDataHandle
 	// FileNameLen 文件名长度
 	FileNameLen byte
-	// FileName 文件名
-	FileName string
 }
 
 func newHeiBiaoStreamDataHandle() *heiBiaoStreamDataHandle {

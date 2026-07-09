@@ -13,7 +13,7 @@ import (
 type group struct {
 	conn         *net.TCPConn
 	timeoutRetry time.Duration
-	clients      sync.Map
+	clients      sync.Map // key=Terminal.TargetAddr (string), value=*client
 	writeMsgChan chan []byte
 	stopChan     chan struct{}
 	stopOnce     sync.Once
@@ -29,13 +29,14 @@ func newGroup(conn *net.TCPConn, timeoutRetry time.Duration, terminals []Termina
 		stopOnce:     sync.Once{},
 	}
 	for _, terminal := range terminals {
-		if c, err := newClient(terminal, g.stopChan, g.sendData); err == nil {
-			g.clients.Store(&terminal, c)
+		t := terminal
+		if c, err := newClient(t, g.stopChan, g.sendData); err == nil {
+			g.clients.Store(t.TargetAddr, c)
 		} else {
 			slog.Error("init client error",
-				slog.String("addr", terminal.TargetAddr),
+				slog.String("addr", t.TargetAddr),
 				slog.Any("err", err))
-			g.clients.Store(&terminal, nil)
+			go g.addClient(t)
 		}
 	}
 	return g
@@ -72,19 +73,17 @@ func (g *group) reader() {
 				wg.Add(1)
 				go func() {
 					defer wg.Done()
-					if v, ok := value.(*client); ok {
-						if ok := v.sendData(curData[:n]); !ok {
-							slog.Warn("send data",
-								slog.Any("addr", v.terminal.TargetAddr),
-								slog.String("data", fmt.Sprintf("%x", curData[:n])),
-								slog.Any("err", err))
-							g.clients.Delete(key) // 服务断开的
-							go g.addClient(v.terminal)
-						}
-					} else if t, ok := key.(*Terminal); ok { // 初始化失败的
-						g.clients.Delete(t)
-						go g.addClient(*t)
+					v, ok := value.(*client)
+					if !ok || v == nil {
 						return
+					}
+					if ok := v.sendData(curData[:n]); !ok {
+						slog.Warn("send data",
+							slog.Any("addr", v.terminal.TargetAddr),
+							slog.String("data", fmt.Sprintf("%x", curData[:n])),
+							slog.String("reason", "client stopped or channel unavailable"))
+						g.clients.Delete(key)
+						go g.addClient(v.terminal)
 					}
 				}()
 				return true

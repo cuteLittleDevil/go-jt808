@@ -50,14 +50,14 @@ func (t *Terminal) CreateDefaultCommandData(commandType consts.JT808CommandType)
 			body := v.Encode()
 			t.header.ReplyID = uint16(commandType)
 			t.header.PlatformSerialNumber++
-			return t.header.Encode(body)
+			return encodeFirstPacket(t.header, body)
 		}
 	}
 	if v, ok := t.protocolHandles[commandType]; ok {
 		body := v.Encode()
 		t.header.ReplyID = uint16(commandType)
 		t.header.PlatformSerialNumber++
-		return t.header.Encode(body)
+		return encodeFirstPacket(t.header, body)
 	}
 	slog.Warn("not found command",
 		slog.String("command", commandType.String()))
@@ -68,7 +68,7 @@ func (t *Terminal) CreateDefaultCommandData(commandType consts.JT808CommandType)
 func (t *Terminal) CreateCommandData(commandType consts.JT808CommandType, body []byte) []byte {
 	t.header.ReplyID = uint16(commandType)
 	t.header.PlatformSerialNumber++
-	return t.header.Encode(body)
+	return encodeFirstPacket(t.header, body)
 }
 
 // ExpectedReply 指令预期回复.
@@ -89,7 +89,15 @@ func (t *Terminal) ExpectedReply(seq uint16, msg string) []byte {
 		header.PlatformSerialNumber = seq
 		body, _ = v.ReplyBody(jtMsg)
 	}
-	return header.Encode(body)
+	return encodeFirstPacket(header, body)
+}
+
+func encodeFirstPacket(header *jt808.Header, body []byte) []byte {
+	packets := header.EncodePackets(body)
+	if len(packets) == 0 {
+		return nil
+	}
+	return packets[0]
 }
 
 // ProtocolDetails 协议详情.

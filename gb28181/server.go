@@ -49,35 +49,36 @@ func (c *Client) message(req *sip.Request, tx sip.ServerTransaction) {
 	replyReq.AppendHeader(sip.NewHeader("Content-Type", "Application/MANSCDP+xml"))
 	maxForwardsHeader := sip.MaxForwardsHeader(70)
 	replyReq.AppendHeader(&maxForwardsHeader)
-	req.AppendHeader(&sip.CSeqHeader{
+	replyReq.AppendHeader(&sip.CSeqHeader{
 		SeqNo:      c.sn,
-		MethodName: sip.REGISTER,
+		MethodName: sip.MESSAGE,
 	})
 	c.sn++
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if data, err := c.handleMessages(confirmType, body); err == nil {
-		replyReq.SetBody(data)
-		tx, err := c.client.TransactionRequest(ctx, replyReq)
-		if err != nil {
-			slog.Warn("transaction request fail",
-				slog.String("sim", c.Options.Sim),
-				slog.String("id", c.Options.DeviceInfo.ID),
-				slog.Any("err", err))
-			return
-		}
-		defer tx.Terminate()
-		_, _ = c.getResponse(tx)
-	} else {
-		err := tx.Respond(sip.NewResponseFromRequest(req, http.StatusNotFound, "暂不支持的指令", nil))
-		slog.Warn("message respond fail",
+	data, err := c.handleMessages(confirmType, body)
+	if err != nil {
+		// 已对入站 MESSAGE 回复 200 OK，此处仅记录不支持的指令，避免对同一 tx 二次 Respond
+		slog.Warn("unsupported message",
 			slog.String("sim", c.Options.Sim),
 			slog.String("id", c.Options.DeviceInfo.ID),
 			slog.Any("data", req.String()),
 			slog.Any("err", err))
+		return
 	}
+	replyReq.SetBody(data)
+	replyTx, err := c.client.TransactionRequest(ctx, replyReq)
+	if err != nil {
+		slog.Warn("transaction request fail",
+			slog.String("sim", c.Options.Sim),
+			slog.String("id", c.Options.DeviceInfo.ID),
+			slog.Any("err", err))
+		return
+	}
+	defer replyTx.Terminate()
+	_, _ = c.getResponse(replyTx)
 }
 
 func (c *Client) invite(req *sip.Request, tx sip.ServerTransaction) {
@@ -113,7 +114,10 @@ func (c *Client) invite(req *sip.Request, tx sip.ServerTransaction) {
 	response.AppendHeader(&contentType)
 	response.SetBody([]byte(strings.Join(content, "\r\n") + "\r\n"))
 	if err := tx.Respond(response); err != nil {
-		panic(err)
+		slog.Warn("invite respond fail",
+			slog.String("sim", c.Options.Sim),
+			slog.String("id", c.Options.DeviceInfo.ID),
+			slog.Any("err", err))
 	}
 }
 
