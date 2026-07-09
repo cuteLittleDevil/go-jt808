@@ -143,6 +143,9 @@ func (g *GoJT808) createDefaultHandle() map[consts.JT808CommandType]Handler {
 		consts.T1005UploadPassengerFlow:               newDefaultHandle(&model.T0x1005{}),
 		consts.P9101RealTimeAudioVideoRequest:         newDefaultHandle(&model.P0x9101{}),
 		consts.P9102AudioVideoControl:                 newDefaultHandle(&model.P0x9102{}),
+		consts.P9105AudioVideoControlStatusNotice:     newDefaultHandle(&model.P0x9105{}),
+		consts.P9201SendVideoRecordRequest:            newDefaultHandle(&model.P0x9201{}),
+		consts.P9202SendVideoRecordControl:            newDefaultHandle(&model.P0x9202{}),
 		consts.P9205QueryResourceList:                 newDefaultHandle(&model.P0x9205{}),
 		consts.T1205UploadAudioVideoResourceList:      newDefaultHandle(&model.T0x1205{}),
 		consts.P9206FileUploadInstructions:            newDefaultHandle(&model.P0x9206{}),
@@ -160,8 +163,9 @@ func (g *GoJT808) createDefaultHandle() map[consts.JT808CommandType]Handler {
 				ActiveSafetyType: consts.ActiveSafetyJS,
 			},
 		}),
-		consts.T1211FileInfoUpload:     newDefaultHandle(&model.T0x1211{}),
-		consts.T1212FileUploadComplete: newDefaultHandle(&model.T0x1212{}),
+		consts.T1211FileInfoUpload:            newDefaultHandle(&model.T0x1211{}),
+		consts.T1212FileUploadComplete:        newDefaultHandle(&model.T0x1212{}),
+		consts.P9212FileUploadCompleteRespond: newDefaultHandle(&model.P0x9212{}),
 	}
 }
 
