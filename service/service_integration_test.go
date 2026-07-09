@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"net"
-	"sync"
 	"testing"
 	"time"
 
@@ -13,94 +12,71 @@ import (
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 )
 
+// recordingHandler 仅绑定单个连接。
+// service 每个连接都会重新 createCommandHandle，事件在该连接协程内串行触发，无需加锁。
 type recordingHandler struct {
 	model.BaseHandle
 	protocol consts.JT808CommandType
-	mu       sync.Mutex
 	reads    int
 	writes   int
 }
 
 func (r *recordingHandler) Protocol() consts.JT808CommandType { return r.protocol }
 
-func (r *recordingHandler) OnReadExecutionEvent(_ *Message) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.reads++
-}
+func (r *recordingHandler) OnReadExecutionEvent(_ *Message) { r.reads++ }
 
-func (r *recordingHandler) OnWriteExecutionEvent(_ Message) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.writes++
-}
+func (r *recordingHandler) OnWriteExecutionEvent(_ Message) { r.writes++ }
 
-func (r *recordingHandler) counts() (reads, writes int) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return r.reads, r.writes
-}
-
+// recordingTerminalEvent 用 channel 把事件交给测试协程。
+// 单连接场景下可复用同一实例；跨协程同步靠 channel，不靠 mutex。
 type recordingTerminalEvent struct {
-	mu            sync.Mutex
-	joins         []string
-	leaves        []string
-	notSupported  []consts.JT808CommandType
-	joinErrs      []error
-	readCommands  []consts.JT808CommandType
-	writeCommands []consts.JT808CommandType
-	writeActive   []bool
-	writeErrs     []error
+	joined       chan string
+	left         chan string
+	notSupported chan consts.JT808CommandType
+	readCmd      chan consts.JT808CommandType
+	writeCmd     chan consts.JT808CommandType
 }
 
-func (r *recordingTerminalEvent) OnJoinEvent(msg *Message, key string, err error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.joins = append(r.joins, key)
-	r.joinErrs = append(r.joinErrs, err)
-	_ = msg
+func newRecordingTerminalEvent() *recordingTerminalEvent {
+	return &recordingTerminalEvent{
+		joined:       make(chan string, 8),
+		left:         make(chan string, 8),
+		notSupported: make(chan consts.JT808CommandType, 8),
+		readCmd:      make(chan consts.JT808CommandType, 32),
+		writeCmd:     make(chan consts.JT808CommandType, 32),
+	}
+}
+
+func (r *recordingTerminalEvent) OnJoinEvent(_ *Message, key string, _ error) {
+	r.joined <- key
 }
 
 func (r *recordingTerminalEvent) OnLeaveEvent(key string) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.leaves = append(r.leaves, key)
+	r.left <- key
 }
 
 func (r *recordingTerminalEvent) OnNotSupportedEvent(msg *Message) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.notSupported = append(r.notSupported, msg.Command)
+	r.notSupported <- msg.Command
 }
 
 func (r *recordingTerminalEvent) OnReadExecutionEvent(msg *Message) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.readCommands = append(r.readCommands, msg.Command)
+	r.readCmd <- msg.Command
 }
 
 func (r *recordingTerminalEvent) OnWriteExecutionEvent(msg Message) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.writeCommands = append(r.writeCommands, msg.Command)
-	r.writeActive = append(r.writeActive, msg.ExtensionFields.ActiveSend)
-	r.writeErrs = append(r.writeErrs, msg.ExtensionFields.Err)
+	r.writeCmd <- msg.Command
 }
 
-func (r *recordingTerminalEvent) snapshot() recordingTerminalEvent {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	cp := recordingTerminalEvent{
-		joins:         append([]string(nil), r.joins...),
-		leaves:        append([]string(nil), r.leaves...),
-		notSupported:  append([]consts.JT808CommandType(nil), r.notSupported...),
-		joinErrs:      append([]error(nil), r.joinErrs...),
-		readCommands:  append([]consts.JT808CommandType(nil), r.readCommands...),
-		writeCommands: append([]consts.JT808CommandType(nil), r.writeCommands...),
-		writeActive:   append([]bool(nil), r.writeActive...),
-		writeErrs:     append([]error(nil), r.writeErrs...),
+func waitChan[T any](t *testing.T, ch <-chan T, timeout time.Duration) T {
+	t.Helper()
+	select {
+	case v := <-ch:
+		return v
+	case <-time.After(timeout):
+		t.Fatal("timed out waiting for event")
+		var zero T
+		return zero
 	}
-	return cp
 }
 
 func waitFor(t *testing.T, timeout time.Duration, cond func() bool) {
@@ -136,6 +112,8 @@ func startTestServer(t *testing.T, opts ...Option) (*GoJT808, string) {
 		_ = c.Close()
 		return true
 	})
+	// 探测连接会触发 leave（key 可能为空），稍等并排空，避免干扰后续断言
+	time.Sleep(50 * time.Millisecond)
 	return g, addr
 }
 
@@ -205,18 +183,30 @@ func decodeFirstMessage(t *testing.T, data []byte) *jt808.JTMessage {
 	return jtMsg
 }
 
+func drainStringChan(ch <-chan string) {
+	for {
+		select {
+		case <-ch:
+		default:
+			return
+		}
+	}
+}
+
 func TestService_heartbeatJoinAndDefaultReply(t *testing.T) {
-	events := &recordingTerminalEvent{}
-	hb := &recordingHandler{protocol: consts.T0002HeartBeat}
+	events := newRecordingTerminalEvent()
 	g, addr := startTestServer(t,
 		WithCustomTerminalEventer(func() TerminalEventer { return events }),
 		WithCustomHandleFunc(func() map[consts.JT808CommandType]Handler {
+			// 每个连接独立一份 Handler
 			return map[consts.JT808CommandType]Handler{
-				consts.T0002HeartBeat: hb,
+				consts.T0002HeartBeat: &recordingHandler{protocol: consts.T0002HeartBeat},
 			}
 		}),
 	)
 	_ = g
+	drainStringChan(events.left)
+	drainStringChan(events.joined)
 
 	conn := dialTerminal(t, addr)
 	if _, err := conn.Write(heartbeatPacket); err != nil {
@@ -229,35 +219,31 @@ func TestService_heartbeatJoinAndDefaultReply(t *testing.T) {
 		t.Fatalf("reply command = 0x%04X, want 0x8001", jtMsg.Header.ID)
 	}
 
-	waitFor(t, 2*time.Second, func() bool {
-		s := events.snapshot()
-		return len(s.joins) == 1 && s.joins[0] == "12345678901"
-	})
-	reads, _ := hb.counts()
-	if reads == 0 {
-		t.Fatal("expected heartbeat OnReadExecutionEvent")
+	if key := waitChan(t, events.joined, 2*time.Second); key != "12345678901" {
+		t.Fatalf("join key = %s, want 12345678901", key)
+	}
+	if cmd := waitChan(t, events.readCmd, 2*time.Second); cmd != consts.T0002HeartBeat {
+		t.Fatalf("read command = %s, want %s", cmd, consts.T0002HeartBeat)
 	}
 }
 
 func TestService_sendActiveMessageSuccessAndTimeout(t *testing.T) {
-	events := &recordingTerminalEvent{}
+	events := newRecordingTerminalEvent()
 	g, addr := startTestServer(t,
 		WithCustomTerminalEventer(func() TerminalEventer { return events }),
 	)
+	drainStringChan(events.left)
+	drainStringChan(events.joined)
 
 	conn := dialTerminal(t, addr)
 	if _, err := conn.Write(heartbeatPacket); err != nil {
 		t.Fatalf("Write heartbeat error = %v", err)
 	}
 	_ = readPacket(t, conn, 2*time.Second) // 消费 0x8001
-
-	waitFor(t, 2*time.Second, func() bool {
-		return len(events.snapshot().joins) == 1
-	})
+	_ = waitChan(t, events.joined, 2*time.Second)
 
 	key := "12345678901"
 
-	// 成功路径：下发 0x8201，终端回 0x0201
 	go func() {
 		platformPkt := readPacket(t, conn, 2*time.Second)
 		platformMsg := decodeFirstMessage(t, platformPkt)
@@ -280,7 +266,6 @@ func TestService_sendActiveMessageSuccessAndTimeout(t *testing.T) {
 		t.Fatalf("reply command = %s, want %s", reply.Command, consts.T0201QueryLocation)
 	}
 
-	// 超时路径：下发 0x8300，终端不回复
 	go func() {
 		_ = readPacket(t, conn, 2*time.Second) // 消费平台下发报文
 	}()
@@ -291,47 +276,45 @@ func TestService_sendActiveMessageSuccessAndTimeout(t *testing.T) {
 }
 
 func TestService_notSupportedCommand(t *testing.T) {
-	events := &recordingTerminalEvent{}
+	events := newRecordingTerminalEvent()
 	g, addr := startTestServer(t,
 		WithCustomTerminalEventer(func() TerminalEventer { return events }),
 	)
 	_ = g
+	drainStringChan(events.left)
+	drainStringChan(events.joined)
 
 	conn := dialTerminal(t, addr)
-	// 先用心跳加入
 	if _, err := conn.Write(heartbeatPacket); err != nil {
 		t.Fatalf("Write heartbeat error = %v", err)
 	}
 	_ = readPacket(t, conn, 2*time.Second)
+	_ = waitChan(t, events.joined, 2*time.Second)
 
-	// 0x0F00 未实现指令
 	unknown := encodeTerminalPacket(t, consts.JT808CommandType(0x0F00), []byte{0x01}, 3)
 	if _, err := conn.Write(unknown); err != nil {
 		t.Fatalf("Write unknown error = %v", err)
 	}
 
-	waitFor(t, 2*time.Second, func() bool {
-		return len(events.snapshot().notSupported) > 0
-	})
-	if got := events.snapshot().notSupported[0]; got != consts.JT808CommandType(0x0F00) {
+	if got := waitChan(t, events.notSupported, 2*time.Second); got != consts.JT808CommandType(0x0F00) {
 		t.Fatalf("notSupported = %s, want 0x0F00", got)
 	}
 }
 
 func TestService_defaultHandlersIncludeNewlyRegisteredCommands(t *testing.T) {
-	events := &recordingTerminalEvent{}
+	events := newRecordingTerminalEvent()
 	g, addr := startTestServer(t,
 		WithCustomTerminalEventer(func() TerminalEventer { return events }),
 	)
+	drainStringChan(events.left)
+	drainStringChan(events.joined)
 
 	conn := dialTerminal(t, addr)
 	if _, err := conn.Write(heartbeatPacket); err != nil {
 		t.Fatalf("Write heartbeat error = %v", err)
 	}
 	_ = readPacket(t, conn, 2*time.Second)
-	waitFor(t, 2*time.Second, func() bool {
-		return len(events.snapshot().joins) == 1
-	})
+	_ = waitChan(t, events.joined, 2*time.Second)
 
 	key := "12345678901"
 	body := (&model.P0x9105{ChannelNo: 1, PackageLossRate: 2}).Encode()
@@ -358,9 +341,10 @@ func TestService_defaultHandlersIncludeNewlyRegisteredCommands(t *testing.T) {
 		t.Fatalf("reply command = %s, want %s", reply.Command, consts.T0001GeneralRespond)
 	}
 
-	// 确认不是走未支持事件
-	if len(events.snapshot().notSupported) != 0 {
-		t.Fatalf("unexpected notSupported events: %v", events.snapshot().notSupported)
+	select {
+	case cmd := <-events.notSupported:
+		t.Fatalf("unexpected notSupported event: %s", cmd)
+	default:
 	}
 }
 
@@ -370,7 +354,6 @@ func TestPackageParse_completeSubcontract(t *testing.T) {
 	header.ReplyID = uint16(consts.T0801MultimediaDataUpload)
 	header.PlatformSerialNumber = 1
 
-	// 构造超过 1000 字节的 body，触发分包
 	body := make([]byte, 1500)
 	for i := range body {
 		body[i] = byte(i)
