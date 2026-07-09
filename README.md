@@ -1,10 +1,10 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Go Doc](https://godoc.org/github.com/cuteLittleDevil/go-jt808?status.svg)](https://pkg.go.dev/github.com/cuteLittleDevil/go-jt808#readme-jt808)
+[![GoDoc](https://pkg.go.dev/badge/github.com/cuteLittleDevil/go-jt808.svg)](https://pkg.go.dev/github.com/cuteLittleDevil/go-jt808)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/cuteLittleDevil/go-jt808)](./go.mod)
 [![Perf](https://img.shields.io/badge/perf-save-blue.svg)](https://github.com/cuteLittleDevil/go-jt808/blob/main/example/simulator/README.md)
 [![WEB](https://img.shields.io/badge/example-web-red.svg)](https://github.com/cuteLittleDevil/go-jt808/tree/main/example/web#web)
 [![API](https://img.shields.io/badge/web%20doc-apifox-red.svg)](https://vsh9jdgg5d.apifox.cn/)
 [![codecov](https://codecov.io/github/cuteLittleDevil/go-jt808/graph/badge.svg?token=KZXKKIJUSA)](https://codecov.io/github/cuteLittleDevil/go-jt808)
-[![Go Report Card](https://goreportcard.com/badge/github.com/cuteLittleDevil/go-jt808/protocol)](https://goreportcard.com/report/github.com/cuteLittleDevil/go-jt808/protocol)
 [![build status](https://github.com/cuteLittleDevil/go-jt808/actions/workflows/ci.yml/badge.svg)](https://github.com/cuteLittleDevil/go-jt808/actions/workflows/ci.yml)
 
 # go-jt808
