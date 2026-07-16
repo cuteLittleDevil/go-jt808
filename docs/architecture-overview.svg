@@ -1,0 +1,122 @@
+<svg viewBox="0 0 780 680" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>go-jt808 项目包架构总览</title>
+  <desc>go-jt808 项目分层架构：业务层→服务端→协议层→共享层，以及4个独立扩展包。重点展示 connection 单连接会话细节。</desc>
+  <defs>
+    <!-- 定义多色箭头marker，分别对应各层颜色 -->
+    <marker id="arrow-indigo" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#6366F1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#D97706" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#3B82F6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#10B981" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#EF4444" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+
+    <filter id="cardShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="1.5" dy="2.5" stdDeviation="3" flood-color="#000000" flood-opacity="0.09"/>
+    </filter>
+    <style>
+      .layer-title { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size: 15px; font-weight: 600; letter-spacing: -0.2px; }
+      .module-title { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size: 13px; font-weight: 600; letter-spacing: -0.1px; }
+      .module-desc { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size: 11px; font-weight: 400; }
+      .caption { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size: 12px; fill: #6B7280; }
+      .section-label { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size: 11px; font-weight: 500; }
+    </style>
+  </defs>
+
+  <!-- 背景 + 主卡片 -->
+  <rect x="0" y="0" width="780" height="680" fill="#F1F5F9"/>
+  <rect x="18" y="12" width="744" height="632" rx="20" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1"/>
+
+  <!-- 业务二次开发层 -->
+  <rect x="40" y="28" width="700" height="58" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.5" filter="url(#cardShadow)"/>
+  <text x="390" y="50" text-anchor="middle" class="layer-title" fill="#4338CA">业务二次开发层</text>
+  <text x="390" y="70" text-anchor="middle" class="module-desc" fill="#6366F1">Custom Handler · TerminalEventer · FileEventer · InviteEventFunc</text>
+
+  <path d="M390 86 L390 175" fill="none" stroke="#6366F1" stroke-width="2.2" marker-end="url(#arrow-indigo)"/>
+
+  <!-- 车机终端层 -->
+  <rect x="40" y="98" width="700" height="52" rx="14" fill="#FFFBEB" stroke="#D97706" stroke-width="1.5" filter="url(#cardShadow)"/>
+  <text x="390" y="118" text-anchor="middle" class="layer-title" fill="#92400E">车机终端 / 设备 (JT808 终端)</text>
+  <text x="390" y="136" text-anchor="middle" class="module-desc" fill="#B45309">注册 · 鉴权 · 心跳 · 位置上报 · 音视频 · 附件上传</text>
+
+  <path d="M390 150 L390 175" fill="none" stroke="#D97706" stroke-width="2" marker-end="url(#arrow-orange)"/>
+
+  <!-- Service 服务端层 -->
+  <rect x="40" y="175" width="700" height="188" rx="16" fill="#EFF6FF" stroke="#3B82F6" stroke-width="1.5" filter="url(#cardShadow)"/>
+  <text x="55" y="195" class="section-label" fill="#1E40AF">service — JT808 TCP 服务端核心</text>
+
+  <rect x="55" y="208" width="185" height="62" rx="10" fill="#BFDBFE" stroke="#3B82F6" stroke-width="1.2" filter="url(#cardShadow)"/>
+  <text x="147.5" y="232" text-anchor="middle" class="module-title" fill="#1E3A8A">connection</text>
+  <text x="147.5" y="250" text-anchor="middle" class="module-desc" fill="#1E40AF">单连接会话 · 读写协程</text>
+
+  <rect x="260" y="208" width="185" height="62" rx="10" fill="#BFDBFE" stroke="#3B82F6" stroke-width="1.2" filter="url(#cardShadow)"/>
+  <text x="352.5" y="232" text-anchor="middle" class="module-title" fill="#1E3A8A">sessionManager</text>
+  <text x="352.5" y="250" text-anchor="middle" class="module-desc" fill="#1E40AF">无锁 · 单协程 + channel</text>
+
+  <rect x="465" y="208" width="185" height="62" rx="10" fill="#BFDBFE" stroke="#3B82F6" stroke-width="1.2" filter="url(#cardShadow)"/>
+  <text x="557.5" y="232" text-anchor="middle" class="module-title" fill="#1E3A8A">packageParse</text>
+  <text x="557.5" y="250" text-anchor="middle" class="module-desc" fill="#1E40AF">分包重组 · 补传 0x8003</text>
+
+  <rect x="200" y="292" width="185" height="55" rx="10" fill="#DBEAFE" stroke="#3B82F6" stroke-width="1.2" filter="url(#cardShadow)"/>
+  <text x="292.5" y="310" text-anchor="middle" class="module-title" fill="#1E3A8A">Handler + Eventer</text>
+  <text x="292.5" y="327" text-anchor="middle" class="module-desc" fill="#1E40AF">OnRead / OnWrite / 自定义回复</text>
+
+  <rect x="405" y="292" width="185" height="55" rx="10" fill="#DBEAFE" stroke="#3B82F6" stroke-width="1.2" filter="url(#cardShadow)"/>
+  <text x="497.5" y="310" text-anchor="middle" class="module-title" fill="#1E3A8A">ActiveMessage</text>
+  <text x="497.5" y="327" text-anchor="middle" class="module-desc" fill="#1E40AF">主动下发 · 超时应答等待</text>
+
+  <path d="M390 363 L390 378" fill="none" stroke="#3B82F6" stroke-width="2.2" marker-end="url(#arrow-blue)"/>
+
+  <!-- Protocol 协议层 -->
+  <rect x="40" y="378" width="700" height="108" rx="16" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5" filter="url(#cardShadow)"/>
+  <text x="55" y="397" class="section-label" fill="#065F46">protocol — 纯逻辑层（无网络依赖）</text>
+  <!-- 居中排布三个模块，间距40，整体居中 -->
+  <rect x="110" y="410" width="160" height="60" rx="10" fill="#A7F3D0" stroke="#10B981" stroke-width="1.2" filter="url(#cardShadow)"/>
+  <text x="190" y="431" text-anchor="middle" class="module-title" fill="#064E3B">jt808 帧编解码</text>
+  <text x="190" y="448" text-anchor="middle" class="module-desc" fill="#065F46">转义 · 校验 · Header · 分包</text>
+
+  <rect x="310" y="410" width="160" height="60" rx="10" fill="#A7F3D0" stroke="#10B981" stroke-width="1.2" filter="url(#cardShadow)"/>
+  <text x="390" y="431" text-anchor="middle" class="module-title" fill="#064E3B">model 消息体</text>
+  <text x="390" y="448" text-anchor="middle" class="module-desc" fill="#065F46">0x0001~0x9212 指令实现</text>
+
+  <rect x="510" y="410" width="160" height="60" rx="10" fill="#A7F3D0" stroke="#10B981" stroke-width="1.2" filter="url(#cardShadow)"/>
+  <text x="590" y="431" text-anchor="middle" class="module-title" fill="#064E3B">jt1078 音视频</text>
+  <text x="590" y="448" text-anchor="middle" class="module-desc" fill="#065F46">零拷贝 · 切帧</text>
+  <path d="M190 470 L190 498" fill="none" stroke="#10B981" stroke-width="2" marker-end="url(#arrow-green)"/>
+
+  <!-- Shared / Consts -->
+  <rect x="40" y="498" width="700" height="52" rx="14" fill="#FFFBEB" stroke="#D97706" stroke-width="1.5" filter="url(#cardShadow)"/>
+  <text x="390" y="518" text-anchor="middle" class="layer-title" fill="#92400E">shared/consts — 指令常量 · 协议版本 · 附加信息</text>
+
+  <!-- 扩展包 -->
+  <rect x="40" y="562" width="700" height="95" rx="16" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.5" filter="url(#cardShadow)"/>
+  <text x="55" y="580" class="section-label" fill="#991B1B">扩展包 — 独立 go.mod · 按需引用</text>
+
+  <rect x="55" y="590" width="145" height="55" rx="10" fill="#FECACA" stroke="#EF4444" stroke-width="1.2" filter="url(#cardShadow)"/>
+  <text x="127.5" y="610" text-anchor="middle" class="module-title" fill="#991B1B">adapter</text>
+  <text x="127.5" y="626" text-anchor="middle" class="module-desc" fill="#B91C1C">一真多仿 · 灰度</text>
+
+  <rect x="220" y="590" width="145" height="55" rx="10" fill="#FECACA" stroke="#EF4444" stroke-width="1.2" filter="url(#cardShadow)"/>
+  <text x="292.5" y="610" text-anchor="middle" class="module-title" fill="#991B1B">attachment</text>
+  <text x="292.5" y="626" text-anchor="middle" class="module-desc" fill="#B91C1C">主动安全附件</text>
+
+  <rect x="385" y="590" width="145" height="55" rx="10" fill="#FECACA" stroke="#EF4444" stroke-width="1.2" filter="url(#cardShadow)"/>
+  <text x="457.5" y="610" text-anchor="middle" class="module-title" fill="#991B1B">gb28181</text>
+  <text x="457.5" y="626" text-anchor="middle" class="module-desc" fill="#B91C1C">SIP + JT1078 -> PS流</text>
+
+  <rect x="550" y="590" width="145" height="55" rx="10" fill="#FECACA" stroke="#EF4444" stroke-width="1.2" filter="url(#cardShadow)"/>
+  <text x="622.5" y="610" text-anchor="middle" class="module-title" fill="#991B1B">terminal</text>
+  <text x="622.5" y="626" text-anchor="middle" class="module-desc" fill="#B91C1C">终端模拟</text>
+
+
+  <!-- 底部注释 -->
+  <text x="390" y="668" text-anchor="middle" class="caption">依赖方向：service → protocol → shared（单向）；protocol → 扩展包（按需）</text>
+</svg>
