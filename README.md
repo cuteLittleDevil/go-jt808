@@ -102,7 +102,7 @@ if reply.ExtensionFields.Err != nil { /* 超时或终端不在线 */ }
 
 按场景分类的常用示例（每个都有完整可运行代码）：
 
-### 1. 真实项目对接 [apifox文档](https://vsh9jdgg5d.apifox.cn/) [web详情](./example/web) [releases下载](https://github.com/cuteLittleDevil/go-jt808/releases)
+### 1. 真实项目对接 [apifox文档](https://vsh9jdgg5d.apifox.cn/) [web详情](./example/web)
 ``` txt
 web例子在线网页: http://124.221.30.46:18000/
 真实案例: 根据壹品信息技术有限公司对接中农云设备修改
@@ -114,14 +114,16 @@ web例子在线网页: http://124.221.30.46:18000/
 平台下发0x9101等指令 -> 模拟器开始推流等动作
 ```
 
-| 流媒体 | 语言 | 描述       | 说明 |
-|----------|-----|-------------------|-----|
-| rtvs | 不开源<br/> 可使用  | 在线测试页面 https://124.221.30.46:44300/index.html <br/> 点击实时视频(0x9101)按钮播放| [详情点击](./example/jt1078/README.md#rtvs)  |
-| lal | go  | 在线播放地址 http://124.221.30.46:8080/live/1001_1.flv | [详情点击](./example/jt1078/README.md#lal)  |
-| sky-java | java  | 需要部署后 HTTP请求 10秒内拉流 参考格式如下 <br/> http://222.244.144.181:7777/video/1001-1-0-0.live.mp4 | [详情点击](./example/jt1078/README.md#sky-java)  |
-| monibuca | go  | 对讲示例 https://124.221.30.46:12000 | [详情点击](https://github.com/cuteLittleDevil/m7s-jt1078)  |
-| ZLMediaKit | c++  | 对讲测试 https://124.221.30.46/static/?type=push <br/> http://124.221.30.46:80/rtp/000000001003_1_0_0.live.mp4 | [详情点击](./example/jt1078/README.md#zlm)  |
-| srs | c++  | http://101.35.2.3:8080/live/realtime--924654669559-1.flv | [详情点击](./example/jt1078/README.md#srs) |
+> ⚠️ **注意：部分在线测试页面已失效，需自行部署**
+
+| 流媒体     | 语言            | 说明                                                                 | 说明                                              |
+|------------|-----------------|----------------------------------------------------------------------|---------------------------------------------------|
+| rtvs       | 不开源<br/>可使用 | 在线测试页面 https://124.221.30.46:44300/index.html<br/>点击实时视频(0x9101)按钮播放 | [详情点击](./example/jt1078/README.md#1-rtvs)     |
+| lal        | go              | 在线播放地址 http://124.221.30.46:8080/live/1001_1.flv           | [详情点击](./example/jt1078/README.md#2-lal)      |
+| sky-java   | java            | 需要部署后 HTTP 请求（10秒内拉流）<br/>参考格式：http://222.244.144.181:7777/video/1001-1-0-0.live.mp4 | [详情点击](./example/jt1078/README.md#3-sky-java) |
+| monibuca   | go              | 支持音视频 + 对讲 + 广播. 对讲示例 https://124.221.30.46:12000     | [详情点击](https://github.com/cuteLittleDevil/m7s-jt1078) |
+| ZLMediaKit | c++             | 对讲测试 https://124.221.30.46/static/?type=push<br/>http://124.221.30.46:80/rtp/000000001003_1_0_0.live.mp4 | [详情点击](./example/jt1078/README.md#5-zlmediakit) |
+| srs        | c++             | http://101.35.2.3:8080/live/realtime--924654669559-1.flv             | [详情点击](./example/jt1078/README.md#6-srs)      |
 
 ### 3. jt808模拟gb28181客户端 [gb28181使用](./gb28181/example_test.go) [jt1078转ps流](./gb28181/internal/stream/jt1078_to_gb28181.go)
 ``` txt
