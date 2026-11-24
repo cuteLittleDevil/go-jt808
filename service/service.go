@@ -36,6 +36,7 @@ func (g *GoJT808) Run() {
 			slog.String("addr", g.opts.Addr),
 			slog.String("network", g.opts.Network),
 			slog.Any("err", err))
+		return
 	}
 
 	in, err := net.ListenTCP(g.opts.Network, addr)

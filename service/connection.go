@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
@@ -25,32 +26,42 @@ type (
 	connection struct {
 		connectionParams
 
-		// finallyCompleteChan 用于等待当前所有正在主动下发的指令完成或超时后才真正关闭连接.
-		finallyCompleteChan chan struct{}
+		// stopWriteChan 连接关闭时由 stop() 关闭，通知 write 协程排空并等待在途主动消息完成.
+		stopWriteChan chan struct{}
+		// writeDoneChan write 协程完全退出时关闭，通知 stop() 与超时定时器停止发送.
+		writeDoneChan chan struct{}
 		// terminalUplinkMsgChan 终端上报的普通消息（上行消息）会放入此通道，
 		// 随后由 write 协程统一处理回复逻辑.
 		terminalUplinkMsgChan chan *Message
 		// reissuePackChan 需要补发的分包消息通道.
 		reissuePackChan chan *Message
-		// platformSerialNumber 平台侧流水号（0~65535），自增后循环使用.
-		platformSerialNumber uint16
+		// platformSerialNumber 平台侧流水号（低 16 位 0~65535 循环使用，原子读写避免日志竞态）.
+		platformSerialNumber atomic.Uint32
 
 		// activeMsgChan 平台主动下发给终端的指令会包装成 ActiveMessage 放入此通道.
 		activeMsgChan chan *ActiveMessage
-		// activeMsgCompleteChan 当平台主动下发的指令收到终端应答（或超时）后，
-		// 会把完整的 Message 放入此通道，用于通知等待应答的协程.
-		activeMsgCompleteChan chan *Message
-		// activeUnfinishedSum 当前仍在等待终端应答的主动下发指令数量（原子操作）.
-		activeUnfinishedSum int32
+		// activeTimeoutChan 主动下发超时定时器通知通道（只传流水号且永不关闭，避免关闭竞态 panic）.
+		activeTimeoutChan chan uint16
+		// activePending 当前在途主动下发数量（仅用于告知 reader() 按需拷贝低频应答，热路径不拷贝）.
+		activePending atomic.Int32
+		// sessionHeader 首包深拷贝得到的独立 Header（含独立 bcdTerminalPhoneNo），供会话与下行回复零拷贝复用.
+		sessionHeader atomic.Pointer[jt808.Header]
 		// key 当前连接对应的终端唯一标识（默认是 SIM 卡号），
 		// 由 onJoinEvent 回调函数返回后赋值.
 		key string
 	}
 
+	// activeRecord 记录一条在途主动下发指令及其可取消的超时定时器，仅由 write 协程访问.
+	activeRecord struct {
+		msg     *ActiveMessage
+		timer   *time.Timer
+		timeout time.Duration
+	}
+
 	// connectionParams 连接所需的配置参数集合.
 	connectionParams struct {
-		// conn 与终端建立的 TCP 连接
-		conn *net.TCPConn
+		// conn 与终端建立的连接
+		conn net.Conn
 		// handles 信令处理.每一个连接都是独立的map, 不会影响其他的.
 		handles map[consts.JT808CommandType]Handler
 		// activeRespondHandles 主动下发，自定义处理回复相关的指令
@@ -74,16 +85,15 @@ func newConnection(params connectionParams) *connection {
 	return &connection{
 		connectionParams: params,
 
-		finallyCompleteChan:   make(chan struct{}),           // 等待所有主动下发完成
+		stopWriteChan:         make(chan struct{}),           // 通知 write 协程进入收尾阶段
+		writeDoneChan:         make(chan struct{}),           // 等待 write 协程退出
 		terminalUplinkMsgChan: make(chan *Message, 10),       // 上行普通消息队列
 		activeMsgChan:         make(chan *ActiveMessage, 10), // 主动下发指令队列
-		activeMsgCompleteChan: make(chan *Message, 10),       // 主动下发应答通知队列
+		activeTimeoutChan:     make(chan uint16, 10),         // 主动下发超时通知队列
 		reissuePackChan:       make(chan *Message, 10),       // 补发包队列
 
 		// 初始状态
-		platformSerialNumber: 0,        // 平台流水号从0开始
-		key:                  "",       // 终端唯一标识，注册成功后由 joinFunc 填充
-		activeUnfinishedSum:  int32(0), // 当前未完成的下发指令计数
+		key: "", // 终端唯一标识，注册成功后由 joinFunc 填充
 	}
 }
 
@@ -94,11 +104,7 @@ func (c *connection) run() {
 
 func (c *connection) reader() {
 	var (
-		// 消息体长度最大为 10bit 也就是 1023 的字节
-		// 实际上reader相当于同步执行的 因此无需拷贝一份新的
-		// 1. onReadExecutionEvent 这里处理后在read读取因此不会污染 如果onRead事件需要的话 用户自行拷贝一份
-		// 2. 历史的图片数据是make一份新的 因此一样不会有污染
-		// 3. write异步的情况 即使污染了也不影响 因为实际用不到（仅需要已经序列化的头部)
+		// 复用 1023B 读缓冲（JT808 单包最大长度），热路径零拷贝；详见 doc.go。
 		data = make([]byte, 1023)
 		pack = newPackageParse()
 		join = false
@@ -123,7 +129,7 @@ func (c *connection) reader() {
 			if err != nil {
 				slog.Error("parse data",
 					slog.Bool("join", join),
-					slog.Any("platform num", c.platformSerialNumber),
+					slog.Any("platform num", uint16(c.platformSerialNumber.Load())),
 					slog.String("effective data", fmt.Sprintf("%x", effectiveData)),
 					slog.Any("err", err))
 				return
@@ -157,12 +163,12 @@ func (c *connection) reader() {
 			} else if errors.Is(err, net.ErrClosed) || errors.Is(err, io.EOF) {
 				slog.Debug("connection close",
 					slog.Bool("join", join),
-					slog.Any("platform num", c.platformSerialNumber),
+					slog.Any("platform num", uint16(c.platformSerialNumber.Load())),
 					slog.Any("err", err))
 			} else {
 				slog.Error("read data",
 					slog.Bool("join", join),
-					slog.Any("platform num", c.platformSerialNumber),
+					slog.Any("platform num", uint16(c.platformSerialNumber.Load())),
 					slog.Any("err", err))
 			}
 			return
@@ -171,13 +177,32 @@ func (c *connection) reader() {
 }
 
 func (c *connection) joinHandle(msg *Message) error {
+	// 首包深拷贝独立 Header（脱离 reader 复用缓冲），供 sessionManager 与后续下行回复复用
+	independentHeader := cloneHeader(msg.JTMessage.Header)
+	if frame := bytes.Clone(msg.ExtensionFields.TerminalData); len(frame) > 0 {
+		jtMsg := jt808.NewJTMessage()
+		if err := jtMsg.Decode(frame); err == nil {
+			independentHeader = jtMsg.Header
+		}
+	}
+	msg.JTMessage.Header = independentHeader
 	key, err := c.onJoinEvent(msg, c.activeMsgChan)
 	if err == nil {
 		c.key = key
+		c.sessionHeader.Store(independentHeader)
 	}
 
 	c.terminalEvent.OnJoinEvent(msg, key, err)
 	return err
+}
+
+func cloneHeader(src *jt808.Header) *jt808.Header {
+	h := *src
+	if h.Property != nil {
+		prop := *h.Property
+		h.Property = &prop
+	}
+	return &h
 }
 
 func (c *connection) handleMessages(msgs []*Message) {
@@ -194,51 +219,62 @@ func (c *connection) handleMessages(msgs []*Message) {
 			c.terminalEvent.OnNotSupportedEvent(msg)
 			continue
 		}
+		c.copyOnDemandForWrite(msg)
 		c.terminalUplinkMsgChan <- msg
 	}
 }
 
-// write 是连接的核心处理协程，负责统一处理以下事件：
-//  1. 平台主动下发指令
-//  2. 主动下发指令的应答/超时
-//  3. 分包补传
-//  4. 终端上报消息的默认回复.
+// copyOnDemandForWrite 仅对低频、且会在 write() 内读取 Body/TerminalData 的消息按需拷贝；
+// 高频上行（0x0200/0x0002/0x0704 等）保持零拷贝。
+func (c *connection) copyOnDemandForWrite(msg *Message) {
+	if msg.ExtensionFields.SubcontractComplete {
+		return
+	}
+	if c.activePending.Load() > 0 {
+		if _, ok := c.activeRespondHandles[msg.Command]; ok {
+			msg.Body = bytes.Clone(msg.Body)
+			msg.ExtensionFields.TerminalData = bytes.Clone(msg.ExtensionFields.TerminalData)
+			return
+		}
+	}
+	switch msg.Command {
+	case consts.T0102RegisterAuth,
+		consts.T0801MultimediaDataUpload,
+		consts.T1212FileUploadComplete:
+		msg.Body = bytes.Clone(msg.Body)
+	}
+}
+
+// write 是连接的核心处理协程，负责统一处理主动下发、超时、分包补传与默认回复.
 func (c *connection) write() {
-	record := map[uint16]*ActiveMessage{}
+	record := map[uint16]*activeRecord{}
 	defer func() {
-		close(c.activeMsgChan)
-		close(c.activeMsgCompleteChan)
-		close(c.reissuePackChan)
-		close(c.terminalUplinkMsgChan)
+		for _, entry := range record {
+			entry.timer.Stop()
+		}
 		clear(record)
 		clear(c.handles)
+		close(c.writeDoneChan)
 	}()
 
 	for {
 		select {
-		case <-c.finallyCompleteChan: // 如果现在有平台主动下发的, 需要等待完成在退出
+		case <-c.stopWriteChan:
+			c.shutdownWrite(record)
 			return
+
 		case activeMsg := <-c.activeMsgChan: // 平台主动下发的
-			atomic.AddInt32(&c.activeUnfinishedSum, 1)
 			c.onActiveSendEvent(activeMsg, record)
 
-		case msg := <-c.activeMsgCompleteChan: // 平台主动下发的完成情况
-			seq := msg.ExtensionFields.PlatformSeq
-			// 超时的情况一定执行一次, 如果完成了,还可能在执行一次超时的回调
-			if v, ok := record[seq]; ok {
-				c.onActiveEventComplete(msg, v)
-				delete(record, seq)
-				atomic.AddInt32(&c.activeUnfinishedSum, -1)
-			}
+		case seq := <-c.activeTimeoutChan: // 平台主动下发超时
+			c.onActiveTimeoutEvent(seq, record)
 
 		case subPackMsg := <-c.reissuePackChan: // 分包补传的
 			c.onReissueSubcontractingEvent(subPackMsg)
 
 		case msg := <-c.terminalUplinkMsgChan: // 终端上传的
-			if len(record) > 0 && msg.hasComplete() { // 说明现在有主动的请求 等待回复中
-				if c.onActiveRespondEvent(record, msg) {
-					continue
-				}
+			if len(record) > 0 && msg.hasComplete() && c.onActiveRespondEvent(record, msg) {
+				continue
 			}
 			if msg.hasComplete() || !c.filter { // 默认完整包才触发回复
 				c.defaultReplyEvent(msg)
@@ -247,7 +283,27 @@ func (c *connection) write() {
 	}
 }
 
-// stop 执行连接关闭流程：下线通知、关闭 TCP 连接、等待未完成指令.
+// shutdownWrite 执行断线收尾：此时 reader 已退出且 sessionManager 已移除该会话，
+// 不会再有新数据写入 terminalUplinkMsgChan 和 activeMsgChan.
+func (c *connection) shutdownWrite(record map[uint16]*activeRecord) {
+	// 1. 先匹配断线前已入队的终端应答，避免误判超时
+	for len(c.terminalUplinkMsgChan) > 0 {
+		msg := <-c.terminalUplinkMsgChan
+		if len(record) > 0 && msg.hasComplete() {
+			c.onActiveRespondEvent(record, msg)
+		}
+	}
+	// 2. 排空未发出的主动请求（conn 已关闭，Write 失败会直接返回 ErrWriteDataFail）
+	for len(c.activeMsgChan) > 0 {
+		c.onActiveSendEvent(<-c.activeMsgChan, record)
+	}
+	// 3. 方案 B：等待断线前已发出的在途主动请求依次超时完成
+	for len(record) > 0 {
+		c.onActiveTimeoutEvent(<-c.activeTimeoutChan, record)
+	}
+}
+
+// stop 执行连接关闭流程：下线通知、关闭连接、通知 write 收尾并等待退出.
 func (c *connection) stop() {
 	c.onLeaveEvent(c.key)
 	c.terminalEvent.OnLeaveEvent(c.key)
@@ -256,11 +312,18 @@ func (c *connection) stop() {
 			slog.String("key", c.key),
 			slog.Any("err", err))
 	}
-	time.Sleep(time.Second)
-	for atomic.LoadInt32(&c.activeUnfinishedSum) != 0 {
-		time.Sleep(time.Second)
+	close(c.stopWriteChan)
+	<-c.writeDoneChan
+}
+
+func (c *connection) replyHeader(msgHeader *jt808.Header) *jt808.Header {
+	if base := c.sessionHeader.Load(); base != nil {
+		header := cloneHeader(base)
+		header.ID = msgHeader.ID
+		header.SerialNumber = msgHeader.SerialNumber
+		return header
 	}
-	close(c.finallyCompleteChan)
+	return cloneHeader(msgHeader)
 }
 
 func (c *connection) defaultReplyEvent(msg *Message) {
@@ -270,11 +333,13 @@ func (c *connection) defaultReplyEvent(msg *Message) {
 	body, err := msg.ReplyBody(msg.JTMessage)
 	if err != nil {
 		slog.Warn("reply body fail",
-			slog.String("terminal data", fmt.Sprintf("%x", msg.ExtensionFields.TerminalData)),
+			slog.String("key", c.key),
+			slog.Any("command", msg.Command),
+			slog.Any("seq", msg.ExtensionFields.TerminalSeq),
 			slog.Any("err", err))
 		return
 	}
-	header := msg.JTMessage.Header
+	header := c.replyHeader(msg.JTMessage.Header)
 	header.ReplyID = uint16(msg.ReplyProtocol())
 	platformSeq, _ := c.allocSeq(0)
 	header.PlatformSerialNumber = platformSeq
@@ -300,7 +365,7 @@ func (c *connection) defaultReplyEvent(msg *Message) {
 }
 
 func (c *connection) onReissueSubcontractingEvent(msg *Message) {
-	header := msg.JTMessage.Header
+	header := c.replyHeader(msg.JTMessage.Header)
 	original, _ := c.allocSeq(1)
 	header.PlatformSerialNumber = original
 	header.ReplyID = uint16(consts.P8003ReissueSubcontractingRequest)
@@ -327,7 +392,9 @@ func (c *connection) onReissueSubcontractingEvent(msg *Message) {
 	c.onWriteExecutionEvent(msg)
 }
 
-func (c *connection) onActiveSendEvent(activeMsg *ActiveMessage, record map[uint16]*ActiveMessage) {
+func (c *connection) onActiveSendEvent(activeMsg *ActiveMessage, record map[uint16]*activeRecord) {
+	// 必须在 conn.Write 之前递增 activePending，保证 happens-before 终端回包到达 reader()
+	c.activePending.Add(1)
 	jtMsg, data, err := c.activeWritePackets(activeMsg)
 	platformSeq := jtMsg.Header.SerialNumber
 	replyMsg := newActiveSendMessage(jtMsg, activeMsg.Command, func(message *Message) {
@@ -349,35 +416,51 @@ func (c *connection) onActiveSendEvent(activeMsg *ActiveMessage, record map[uint
 	}
 
 	activeMsg.convertMessage = replyMsg
-	record[platformSeq] = activeMsg
 	if err != nil {
-		c.activeMsgCompleteChan <- replyMsg
-	} else {
-		duration := 3 * time.Second
-		if activeMsg.OverTimeDuration > 0 {
-			duration = activeMsg.OverTimeDuration
-		}
-		go func(overtimeMsg *Message, timeout time.Duration) {
-			time.Sleep(timeout)
-			select {
-			case <-c.finallyCompleteChan:
-				return
-			default:
-			}
-			overtimeMsg.ExtensionFields.Err = errors.Join(ErrWriteDataOverTime,
-				fmt.Errorf("overtime is [%.2f]second", timeout.Seconds()))
-			c.activeMsgCompleteChan <- overtimeMsg
-		}(replyMsg, duration)
+		c.onActiveEventComplete(replyMsg, activeMsg)
+		return
 	}
+
+	duration := 3 * time.Second
+	if activeMsg.OverTimeDuration > 0 {
+		duration = activeMsg.OverTimeDuration
+	}
+	if old, ok := record[platformSeq]; ok {
+		old.timer.Stop()
+		c.activePending.Add(-1)
+	}
+	timer := time.AfterFunc(duration, func() {
+		select {
+		case <-c.writeDoneChan:
+		case c.activeTimeoutChan <- platformSeq:
+		}
+	})
+	record[platformSeq] = &activeRecord{
+		msg:     activeMsg,
+		timer:   timer,
+		timeout: duration,
+	}
+}
+
+func (c *connection) onActiveTimeoutEvent(seq uint16, record map[uint16]*activeRecord) {
+	entry, ok := record[seq]
+	if !ok {
+		return
+	}
+	delete(record, seq)
+	overtimeMsg := entry.msg.convertMessage
+	overtimeMsg.ExtensionFields.Err = errors.Join(ErrWriteDataOverTime,
+		fmt.Errorf("overtime is [%.2f]second", entry.timeout.Seconds()))
+	c.onActiveEventComplete(overtimeMsg, entry.msg)
 }
 
 func (c *connection) activeWritePackets(activeMsg *ActiveMessage) (*jt808.JTMessage, []byte, error) {
 	var (
-		platformData = make([]byte, 0, len(activeMsg.Body)+10)
+		platformData = make([]byte, 0, len(activeMsg.Body)+25)
 		writeErr     error
 		jtMsg        = jt808.NewJTMessage()
 	)
-	header := activeMsg.header
+	header := cloneHeader(activeMsg.header)
 	platformSeq, _ := c.allocSeq(0)
 	header.PlatformSerialNumber = platformSeq
 	header.ReplyID = uint16(activeMsg.Command)
@@ -387,28 +470,32 @@ func (c *connection) activeWritePackets(activeMsg *ActiveMessage) (*jt808.JTMess
 		if _, err := c.conn.Write(data); err != nil {
 			writeErr = errors.Join(ErrWriteDataFail, err)
 		}
-		if err := jtMsg.Decode(data); err == nil {
-			platformData = append(platformData, jtMsg.Body...)
-		}
+		platformData = append(platformData, data...)
 	}
 
 	if len(packets) > 0 {
-		_ = jtMsg.Decode(platformData)
+		_ = jtMsg.Decode(packets[0])
+		if len(packets) > 1 {
+			jtMsg.Body = activeMsg.Body
+		}
 	}
 	_, _ = c.allocSeq(len(packets))
 	return jtMsg, platformData, writeErr
 }
 
-func (c *connection) onActiveRespondEvent(record map[uint16]*ActiveMessage, terminalMsg *Message) bool {
+func (c *connection) onActiveRespondEvent(record map[uint16]*activeRecord, terminalMsg *Message) bool {
 	matchFunc, ok := c.activeRespondHandles[terminalMsg.Command]
-	if ok {
-		for seq, platformMessage := range record {
-			if matchFunc(platformMessage, terminalMsg) {
-				terminalMsg.ExtensionFields.PlatformSeq = seq
-				terminalMsg.ExtensionFields.TerminalCommand = terminalMsg.Protocol()
-				c.activeMsgCompleteChan <- terminalMsg
-				return true
-			}
+	if !ok {
+		return false
+	}
+	for seq, entry := range record {
+		if matchFunc(entry.msg, terminalMsg) {
+			entry.timer.Stop()
+			delete(record, seq)
+			terminalMsg.ExtensionFields.PlatformSeq = seq
+			terminalMsg.ExtensionFields.TerminalCommand = terminalMsg.Protocol()
+			c.onActiveEventComplete(terminalMsg, entry.msg)
+			return true
 		}
 	}
 	return false
@@ -426,6 +513,7 @@ func (c *connection) onActiveEventComplete(msg *Message, activeMsg *ActiveMessag
 		// 完成的情况 前面已经触发了如0x0001的回调 在触发0x8300的回调
 		c.onWriteExecutionEvent(activeMsg.convertMessage)
 	}
+	c.activePending.Add(-1)
 	activeMsg.replyChan <- msg
 }
 
@@ -458,7 +546,11 @@ func (c *connection) onWriteExecutionEvent(msg *Message) {
 }
 
 func (c *connection) allocSeq(n int) (uint16, uint16) {
-	original := c.platformSerialNumber
-	c.platformSerialNumber += uint16(n)
-	return original, c.platformSerialNumber
+	original := uint16(c.platformSerialNumber.Load())
+	if n == 0 {
+		return original, original
+	}
+	next := original + uint16(n)
+	c.platformSerialNumber.Store(uint32(next))
+	return original, next
 }
