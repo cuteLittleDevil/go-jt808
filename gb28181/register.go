@@ -17,19 +17,19 @@ func (c *Client) handleRegister(hasRegister bool) (bool, error) {
 		Transport:       c.Options.Transport,
 		Host:            platform.IP,
 		Port:            platform.Port,
-		Params: sip.NewParams().
-			Add("branch", sip.GenerateBranchN(16)).
-			Add("rport", ""), // 不知道实际使用的端口
+		Params: sip.HeaderParams{
+			{K: "branch", V: sip.GenerateBranchN(16)},
+			{K: "rport", V: ""}, // 不知道实际使用的端口
+		},
 	})
 
 	req.AppendHeader(c.from)
 	req.AppendHeader(c.to)
 	req.AppendHeader(&c.callID)
 	req.AppendHeader(&sip.CSeqHeader{
-		SeqNo:      c.sn,
+		SeqNo:      c.nextSN(),
 		MethodName: sip.REGISTER,
 	})
-	c.sn++
 	req.AppendHeader(c.contact)
 	maxForwardsHeader := sip.MaxForwardsHeader(70)
 	req.AppendHeader(&maxForwardsHeader)

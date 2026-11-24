@@ -8,6 +8,7 @@ import (
 	"github.com/emiago/sipgo/sip"
 	"log/slog"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -17,7 +18,7 @@ type Client struct {
 	server    *sipgo.Server
 	stopOnce  sync.Once
 	stopChan  chan struct{}
-	sn        uint32
+	sn        atomic.Uint32
 	online    bool
 	recipient sip.Uri
 	from      *sip.FromHeader
@@ -39,7 +40,6 @@ func New(sim string, opts ...Option) *Client {
 			ToGBType:  command.JT1078ToPS,
 		},
 		stopChan: make(chan struct{}),
-		sn:       1,
 	}
 	for _, op := range opts {
 		op.F(&client.Options)
@@ -112,7 +112,7 @@ func (c *Client) Init() error {
 			Host: c.Options.DeviceInfo.IP,
 			Port: c.Options.DeviceInfo.Port,
 		},
-		Params: sip.NewParams().Add("tag", sip.GenerateTagN(16)),
+		Params: sip.HeaderParams{{K: "tag", V: sip.GenerateTagN(16)}},
 	}
 	c.to = &sip.ToHeader{
 		Address: sip.Uri{
@@ -213,6 +213,10 @@ func (c *Client) Stop() {
 			c.manage.Stop()
 		}
 	})
+}
+
+func (c *Client) nextSN() uint32 {
+	return c.sn.Add(1)
 }
 
 func (c *Client) getResponse(tx sip.ClientTransaction) (*sip.Response, error) {

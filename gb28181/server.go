@@ -14,21 +14,38 @@ import (
 )
 
 func (c *Client) message(req *sip.Request, tx sip.ServerTransaction) {
-	if err := tx.Respond(sip.NewResponseFromRequest(req, http.StatusOK, "OK", nil)); err != nil {
-		slog.Warn("message respond fail",
-			slog.String("sim", c.Options.Sim),
-			slog.String("id", c.Options.DeviceInfo.ID),
-			slog.Any("err", err))
-	}
-
 	body := req.Body()
 	var confirmType inCommand.ConfirmType
 	if err := inCommand.ParseXML(body, &confirmType); err != nil {
+		_ = tx.Respond(sip.NewResponseFromRequest(req, http.StatusBadRequest, "Bad Request", nil))
 		slog.Warn("parse xml fail",
 			slog.String("sim", c.Options.Sim),
 			slog.String("id", c.Options.DeviceInfo.ID),
 			slog.Any("err", err))
 		return
+	}
+
+	data, err := c.handleMessages(confirmType, body)
+	if err != nil {
+		if respErr := tx.Respond(sip.NewResponseFromRequest(req, http.StatusNotFound, "暂不支持的指令", nil)); respErr != nil {
+			slog.Warn("message respond fail",
+				slog.String("sim", c.Options.Sim),
+				slog.String("id", c.Options.DeviceInfo.ID),
+				slog.Any("err", respErr))
+		}
+		slog.Warn("unsupported message",
+			slog.String("sim", c.Options.Sim),
+			slog.String("id", c.Options.DeviceInfo.ID),
+			slog.Any("data", req.String()),
+			slog.Any("err", err))
+		return
+	}
+
+	if err := tx.Respond(sip.NewResponseFromRequest(req, http.StatusOK, "OK", nil)); err != nil {
+		slog.Warn("message respond fail",
+			slog.String("sim", c.Options.Sim),
+			slog.String("id", c.Options.DeviceInfo.ID),
+			slog.Any("err", err))
 	}
 
 	replyReq := sip.NewRequest(sip.MESSAGE, c.recipient)
@@ -38,9 +55,10 @@ func (c *Client) message(req *sip.Request, tx sip.ServerTransaction) {
 		Transport:       c.Options.Transport,
 		Host:            c.PlatformInfo.IP,
 		Port:            c.PlatformInfo.Port,
-		Params: sip.NewParams().
-			Add("branch", sip.GenerateBranchN(16)).
-			Add("rport", ""), // 不知道实际使用的端口
+		Params: sip.HeaderParams{
+			{K: "branch", V: sip.GenerateBranchN(16)},
+			{K: "rport", V: ""}, // 不知道实际使用的端口
+		},
 	})
 	replyReq.AppendHeader(c.from)
 	replyReq.AppendHeader(c.to)
@@ -49,35 +67,25 @@ func (c *Client) message(req *sip.Request, tx sip.ServerTransaction) {
 	replyReq.AppendHeader(sip.NewHeader("Content-Type", "Application/MANSCDP+xml"))
 	maxForwardsHeader := sip.MaxForwardsHeader(70)
 	replyReq.AppendHeader(&maxForwardsHeader)
-	req.AppendHeader(&sip.CSeqHeader{
-		SeqNo:      c.sn,
-		MethodName: sip.REGISTER,
+	replyReq.AppendHeader(&sip.CSeqHeader{
+		SeqNo:      c.nextSN(),
+		MethodName: sip.MESSAGE,
 	})
-	c.sn++
+	replyReq.SetBody(data)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if data, err := c.handleMessages(confirmType, body); err == nil {
-		replyReq.SetBody(data)
-		tx, err := c.client.TransactionRequest(ctx, replyReq)
-		if err != nil {
-			slog.Warn("transaction request fail",
-				slog.String("sim", c.Options.Sim),
-				slog.String("id", c.Options.DeviceInfo.ID),
-				slog.Any("err", err))
-			return
-		}
-		defer tx.Terminate()
-		_, _ = c.getResponse(tx)
-	} else {
-		err := tx.Respond(sip.NewResponseFromRequest(req, http.StatusNotFound, "暂不支持的指令", nil))
-		slog.Warn("message respond fail",
+	clientTx, err := c.client.TransactionRequest(ctx, replyReq)
+	if err != nil {
+		slog.Warn("transaction request fail",
 			slog.String("sim", c.Options.Sim),
 			slog.String("id", c.Options.DeviceInfo.ID),
-			slog.Any("data", req.String()),
 			slog.Any("err", err))
+		return
 	}
+	defer clientTx.Terminate()
+	_, _ = c.getResponse(clientTx)
 }
 
 func (c *Client) invite(req *sip.Request, tx sip.ServerTransaction) {
@@ -113,7 +121,12 @@ func (c *Client) invite(req *sip.Request, tx sip.ServerTransaction) {
 	response.AppendHeader(&contentType)
 	response.SetBody([]byte(strings.Join(content, "\r\n") + "\r\n"))
 	if err := tx.Respond(response); err != nil {
-		panic(err)
+		c.manage.SubmitBye(inviteInfo.CallId)
+		slog.Warn("invite respond fail",
+			slog.String("sim", c.Options.Sim),
+			slog.String("id", c.Options.DeviceInfo.ID),
+			slog.String("callID", inviteInfo.CallId),
+			slog.Any("err", err))
 	}
 }
 
@@ -138,8 +151,13 @@ func (c *Client) defaultInvite(inviteInfo *command.InviteInfo) *command.InviteIn
 
 	switch inviteInfo.Adapter.Type {
 	case command.JT1078ToPS, command.JT1078ToPSFilterPacket:
-		// 通道就是通道ID最后一位
-		channel := inviteInfo.TargetChannelId[len(inviteInfo.TargetChannelId)-1] - '0'
+		// 通道默认为通道ID最后一位数字，兜底为 1 防止空串/非数字越界
+		channel := 1
+		if id := inviteInfo.TargetChannelId; len(id) > 0 {
+			if last := id[len(id)-1]; last >= '0' && last <= '9' {
+				channel = int(last - '0')
+			}
+		}
 		inviteInfo.JT1078Info = struct {
 			Sim            string                                  `json:"sim"`
 			Channel        int                                     `json:"channelId"`
@@ -148,7 +166,7 @@ func (c *Client) defaultInvite(inviteInfo *command.InviteInfo) *command.InviteIn
 			RtpTypeConvert func(ptType jt1078.PTType) (byte, bool) `json:"-"`
 		}{
 			Sim:         c.Options.Sim,
-			Channel:     int(channel),
+			Channel:     channel,
 			Port:        inviteInfo.Port - 100, // 端口默认是连接的流媒体端口-100
 			StreamTypes: []jt1078.PTType{jt1078.PTH264},
 		}
