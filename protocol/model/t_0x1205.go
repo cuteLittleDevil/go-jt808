@@ -55,6 +55,7 @@ func (t *T0x1205) Parse(jtMsg *jt808.JTMessage) error {
 	if len(body) != 6+int(t.AudioVideoResourceTotal)*28 {
 		return protocol.ErrBodyLengthInconsistency
 	}
+	t.AudioVideoResourceList = t.AudioVideoResourceList[:0]
 	start, end := 6, 6+28
 	for i := 0; i < int(t.AudioVideoResourceTotal); i++ {
 		curData := body[start:end]

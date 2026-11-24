@@ -41,8 +41,12 @@ func (t *T0x0704) Parse(jtMsg *jt808.JTMessage) error {
 	}
 	t.Num = binary.BigEndian.Uint16(body[:2])
 	t.LocationType = body[2]
+	t.Items = t.Items[:0]
 	start := 3
 	for i := 0; i < int(t.Num); i++ {
+		if start+2 > len(body) {
+			return protocol.ErrBodyLengthInconsistency
+		}
 		var item T0x0704LocationItem
 		item.Len = binary.BigEndian.Uint16(body[start : start+2])
 		if start+2+int(item.Len) > len(body) {

@@ -34,49 +34,49 @@ type (
 
 	AlarmSignDetails struct {
 		// EmergencyAlarm 报警类型-紧急报警,触动报警开关后触发
-		EmergencyAlarm bool `json:"emergencyAlarm,omitempty,omitempty,omitempty,omitempty"`
+		EmergencyAlarm bool `json:"emergencyAlarm,omitempty"`
 		// OverSpeed 报警类型-超速
-		OverSpeed bool `json:"overSpeed,omitempty,omitempty,omitempty,omitempty"`
+		OverSpeed bool `json:"overSpeed,omitempty"`
 		// FatigueDriving 报警类型-疲劳驾驶
-		FatigueDriving bool `json:"fatigueDriving,omitempty,omitempty,omitempty,omitempty"`
+		FatigueDriving bool `json:"fatigueDriving,omitempty"`
 		// DangerousAlarm 报警类型-危险预警
-		DangerousAlarm bool `json:"dangerousAlarm,omitempty,omitempty,omitempty,omitempty"`
+		DangerousAlarm bool `json:"dangerousAlarm,omitempty"`
 		// GNSSModuleFault 报警类型-GNSS模块发⽣故障
-		GNSSModuleFault bool `json:"GNSSModuleFault,omitempty,omitempty,omitempty,omitempty"`
+		GNSSModuleFault bool `json:"GNSSModuleFault,omitempty"`
 		// GNSSAntennaFault 报警类型-GNSS天线未接或被剪断
-		GNSSAntennaFault bool `json:"GNSSAntennaFault,omitempty,omitempty,omitempty,omitempty"`
+		GNSSAntennaFault bool `json:"GNSSAntennaFault,omitempty"`
 		// GNSSAntennaShortCircuit GNSS天线短路
-		GNSSAntennaShortCircuit bool `json:"GNSSAntennaShortCircuit,omitempty,omitempty,omitempty,omitempty"`
+		GNSSAntennaShortCircuit bool `json:"GNSSAntennaShortCircuit,omitempty"`
 		// TerminalPowerSupply 报警类型-终端主电源⽋压
-		TerminalPowerSupply bool `json:"terminalPowerSupply,omitempty,omitempty,omitempty,omitempty"`
+		TerminalPowerSupply bool `json:"terminalPowerSupply,omitempty"`
 		// TerminalPowerSupplyShutdown 报警类型-终端主电源掉电
-		TerminalPowerSupplyShutdown bool `json:"terminalPowerSupplyShutdown,omitempty,omitempty,omitempty,omitempty"`
+		TerminalPowerSupplyShutdown bool `json:"terminalPowerSupplyShutdown,omitempty"`
 		// TerminalLCDFault 报警类型-终端LCD或显示器故障
-		TerminalLCDFault bool `json:"terminalLCDFault,omitempty,omitempty,omitempty"`
+		TerminalLCDFault bool `json:"terminalLCDFault,omitempty"`
 		// TTSModuleFault 报警类型-TTS模块故障
-		TTSModuleFault bool `json:"TTSModuleFault,omitempty,omitempty,omitempty"`
+		TTSModuleFault bool `json:"TTSModuleFault,omitempty"`
 		// CameraFault 报警类型-摄像头故障
-		CameraFault bool `json:"cameraFault,omitempty,omitempty,omitempty"`
+		CameraFault bool `json:"cameraFault,omitempty"`
 		// ICCardModuleFault 报警类型-道路运输证IC卡模块故障
-		ICCardModuleFault bool `json:"ICCardModuleFault,omitempty,omitempty,omitempty"`
+		ICCardModuleFault bool `json:"ICCardModuleFault,omitempty"`
 		// OverSpeedAlarm 报警类型-超速预警
-		OverSpeedAlarm bool `json:"overSpeedAlarm,omitempty,omitempty,omitempty"`
+		OverSpeedAlarm bool `json:"overSpeedAlarm,omitempty"`
 		// FatigueDrivingAlarm 报警类型-疲劳驾驶预警
-		FatigueDrivingAlarm bool `json:"fatigueDrivingAlarm,omitempty,omitempty,omitempty"`
+		FatigueDrivingAlarm bool `json:"fatigueDrivingAlarm,omitempty"`
 		// ViolationDrivingAlarm 报警类型-违规行驶预警
-		ViolationDrivingAlarm bool `json:"violationDrivingAlarm,omitempty,omitempty,omitempty"`
+		ViolationDrivingAlarm bool `json:"violationDrivingAlarm,omitempty"`
 		// TirePressureAlarm 报警类型-胎压预警
-		TirePressureAlarm bool `json:"tirePressureAlarm,omitempty,omitempty"`
+		TirePressureAlarm bool `json:"tirePressureAlarm,omitempty"`
 		// RightTurnBlindAreaAlarm 报警类型-右转盲区预警
-		RightTurnBlindAreaAlarm bool `json:"rightTurnBlindAreaAlarm,omitempty,omitempty"`
+		RightTurnBlindAreaAlarm bool `json:"rightTurnBlindAreaAlarm,omitempty"`
 		// DrivingTimeout 报警类型-当天累计驾驶超时
-		DrivingTimeout bool `json:"drivingTimeout,omitempty,omitempty"`
+		DrivingTimeout bool `json:"drivingTimeout,omitempty"`
 		// OverTimeStop 报警类型-超时停⻋
-		OverTimeStop bool `json:"overTimeStop,omitempty,omitempty"`
+		OverTimeStop bool `json:"overTimeStop,omitempty"`
 		// InOutArea 报警类型-进出区域
-		InOutArea bool `json:"inOutArea,omitempty,omitempty"`
+		InOutArea bool `json:"inOutArea,omitempty"`
 		// InOutLine 报警类型-进出路线
-		InOutLine bool `json:"inOutLine,omitempty,omitempty"`
+		InOutLine bool `json:"inOutLine,omitempty"`
 		// SectionDrivingTime 报警类型-路段⾏驶时间不⾜/过⻓
 		SectionDrivingTime bool `json:"sectionDrivingTime,omitempty"`
 		// LineDeviation 报警类型-路线偏离报警
@@ -192,102 +192,39 @@ func (tl *T0x0200LocationItem) String() string {
 }
 
 func (a *AlarmSignDetails) parse(alarmSign uint32) {
-	data := fmt.Sprintf("%.32b", alarmSign)
-	if data[31] == '1' {
-		a.EmergencyAlarm = true
-	}
-	if data[30] == '1' {
-		a.OverSpeed = true
-	}
-	if data[29] == '1' {
-		a.FatigueDriving = true
-	}
-	if data[28] == '1' {
-		a.DangerousAlarm = true
-	}
-	if data[27] == '1' {
-		a.GNSSModuleFault = true
-	}
-	if data[26] == '1' {
-		a.GNSSAntennaFault = true
-	}
-	if data[25] == '1' {
-		a.GNSSAntennaShortCircuit = true
-	}
-	if data[24] == '1' {
-		a.TerminalPowerSupply = true
-	}
-	if data[23] == '1' {
-		a.TerminalPowerSupplyShutdown = true
-	}
-	if data[22] == '1' {
-		a.TerminalLCDFault = true
-	}
-	if data[21] == '1' {
-		a.TTSModuleFault = true
-	}
-	if data[20] == '1' {
-		a.CameraFault = true
-	}
-	if data[19] == '1' {
-		a.ICCardModuleFault = true
-	}
-	if data[18] == '1' {
-		a.OverSpeedAlarm = true
-	}
-	if data[17] == '1' {
-		a.FatigueDrivingAlarm = true
-	}
-	if data[16] == '1' {
-		a.ViolationDrivingAlarm = true
-	}
-	if data[15] == '1' {
-		a.TirePressureAlarm = true
-	}
-	if data[14] == '1' {
-		a.RightTurnBlindAreaAlarm = true
-	}
-	if data[13] == '1' {
-		a.DrivingTimeout = true
-	}
-	if data[12] == '1' {
-		a.OverTimeStop = true
-	}
-	if data[11] == '1' {
-		a.InOutArea = true
-	}
-	if data[10] == '1' {
-		a.InOutLine = true
-	}
-	if data[9] == '1' {
-		a.SectionDrivingTime = true
-	}
-	if data[8] == '1' {
-		a.LineDeviation = true
-	}
-	if data[7] == '1' {
-		a.VSSFault = true
-	}
-	if data[6] == '1' {
-		a.OilLevelAbnormality = true
-	}
-	if data[5] == '1' {
-		a.StealCar = true
-	}
-	if data[4] == '1' {
-		a.LaneDeviation = true
-	}
-	if data[3] == '1' {
-		a.LaneOffset = true
-	}
-	if data[2] == '1' {
-		a.CollisionAlarm = true
-	}
-	if data[1] == '1' {
-		a.SideSlipAlarm = true
-	}
-	if data[0] == '1' {
-		a.LaneOpeningAlarm = true
+	*a = AlarmSignDetails{
+		EmergencyAlarm:              (alarmSign & (1 << 0)) != 0,
+		OverSpeed:                   (alarmSign & (1 << 1)) != 0,
+		FatigueDriving:              (alarmSign & (1 << 2)) != 0,
+		DangerousAlarm:              (alarmSign & (1 << 3)) != 0,
+		GNSSModuleFault:             (alarmSign & (1 << 4)) != 0,
+		GNSSAntennaFault:            (alarmSign & (1 << 5)) != 0,
+		GNSSAntennaShortCircuit:     (alarmSign & (1 << 6)) != 0,
+		TerminalPowerSupply:         (alarmSign & (1 << 7)) != 0,
+		TerminalPowerSupplyShutdown: (alarmSign & (1 << 8)) != 0,
+		TerminalLCDFault:            (alarmSign & (1 << 9)) != 0,
+		TTSModuleFault:              (alarmSign & (1 << 10)) != 0,
+		CameraFault:                 (alarmSign & (1 << 11)) != 0,
+		ICCardModuleFault:           (alarmSign & (1 << 12)) != 0,
+		OverSpeedAlarm:              (alarmSign & (1 << 13)) != 0,
+		FatigueDrivingAlarm:         (alarmSign & (1 << 14)) != 0,
+		ViolationDrivingAlarm:       (alarmSign & (1 << 15)) != 0,
+		TirePressureAlarm:           (alarmSign & (1 << 16)) != 0,
+		RightTurnBlindAreaAlarm:     (alarmSign & (1 << 17)) != 0,
+		DrivingTimeout:              (alarmSign & (1 << 18)) != 0,
+		OverTimeStop:                (alarmSign & (1 << 19)) != 0,
+		InOutArea:                   (alarmSign & (1 << 20)) != 0,
+		InOutLine:                   (alarmSign & (1 << 21)) != 0,
+		SectionDrivingTime:          (alarmSign & (1 << 22)) != 0,
+		LineDeviation:               (alarmSign & (1 << 23)) != 0,
+		VSSFault:                    (alarmSign & (1 << 24)) != 0,
+		OilLevelAbnormality:         (alarmSign & (1 << 25)) != 0,
+		StealCar:                    (alarmSign & (1 << 26)) != 0,
+		LaneDeviation:               (alarmSign & (1 << 27)) != 0,
+		LaneOffset:                  (alarmSign & (1 << 28)) != 0,
+		CollisionAlarm:              (alarmSign & (1 << 29)) != 0,
+		SideSlipAlarm:               (alarmSign & (1 << 30)) != 0,
+		LaneOpeningAlarm:            (alarmSign & (1 << 31)) != 0,
 	}
 }
 
@@ -329,80 +266,29 @@ func (a *AlarmSignDetails) String() string {
 }
 
 func (s *StatusSignDetails) parse(statusSign uint32) {
-	data := fmt.Sprintf("%.32b", statusSign)
-	if data[31] == '1' {
-		s.ACC = true
-	}
-	if data[30] == '1' {
-		s.Location = true
-	}
-	if data[29] == '1' {
-		s.South = true
-	}
-	if data[28] == '1' {
-		s.East = true
-	}
-	if data[27] == '1' {
-		s.Suspended = true
-	}
-	if data[26] == '1' {
-		s.Encryption = true
-	}
-	if data[25] == '1' {
-		s.EmergencyBrake = true
-	}
-	if data[24] == '1' {
-		s.LaneOffset = true
-	}
-
-	if data[23] == '0' && data[22] == '0' {
-		s.Cargo = uint8(0)
-	} else if data[23] == '0' && data[22] == '1' {
-		s.Cargo = uint8(1)
-	} else if data[23] == '1' && data[22] == '0' {
-		s.Cargo = uint8(2)
-	} else {
-		s.Cargo = uint8(3)
-	}
-
-	if data[21] == '1' {
-		s.Oil = true
-	}
-	if data[20] == '1' {
-		s.Electricity = true
-	}
-	if data[19] == '1' {
-		s.VehicleDoor = true
-	}
-	if data[18] == '1' {
-		s.FrontDoor = true
-	}
-	if data[17] == '1' {
-		s.MiddleDoor = true
-	}
-	if data[16] == '1' {
-		s.BackDoor = true
-	}
-	if data[15] == '1' {
-		s.DriverDoor = true
-	}
-	if data[14] == '1' {
-		s.CustomDoor = true
-	}
-	if data[13] == '1' {
-		s.UseGPS = true
-	}
-	if data[12] == '1' {
-		s.UseBD = true
-	}
-	if data[11] == '1' {
-		s.UseGLONASS = true
-	}
-	if data[10] == '1' {
-		s.UseGalileo = true
-	}
-	if data[9] == '1' {
-		s.VehicleRunning = true
+	*s = StatusSignDetails{
+		ACC:            (statusSign & (1 << 0)) != 0,
+		Location:       (statusSign & (1 << 1)) != 0,
+		South:          (statusSign & (1 << 2)) != 0,
+		East:           (statusSign & (1 << 3)) != 0,
+		Suspended:      (statusSign & (1 << 4)) != 0,
+		Encryption:     (statusSign & (1 << 5)) != 0,
+		EmergencyBrake: (statusSign & (1 << 6)) != 0,
+		LaneOffset:     (statusSign & (1 << 7)) != 0,
+		Cargo:          uint8((((statusSign >> 8) & 1) << 1) | ((statusSign >> 9) & 1)),
+		Oil:            (statusSign & (1 << 10)) != 0,
+		Electricity:    (statusSign & (1 << 11)) != 0,
+		VehicleDoor:    (statusSign & (1 << 12)) != 0,
+		FrontDoor:      (statusSign & (1 << 13)) != 0,
+		MiddleDoor:     (statusSign & (1 << 14)) != 0,
+		BackDoor:       (statusSign & (1 << 15)) != 0,
+		DriverDoor:     (statusSign & (1 << 16)) != 0,
+		CustomDoor:     (statusSign & (1 << 17)) != 0,
+		UseGPS:         (statusSign & (1 << 18)) != 0,
+		UseBD:          (statusSign & (1 << 19)) != 0,
+		UseGLONASS:     (statusSign & (1 << 20)) != 0,
+		UseGalileo:     (statusSign & (1 << 21)) != 0,
+		VehicleRunning: (statusSign & (1 << 22)) != 0,
 	}
 }
 
@@ -410,9 +296,9 @@ func (s *StatusSignDetails) String() string {
 	return strings.Join([]string{
 		fmt.Sprintf("\t\t[bit22]车辆状态 是否运行:[%t] 2019版本增加的", s.VehicleRunning),
 		fmt.Sprintf("\t\t[bit21]使用Galileo卫星进行定位:[%t]", s.UseGalileo),
-		fmt.Sprintf("\t\t[bit20]未使用GLONASS卫星进行定位:[%t]", s.UseGLONASS),
-		fmt.Sprintf("\t\t[bit19]未使用北斗卫星进行定位:[%t]", s.UseBD),
-		fmt.Sprintf("\t\t[bit18]未使用GPS卫星进行定位:[%t]", s.UseGPS),
+		fmt.Sprintf("\t\t[bit20]使用GLONASS卫星进行定位:[%t]", s.UseGLONASS),
+		fmt.Sprintf("\t\t[bit19]使用北斗卫星进行定位:[%t]", s.UseBD),
+		fmt.Sprintf("\t\t[bit18]使用GPS卫星进行定位:[%t]", s.UseGPS),
 		fmt.Sprintf("\t\t[bit17]自定义门 门5:[%t]", s.CustomDoor),
 		fmt.Sprintf("\t\t[bit16]驾驶席门 门4:[%t]", s.DriverDoor),
 		fmt.Sprintf("\t\t[bit15]后门情况 门3:[%t]", s.BackDoor),

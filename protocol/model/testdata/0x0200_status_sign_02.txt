@@ -1,8 +1,8 @@
 		[bit22]车辆状态 是否运行:[true] 2019版本增加的
 		[bit21]使用Galileo卫星进行定位:[true]
-		[bit20]未使用GLONASS卫星进行定位:[true]
-		[bit19]未使用北斗卫星进行定位:[true]
-		[bit18]未使用GPS卫星进行定位:[true]
+		[bit20]使用GLONASS卫星进行定位:[true]
+		[bit19]使用北斗卫星进行定位:[true]
+		[bit18]使用GPS卫星进行定位:[true]
 		[bit17]自定义门 门5:[true]
 		[bit16]驾驶席门 门4:[true]
 		[bit15]后门情况 门3:[true]

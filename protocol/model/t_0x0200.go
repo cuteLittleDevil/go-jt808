@@ -27,6 +27,7 @@ func (t *T0x0200) Parse(jtMsg *jt808.JTMessage) error {
 	if len(body) > 28 {
 		return t.T0x0200AdditionDetails.parse(body[28:])
 	}
+	clear(t.T0x0200AdditionDetails.Additions)
 	return nil
 }
 

@@ -3,10 +3,11 @@ package model
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/cuteLittleDevil/go-jt808/protocol"
-	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 	"sort"
 	"strings"
+
+	"github.com/cuteLittleDevil/go-jt808/protocol"
+	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 )
 
 type (
@@ -151,13 +152,15 @@ func (a *T0x0200AdditionDetails) parse(body []byte) error {
 			return additionLen == 6
 		case 0x13:
 			return additionLen == 7
-		case 0x30:
+		case 0x30, 0x31:
 			return additionLen == 1
 		}
 		return true
 	}
 	if a.Additions == nil {
 		a.Additions = make(map[consts.JT808LocationAdditionType]Addition)
+	} else {
+		clear(a.Additions)
 	}
 	for index < len(body) {
 		if index+2 > len(body) {
@@ -174,6 +177,9 @@ func (a *T0x0200AdditionDetails) parse(body []byte) error {
 			return protocol.ErrBodyLengthInconsistency
 		}
 		content := body[start:end]
+		if id == 0x11 && content[0] != 0 && len(content) != 5 {
+			return protocol.ErrBodyLengthInconsistency
+		}
 		a.Additions[consts.JT808LocationAdditionType(id)] = Addition{
 			ID:      id,
 			Len:     additionLen,
@@ -210,8 +216,8 @@ func (a *T0x0200AdditionDetails) decode(id uint8, content []byte) AdditionConten
 		tmp.OverSpeedAlarm = AdditionOverSpeedAlarm{
 			LocationType: content[0],
 		}
-		if content[0] != 0 {
-			tmp.OverSpeedAlarm.AreaID = binary.BigEndian.Uint32(content)
+		if content[0] != 0 && len(content) == 5 {
+			tmp.OverSpeedAlarm.AreaID = binary.BigEndian.Uint32(content[1:5])
 		}
 	case 0x12:
 		tmp.AreaAlarm = AdditionAreaAlarm{
@@ -241,70 +247,32 @@ func (a *T0x0200AdditionDetails) decode(id uint8, content []byte) AdditionConten
 }
 
 func (a *T0x0200AdditionDetails) parseExtendVehicleStatus(value uint32) AdditionExtendVehicleStatus {
-	tmp := AdditionExtendVehicleStatus{
-		Value: value,
+	return AdditionExtendVehicleStatus{
+		Value:                value,
+		LowBeamSignal:        (value & (1 << 0)) != 0,
+		HighBeamSignal:       (value & (1 << 1)) != 0,
+		RightTurnSignal:      (value & (1 << 2)) != 0,
+		LeftTurnSignal:       (value & (1 << 3)) != 0,
+		BrakeSignal:          (value & (1 << 4)) != 0,
+		ReverseGearSignal:    (value & (1 << 5)) != 0,
+		FogLightSignal:       (value & (1 << 6)) != 0,
+		ClearanceLights:      (value & (1 << 7)) != 0,
+		HornSignal:           (value & (1 << 8)) != 0,
+		AirConditionerSignal: (value & (1 << 9)) != 0,
+		NeutralSignal:        (value & (1 << 10)) != 0,
+		RetarderWork:         (value & (1 << 11)) != 0,
+		ABSWork:              (value & (1 << 12)) != 0,
+		HeaterWork:           (value & (1 << 13)) != 0,
+		ClutchStatus:         (value & (1 << 14)) != 0,
 	}
-	data := fmt.Sprintf("%.32b", value)
-	if data[31] == '1' {
-		tmp.LowBeamSignal = true
-	}
-	if data[30] == '1' {
-		tmp.HighBeamSignal = true
-	}
-	if data[29] == '1' {
-		tmp.RightTurnSignal = true
-	}
-	if data[28] == '1' {
-		tmp.LeftTurnSignal = true
-	}
-	if data[27] == '1' {
-		tmp.BrakeSignal = true
-	}
-	if data[26] == '1' {
-		tmp.ReverseGearSignal = true
-	}
-	if data[25] == '1' {
-		tmp.FogLightSignal = true
-	}
-	if data[24] == '1' {
-		tmp.ClearanceLights = true
-	}
-	if data[23] == '1' {
-		tmp.HornSignal = true
-	}
-	if data[22] == '1' {
-		tmp.AirConditionerSignal = true
-	}
-	if data[21] == '1' {
-		tmp.NeutralSignal = true
-	}
-	if data[20] == '1' {
-		tmp.RetarderWork = true
-	}
-	if data[19] == '1' {
-		tmp.ABSWork = true
-	}
-	if data[18] == '1' {
-		tmp.HeaterWork = true
-	}
-	if data[17] == '1' {
-		tmp.ClutchStatus = true
-	}
-	return tmp
 }
 
 func (a *T0x0200AdditionDetails) parseIOStatus(value uint16) AdditionIOStatus {
-	tmp := AdditionIOStatus{
-		Value: value,
+	return AdditionIOStatus{
+		Value:           value,
+		DeepSleepStatus: (value & (1 << 0)) != 0,
+		SleepStatus:     (value & (1 << 1)) != 0,
 	}
-	data := fmt.Sprintf("%.16b", value)
-	if data[15] == '1' {
-		tmp.DeepSleepStatus = true
-	}
-	if data[14] == '1' {
-		tmp.SleepStatus = true
-	}
-	return tmp
 }
 
 func (a *T0x0200AdditionDetails) String() string {

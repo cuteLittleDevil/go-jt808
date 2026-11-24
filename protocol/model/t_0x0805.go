@@ -36,6 +36,7 @@ func (t *T0x0805) Parse(jtMsg *jt808.JTMessage) error {
 	if len(body) != 5+int(t.MultimediaIDNumber)*4 {
 		return protocol.ErrBodyLengthInconsistency
 	}
+	t.MultimediaIDList = t.MultimediaIDList[:0]
 	for i := 0; i < int(t.MultimediaIDNumber); i++ {
 		start := 5 + i*4
 		end := start + 4

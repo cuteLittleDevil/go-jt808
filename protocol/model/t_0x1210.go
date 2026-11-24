@@ -70,8 +70,12 @@ func (t *T0x1210) Parse(jtMsg *jt808.JTMessage) error {
 	if len(body) < cursor+int(t.AttachCount)*(1+1+4) {
 		return protocol.ErrBodyLengthInconsistency
 	}
+	t.T0x1210AlarmItemList = t.T0x1210AlarmItemList[:0]
 	start := cursor
 	for i := 0; i < int(t.AttachCount); i++ {
+		if start >= len(body) {
+			return protocol.ErrBodyLengthInconsistency
+		}
 		fileNameLen := body[start]
 		if len(body) < start+1+int(fileNameLen)+4 {
 			return protocol.ErrBodyLengthInconsistency
