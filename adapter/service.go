@@ -5,14 +5,16 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"sync/atomic"
+
+	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 )
 
 type Adapter struct {
 	opts     *Options
-	ln       net.Listener
+	ln       atomic.Pointer[net.TCPListener]
 	stopCh   chan struct{}
 	stopOnce sync.Once
-	lnOnce   sync.Once
 }
 
 func New(opts ...Option) *Adapter {
@@ -40,12 +42,15 @@ func (a *Adapter) Run() {
 			slog.Any("err", err))
 		return
 	}
-	a.lnOnce.Do(func() { a.ln = in })
-
-	go func() {
-		<-a.stopCh
-		_ = in.Close()
-	}()
+	a.ln.Store(in)
+	select {
+	case <-a.stopCh:
+		if ln := a.ln.Swap(nil); ln != nil {
+			_ = ln.Close()
+		}
+		return
+	default:
+	}
 
 	for {
 		c, err := in.AcceptTCP()
@@ -73,8 +78,8 @@ func (a *Adapter) Run() {
 func (a *Adapter) Stop() {
 	a.stopOnce.Do(func() {
 		close(a.stopCh)
-		if a.ln != nil {
-			_ = a.ln.Close()
+		if ln := a.ln.Swap(nil); ln != nil {
+			_ = ln.Close()
 		}
 	})
 }
@@ -82,9 +87,10 @@ func (a *Adapter) Stop() {
 func (a *Adapter) createTerminals() []Terminal {
 	ts := make([]Terminal, 0, len(a.opts.Terminals))
 	for _, t := range a.opts.Terminals {
-		for _, command := range a.opts.AllowCommand {
-			t.AllowCommands = append(t.AllowCommands, command)
-		}
+		cmds := make([]consts.JT808CommandType, 0, len(t.AllowCommands)+len(a.opts.AllowCommand))
+		cmds = append(cmds, t.AllowCommands...)
+		cmds = append(cmds, a.opts.AllowCommand...)
+		t.AllowCommands = cmds
 		ts = append(ts, t)
 	}
 	return ts

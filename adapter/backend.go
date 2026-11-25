@@ -1,6 +1,7 @@
 package adapter
 
 import (
+	"bytes"
 	"fmt"
 	"log/slog"
 	"net"
@@ -127,7 +128,9 @@ func (c *backendClient) readLoop() {
 			for _, msg := range msgs {
 				command := consts.JT808CommandType(msg.JTMessage.Header.ID)
 				if c.terminal.allowReply(command) {
-					c.onReply(msg.originalData)
+					// 必须拷贝后再异步入队：msg.originalData 直接引用 readBuf 或粘包缓冲，
+					// 下一轮 Read 会覆盖尚未写回真实终端的数据。
+					c.onReply(bytes.Clone(msg.originalData))
 				}
 			}
 		}
