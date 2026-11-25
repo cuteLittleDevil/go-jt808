@@ -37,6 +37,7 @@ func (p *P0x8003) Parse(jtMsg *jt808.JTMessage) error {
 	if len(body) != 3+2*int(p.AgainPackageCount) {
 		return protocol.ErrBodyLengthInconsistency
 	}
+	p.AgainPackageList = p.AgainPackageList[:0]
 	for i := 0; i < int(p.AgainPackageCount); i++ {
 		id := binary.BigEndian.Uint16(body[3+(2*i) : 3+(2*i)+2])
 		p.AgainPackageList = append(p.AgainPackageList, id)

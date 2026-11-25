@@ -29,14 +29,20 @@ func (p *P0x8800) ReplyProtocol() consts.JT808CommandType {
 
 func (p *P0x8800) Parse(jtMsg *jt808.JTMessage) error {
 	body := jtMsg.Body
-	if len(body) < 5 {
+	if len(body) < 4 {
 		return protocol.ErrBodyLengthInconsistency
 	}
 	p.MultimediaID = binary.BigEndian.Uint32(body[0:4])
+	if len(body) == 4 {
+		p.AgainPackageCount = 0
+		p.AgainPackageList = p.AgainPackageList[:0]
+		return nil
+	}
 	p.AgainPackageCount = body[4]
 	if len(body) != 5+2*int(p.AgainPackageCount) {
 		return protocol.ErrBodyLengthInconsistency
 	}
+	p.AgainPackageList = p.AgainPackageList[:0]
 	for i := 0; i < int(p.AgainPackageCount); i++ {
 		id := binary.BigEndian.Uint16(body[5+(2*i) : 5+(2*i)+2])
 		p.AgainPackageList = append(p.AgainPackageList, id)

@@ -59,10 +59,12 @@ func (p *P0x9212) Parse(jtMsg *jt808.JTMessage) error {
 	if len(body) != 4+l+8*int(p.RetransmitPacketNumber) {
 		return protocol.ErrBodyLengthInconsistency
 	}
+	p.P0x9212RetransmitPacketList = p.P0x9212RetransmitPacketList[:0]
 	for i := 0; i < int(p.RetransmitPacketNumber); i++ {
+		start := 4 + l + 8*i
 		p.P0x9212RetransmitPacketList = append(p.P0x9212RetransmitPacketList, P0x9212RetransmitPacket{
-			DataOffset: binary.BigEndian.Uint32(body[4+l+2*i:]),
-			DataLength: binary.BigEndian.Uint32(body[4+l+2*i+4:]),
+			DataOffset: binary.BigEndian.Uint32(body[start : start+4]),
+			DataLength: binary.BigEndian.Uint32(body[start+4 : start+8]),
 		})
 	}
 	return nil

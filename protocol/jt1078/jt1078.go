@@ -146,7 +146,7 @@ func (p *Packet) decodeHead(data []byte) error {
 	if p.DataType != DataTypePenetrate {
 		end += 8
 	}
-	p.customAttributes.videoFrame = p.DataType == DataTypeI || p.DataType == DataTypeP || p.DataType == DataTypeB
+	p.customAttributes.videoFrame = p.isVideoFrame()
 	if p.customAttributes.videoFrame {
 		end += 4
 	}
@@ -187,8 +187,12 @@ func (p *Packet) Encode() ([]byte, error) {
 	sign := (frag.M&0b1)<<7 | (uint8(frag.PT) & 0b1111_111)
 	data = append(data, attr, sign) // 标志
 
-	data = binary.BigEndian.AppendUint16(data, p.Seq)                  // 包序号
-	data = append(data, p.bcdTerminalPhoneNo...)                       // 终端手机号
+	data = binary.BigEndian.AppendUint16(data, p.Seq) // 包序号
+	bcd := p.bcdTerminalPhoneNo
+	if len(bcd) == 0 {
+		bcd = utils.String2Bcd(p.Sim, 12)
+	}
+	data = append(data, bcd...)                                        // 终端手机号
 	data = append(data, p.LogicChannel)                                // 逻辑通道号
 	data = append(data, uint8(p.DataType<<4)|uint8(p.SubcontractType)) // 数据类型 | 分包处理标记
 
@@ -196,7 +200,7 @@ func (p *Packet) Encode() ([]byte, error) {
 		data = binary.BigEndian.AppendUint64(data, p.Timestamp) // 时间戳
 	}
 
-	if p.DataType == DataTypeI || p.DataType == DataTypeP || p.DataType == DataTypeB {
+	if p.isVideoFrame() {
 		data = binary.BigEndian.AppendUint16(data, p.LastIFrameInterval)
 		data = binary.BigEndian.AppendUint16(data, p.LastFrameInterval)
 	}
@@ -207,12 +211,16 @@ func (p *Packet) Encode() ([]byte, error) {
 	return data, nil
 }
 
+func (p *Packet) isVideoFrame() bool {
+	return p.DataType == DataTypeI || p.DataType == DataTypeP || p.DataType == DataTypeB
+}
+
 func (p *Packet) String() string {
 	str := ""
 	if p.DataType != DataTypePenetrate {
 		str += fmt.Sprintf("\t[%016x] 标识此RTP数据包当前祯的相对时间:[%d]\n", p.Timestamp, p.Timestamp)
 	}
-	if p.customAttributes.videoFrame {
+	if p.isVideoFrame() {
 		str += fmt.Sprintf("\t[%04x] 该帧与上一个关键帧之间的时间间隔:[%d]单位毫秒(ms)\n",
 			p.LastIFrameInterval, p.LastIFrameInterval)
 		str += fmt.Sprintf("\t[%04x] 该祯与上一个祯之间的时间间隔:[%d]单位毫秒(ms)\n",

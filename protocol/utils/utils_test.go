@@ -73,6 +73,12 @@ func TestString2Bcd(t *testing.T) {
 			size: 12,
 			want: []byte{1, 35, 69, 103, 137, 1},
 		},
+		{
+			name: "奇数长度自动补齐为偶数",
+			sim:  "123",
+			size: 3,
+			want: []byte{0x01, 0x23},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

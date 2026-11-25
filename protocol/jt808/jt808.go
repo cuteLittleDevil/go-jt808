@@ -198,13 +198,17 @@ func (h *Header) createPackage(body []byte, num, sum uint16) []byte {
 	if id == 0 {
 		id = h.ID
 	}
-	binary.BigEndian.PutUint16(data[:2], id)   // 写消息ID
-	h.Property.BodyDayaLen = uint16(len(body)) // 消息的长度改为回复的body长度
-	h.Property.PacketFragmented = 0            // 不分包
-	if sum > 0 {
-		h.Property.PacketFragmented = 1 // 分包
+	binary.BigEndian.PutUint16(data[:2], id) // 写消息ID
+	var prop BodyProperty
+	if h.Property != nil {
+		prop = *h.Property
 	}
-	binary.BigEndian.PutUint16(data[2:4], h.Property.encode()) // 写消息属性
+	prop.BodyDayaLen = uint16(len(body)) // 消息的长度改为回复的body长度
+	prop.PacketFragmented = 0            // 不分包
+	if sum > 0 {
+		prop.PacketFragmented = 1 // 分包
+	}
+	binary.BigEndian.PutUint16(data[2:4], prop.encode()) // 写消息属性
 	if h.ProtocolVersion == consts.JT808Protocol2019 {
 		// 2019版本的标识
 		data = append(data, 0x01)

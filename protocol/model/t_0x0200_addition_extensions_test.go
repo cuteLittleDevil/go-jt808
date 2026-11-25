@@ -108,7 +108,7 @@ func TestT0x0200AdditionExtension(t *testing.T) {
 		{
 			name: "苏标 0x66",
 			args: args{
-				msg:     "7E0200408101000000000202326095590A4F00002000004C100301E0D7F2073E6EAC0064021400142411271542300104000000CC020201D425040000000030010831010914040000007F15040000000116040000000117020001180300070966310000001F0002013232010000350064020020020201001FFF0000000000003620101010103033241101154217000500000001A77E",
+				msg:     "7E0200408101000000000202326095590A4F00002000004C100301E0D7F2073E6EAC0064021400142411271542300104000000CC020201D425040000000030010831010914040000007F15040000000116040000000117020001180300070966320000001F0002013232010000350064020020020201001FFF0000000000003620101010103033241101154217000500000001A47E",
 				Handler: &T0x0200AdditionExtension0x66{},
 				ID:      0x66,
 			},
@@ -242,7 +242,10 @@ func TestT0x0200AdditionExtension(t *testing.T) {
 			if tt.args.Handler != nil {
 				t0x0200.CustomAdditionContentFunc = tt.args.Handler.Parse
 			}
-			_ = t0x0200.Parse(jtMsg)
+			if err := t0x0200.Parse(jtMsg); err != nil {
+				t.Errorf("t0x0200.Parse() unexpected error = %v", err)
+				return
+			}
 			v, ok := t0x0200.Additions[tt.args.ID].Content.CustomValue.(Handler)
 			if !ok {
 				t.Error("T0x0200AdditionExtension ok = false")
@@ -253,5 +256,54 @@ func TestT0x0200AdditionExtension(t *testing.T) {
 				return
 			}
 		})
+	}
+}
+
+func TestT0x0200AdditionExtension_ExactSliceBoundsAndReuse(t *testing.T) {
+	// 1. 0x70 独立精确 47 字节切片（cap == len == 47），不应越界 panic
+	var ext70 T0x0200AdditionExtension0x70
+	exact70 := make([]byte, 47)
+	exact70[3] = 7
+	exact70[5] = 1
+	if _, ok := ext70.Parse(0x70, exact70); !ok {
+		t.Fatal("0x70 Parse with exact 47-byte slice failed")
+	}
+	if ext70.AlarmID != 7 || ext70.AlarmEventType != 1 || !ext70.ParseSuccess {
+		t.Fatalf("0x70 unexpected parsed fields: %+v", ext70)
+	}
+
+	// 2. 0x66 精确切片边界：40 字节不 panic 且返回 false；41+9*n 正确解析；复用不累积
+	var ext66 T0x0200AdditionExtension0x66
+	if _, ok := ext66.Parse(0x66, make([]byte, 40)); ok {
+		t.Fatal("0x66 Parse with 40-byte slice should fail")
+	}
+	// 1 个胎压项：总长 41 + 9 = 50 字节（cap == len == 50）
+	exact66One := make([]byte, 50)
+	exact66One[40] = 1
+	exact66One[41] = 2
+	exact66One[49] = 99
+	if _, ok := ext66.Parse(0x66, exact66One); !ok {
+		t.Fatal("0x66 Parse with exact 50-byte slice failed")
+	}
+	if len(ext66.AlarmOrEventList) != 1 || ext66.AlarmOrEventList[0].TirePressureAlarmLocation != 2 || ext66.AlarmOrEventList[0].BatteryLevel != 99 {
+		t.Fatalf("0x66 unexpected item: %+v", ext66.AlarmOrEventList)
+	}
+	// 复用解析 0 项（41 字节），旧列表必须清空
+	if _, ok := ext66.Parse(0x66, make([]byte, 41)); !ok {
+		t.Fatal("0x66 Parse with exact 41-byte slice failed")
+	}
+	if len(ext66.AlarmOrEventList) != 0 {
+		t.Fatalf("0x66 AlarmOrEventList not cleared on reuse: len=%d", len(ext66.AlarmOrEventList))
+	}
+
+	// 3. T0x0200ExtensionTable18 复用重置
+	var tb18 T0x0200ExtensionTable18
+	tb18.parse(0xFFFF)
+	if !tb18.ACC || !tb18.LeftTurn || !tb18.RightTurn || !tb18.Wipers || !tb18.Brake || !tb18.Card || !tb18.Location {
+		t.Fatalf("Table18 expected all flags true, got %+v", tb18)
+	}
+	tb18.parse(0x0000)
+	if tb18.ACC || tb18.LeftTurn || tb18.RightTurn || tb18.Wipers || tb18.Brake || tb18.Card || tb18.Location {
+		t.Fatalf("Table18 stale flags after reuse: %+v", tb18)
 	}
 }

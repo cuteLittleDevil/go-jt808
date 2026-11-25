@@ -239,10 +239,18 @@ type (
 )
 
 func (t *TerminalParamDetails) parse(count uint8, body []byte) error {
-	index := 0
-	if len(t.OtherContent) == 0 {
-		t.OtherContent = make(map[uint32]ParamContent[[]byte])
+	beforeFunc := t.ParamParseBeforeFunc
+	other := t.OtherContent
+	*t = TerminalParamDetails{
+		ParamParseBeforeFunc: beforeFunc,
+		OtherContent:         other,
 	}
+	if t.OtherContent == nil {
+		t.OtherContent = make(map[uint32]ParamContent[[]byte])
+	} else {
+		clear(t.OtherContent)
+	}
+	index := 0
 	for index < len(body) {
 		if index+5 > len(body) {
 			return protocol.ErrBodyLengthInconsistency
@@ -272,8 +280,8 @@ func (t *TerminalParamDetails) parseParam(id uint32, paramLen byte, content []by
 		t.ParamParseBeforeFunc(id, content)
 	}
 	switch id {
-	case 0x001, 0x002, 0x003, 0x004, 0x005, 0x006, 0x007, 0x01b, 0x01c, 0x020,
-		0x022, 0x027, 0x028, 0x029, 0x02a, 0x02b, 0x02c, 0x02d, 0x02e, 0x02f,
+	case 0x001, 0x002, 0x003, 0x004, 0x005, 0x006, 0x007, 0x018, 0x019, 0x01b, 0x01c, 0x020,
+		0x021, 0x022, 0x027, 0x028, 0x029, 0x02c, 0x02d, 0x02e, 0x02f,
 		0x030, 0x045, 0x046, 0x047, 0x050, 0x051, 0x052, 0x053, 0x054, 0x055,
 		0x056, 0x057, 0x058, 0x059, 0x05a, 0x064, 0x065, 0x070, 0x071, 0x072,
 		0x073, 0x074, 0x080, 0x093, 0x095, 0x100, 0x102:
@@ -420,12 +428,18 @@ func (t *TerminalParamDetails) parseParamDWORD(id uint32, dwordContent ParamCont
 		t.T0x006SMSRetransmissionCount = dwordContent
 	case 0x007:
 		t.T0x007SMSRetransmissionCount = dwordContent
+	case 0x018:
+		t.T0x018TCPPort = dwordContent
+	case 0x019:
+		t.T0x019UDPPort = dwordContent
 	case 0x01b:
 		t.T0x01BICCardTCPPort = dwordContent
 	case 0x01c:
 		t.T0x01CICCardUDPPort = dwordContent
 	case 0x020:
 		t.T0x020PositionReportingStrategy = dwordContent
+	case 0x021:
+		t.T0x021PositionReportingPlan = dwordContent
 	case 0x022:
 		t.T0x022DriverReportingInterval = dwordContent
 	case 0x027:
@@ -980,8 +994,8 @@ func (t *TerminalParamDetails) String() string {
 		"\t}",
 		"\t{",
 		fmt.Sprintf("\t\t[0093]终端参数ID:147 GNSS模块详细定位数据采集频率,单位为秒(s),默认为 1。"),
-		fmt.Sprintf("\t\t参数长度[%d] 是否存在[%t]", t.T0x092GNSSModePositionOutputFrequency.Len, t.T0x092GNSSModePositionOutputFrequency.ID != 0),
-		fmt.Sprintf("\t\t[%08x]参数值:[%d]", t.T0x092GNSSModePositionOutputFrequency.Value, t.T0x092GNSSModePositionOutputFrequency.Value),
+		fmt.Sprintf("\t\t参数长度[%d] 是否存在[%t]", t.T0x093GNSSModePositionAcquisitionFrequency.Len, t.T0x093GNSSModePositionAcquisitionFrequency.ID != 0),
+		fmt.Sprintf("\t\t[%08x]参数值:[%d]", t.T0x093GNSSModePositionAcquisitionFrequency.Value, t.T0x093GNSSModePositionAcquisitionFrequency.Value),
 		"\t}",
 		"\t{",
 		fmt.Sprintf("\t\t[0094]终端参数ID:148 GNSS模块详细定位数据上传方式 0x00,本地存储,不上传(默认值);..."),

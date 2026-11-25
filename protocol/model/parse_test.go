@@ -4,12 +4,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/cuteLittleDevil/go-jt808/protocol"
-	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
-	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 	"math"
 	"os"
 	"testing"
+
+	"github.com/cuteLittleDevil/go-jt808/protocol"
+	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
+	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 )
 
 func TestParse(t *testing.T) {
@@ -260,7 +261,7 @@ func TestParse(t *testing.T) {
 					T0x01CICCardUDPPort:                         ParamContent[uint32]{ID: 0x01c, Len: 4, Value: 1112},
 					T0x01DICCardAddress:                         ParamContent[string]{ID: 0x01d, Len: 9, Value: "127.0.0.1"},
 					T0x020PositionReportingStrategy:             ParamContent[uint32]{ID: 0x020, Len: 4, Value: 0},
-					T0x021PositionReportingPlan:                 ParamContent[uint32]{},
+					T0x021PositionReportingPlan:                 ParamContent[uint32]{ID: 0x021, Len: 4, Value: 0},
 					T0x022DriverReportingInterval:               ParamContent[uint32]{ID: 0x022, Len: 4, Value: 0},
 					T0x023FromServerAPN:                         ParamContent[string]{ID: 0x023, Len: 1, Value: "0"},
 					T0x024FromServerAPNWIFIUsername:             ParamContent[string]{ID: 0x024, Len: 1, Value: "0"},
@@ -326,7 +327,6 @@ func TestParse(t *testing.T) {
 					T0x110CANIDSetIndividualAcquisition:         ParamContent[[8]byte]{ID: 0x110, Len: 8, Value: [8]byte{0, 0, 0, 0, 0, 0, 1, 1}},
 					ParamParseBeforeFunc:                        nil,
 					OtherContent: map[uint32]ParamContent[[]byte]{
-						33:  {ID: 0x021, Len: 4, Value: []byte{0, 0, 0, 0}},
 						117: {ID: 0x075, Len: 21, Value: []byte{0, 3, 1, 144, 50, 0, 0, 0, 40, 0, 3, 1, 144, 50, 0, 0, 0, 40, 0, 5, 1}},
 						118: {ID: 0x076, Len: 19, Value: []byte{4, 0, 0, 1, 1, 0, 0, 2, 2, 0, 0, 3, 3, 0, 0, 4, 4, 0, 0}},
 						119: {ID: 0x077, Len: 22, Value: []byte{1, 1, 0, 3, 1, 244, 50, 0, 0, 0, 40, 0, 3, 1, 244, 50, 0, 0, 0, 40, 0, 5}},
@@ -569,7 +569,7 @@ func TestParse(t *testing.T) {
 		{
 			name: "P0x8103 平台-设置终端参数",
 			args: args{
-				msg:      "7e810302101234567890120000280000000104626a6a65000000020442434b6d00000003044b456863000000040445456357000000050434516a39000000060441464d5f00000007043173666c00000010104a4468326c32394e6a75416e726c58750000001110666b756d6349376c7a4d5f76776f7a43000000121034356e3077523932445570555a7a7258000000131071444b6e4636666c6974694377554d4b0000001410476a7071376f6d55553834686e646561000000151070676c785f375251677971467648725700000016105559317a4e574b706754656a715f79300000001710725a554238704c4476516363743857680000001a10656d48775f6d317263547550374756370000001b044c5832510000001c04754d457a0000001d10464d6f524f627a30594573534147686400000020044471634c000000220443335f310000002310556f5234774d494438506669456267560000002410484954455f76684273496742376f5057000000251039364753596448434d3733676e53536800000026107759765248434f6a346135573351465a0000002704366375620000002804573854610000002904566d4e6b0000002c04324c5f540000002d0441764a560000002e04537443410000002f045958376f00000030047078566800000031025a6900000032040930213000000092010c0000011008000102030405060700000018046f78335100000019047a4a6158000000210434303749ac7e",
+				msg:      "7e810302101234567890120000280000000104626a6a65000000020442434b6d00000003044b456863000000040445456357000000050434516a39000000060441464d5f00000007043173666c00000010104a4468326c32394e6a75416e726c58750000001110666b756d6349376c7a4d5f76776f7a43000000121034356e3077523932445570555a7a7258000000131071444b6e4636666c6974694377554d4b0000001410476a7071376f6d55553834686e646561000000151070676c785f375251677971467648725700000016105559317a4e574b706754656a715f79300000001710725a554238704c44765163637438576800000018046f78335100000019047a4a61580000001a10656d48775f6d317263547550374756370000001b044c5832510000001c04754d457a0000001d10464d6f524f627a30594573534147686400000020044471634c000000210434303749000000220443335f310000002310556f5234774d494438506669456267560000002410484954455f76684273496742376f5057000000251039364753596448434d3733676e53536800000026107759765248434f6a346135573351465a0000002704366375620000002804573854610000002904566d4e6b0000002c04324c5f540000002d0441764a560000002e04537443410000002f045958376f00000030047078566800000031025a6900000032040930213000000092010c00000110080001020304050607ac7e",
 				Handler:  &P0x8103{},
 				bodyLens: []int{0},
 			},
@@ -651,6 +651,16 @@ func TestParse(t *testing.T) {
 						Len:   byte(len("rZUB8pLDvQcct8Wh")),
 						Value: "rZUB8pLDvQcct8Wh",
 					},
+					T0x018TCPPort: ParamContent[uint32]{
+						ID:    0x18,
+						Len:   4,
+						Value: 1870148433,
+					},
+					T0x019UDPPort: ParamContent[uint32]{
+						ID:    0x19,
+						Len:   4,
+						Value: 2051694936,
+					},
 					T0x01AICCardAddress: ParamContent[string]{
 						ID:    0x1a,
 						Len:   byte(len("emHw_m1rcTuP7GV7")),
@@ -675,6 +685,11 @@ func TestParse(t *testing.T) {
 						ID:    0x20,
 						Len:   4,
 						Value: 1148281676,
+					},
+					T0x021PositionReportingPlan: ParamContent[uint32]{
+						ID:    0x21,
+						Len:   4,
+						Value: 875575113,
 					},
 					T0x022DriverReportingInterval: ParamContent[uint32]{
 						ID:    0x22,
@@ -760,23 +775,6 @@ func TestParse(t *testing.T) {
 						ID:    0x110,
 						Len:   8,
 						Value: [8]byte{0, 1, 2, 3, 4, 5, 6, 7},
-					},
-					OtherContent: map[uint32]ParamContent[[]byte]{
-						0x18: {
-							ID:    0x18,
-							Len:   4,
-							Value: []byte{111, 120, 51, 81},
-						},
-						0x19: {
-							ID:    0x19,
-							Len:   4,
-							Value: []byte{122, 74, 97, 88},
-						},
-						0x21: {
-							ID:    0x21,
-							Len:   4,
-							Value: []byte{52, 48, 55, 73},
-						},
 					},
 				},
 			},

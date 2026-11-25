@@ -21,8 +21,11 @@ func Bcd2Dec(data []byte) string {
 
 func String2Bcd(sim string, size int) []byte {
 	// 如果字符串长度不足size，在前面补0 size需要偶数
-	for len(sim) < size {
-		sim = "0" + sim
+	if size%2 != 0 {
+		size++
+	}
+	if len(sim) < size {
+		sim = strings.Repeat("0", size-len(sim)) + sim
 	}
 	bcd := make([]byte, size/2)
 	for i := 0; i < size; i += 2 {

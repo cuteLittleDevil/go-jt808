@@ -28,11 +28,18 @@ func (p *P0x8202) ReplyProtocol() consts.JT808CommandType {
 
 func (p *P0x8202) Parse(jtMsg *jt808.JTMessage) error {
 	body := jtMsg.Body
-	if len(body) < 6 {
+	if len(body) < 2 {
 		return protocol.ErrBodyLengthInconsistency
 	}
 	p.TimeInterval = binary.BigEndian.Uint16(body[:2])
-	p.TrackValidity = binary.BigEndian.Uint32(body[2:])
+	if p.TimeInterval == 0 && len(body) == 2 {
+		p.TrackValidity = 0
+		return nil
+	}
+	if len(body) < 6 {
+		return protocol.ErrBodyLengthInconsistency
+	}
+	p.TrackValidity = binary.BigEndian.Uint32(body[2:6])
 	return nil
 }
 

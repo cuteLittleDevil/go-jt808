@@ -73,8 +73,12 @@ func (p *P0x8302) Parse(jtMsg *jt808.JTMessage) error {
 		return protocol.ErrBodyLengthInconsistency
 	}
 	p.QuestionContent = string(utils.GBK2UTF8(body[2 : 2+p.QuestionContentLen]))
+	p.AnswerList = p.AnswerList[:0]
 	start := 2 + int(p.QuestionContentLen)
 	for {
+		if start+3 > len(body) {
+			return protocol.ErrBodyLengthInconsistency
+		}
 		answer := P0x8302Answer{
 			AnswerID:         body[start],
 			AnswerContentLen: binary.BigEndian.Uint16(body[start+1 : start+3]),
@@ -163,30 +167,15 @@ func (d *P0x8302TextFlagDetails) toFlag() byte {
 }
 
 func (d *P0x8302TextFlagDetails) parse(flag byte) {
-	data := fmt.Sprintf("%.8b", flag)
-	if data[7] == '1' {
-		d.Urgent = true
-	}
-	if data[6] == '1' {
-		d.Bit1Reserve = true
-	}
-	if data[5] == '1' {
-		d.Bit2Reserve = true
-	}
-	if data[4] == '1' {
-		d.TTS = true
-	}
-	if data[3] == '1' {
-		d.AdvertisingScreen = true
-	}
-	if data[2] == '1' {
-		d.Bit5Reserve = true
-	}
-	if data[1] == '1' {
-		d.Bit6Reserve = true
-	}
-	if data[0] == '1' {
-		d.Bit7Reserve = true
+	*d = P0x8302TextFlagDetails{
+		Urgent:            (flag & (1 << 0)) != 0,
+		Bit1Reserve:       (flag & (1 << 1)) != 0,
+		Bit2Reserve:       (flag & (1 << 2)) != 0,
+		TTS:               (flag & (1 << 3)) != 0,
+		AdvertisingScreen: (flag & (1 << 4)) != 0,
+		Bit5Reserve:       (flag & (1 << 5)) != 0,
+		Bit6Reserve:       (flag & (1 << 6)) != 0,
+		Bit7Reserve:       (flag & (1 << 7)) != 0,
 	}
 }
 

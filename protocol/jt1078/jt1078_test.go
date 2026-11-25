@@ -271,3 +271,37 @@ func TestDecode_ReuseAndRoundTrip(t *testing.T) {
 		t.Fatalf("penetrate round-trip mismatch: err=%v got=%x want=%x", err, got, penetrateRaw)
 	}
 }
+
+func TestPacket_DirectConstructEncodeAndString(t *testing.T) {
+	p := &Packet{
+		ID: "01cd",
+		Flag: Flag{
+			V:  2,
+			CC: 1,
+			M:  1,
+			PT: PTH264,
+		},
+		Seq:                7,
+		Sim:                "12345678901",
+		LogicChannel:       1,
+		DataType:           DataTypeI,
+		Timestamp:          987654321,
+		LastIFrameInterval: 500,
+		LastFrameInterval:  40,
+		Body:               []byte{0x00, 0x00, 0x01},
+	}
+	raw, err := p.Encode()
+	if err != nil {
+		t.Fatalf("Encode direct Packet failed: %v", err)
+	}
+	decoded := NewPacket()
+	if remain, err := decoded.Decode(raw); err != nil || len(remain) != 0 {
+		t.Fatalf("Decode direct Packet failed: remain=%x err=%v", remain, err)
+	}
+	if decoded.Sim != "12345678901" || decoded.LastIFrameInterval != 500 || decoded.LastFrameInterval != 40 || !bytes.Equal(decoded.Body, p.Body) {
+		t.Fatalf("decoded direct Packet mismatch: %+v", decoded)
+	}
+	if s := p.String(); !bytes.Contains([]byte(s), []byte("上一个关键帧")) {
+		t.Fatalf("direct video Packet String() missing frame interval info: %s", s)
+	}
+}

@@ -384,3 +384,29 @@ func TestJTMessageDecode_ReuseSubPackageReset(t *testing.T) {
 			reused.Header.SubPackageSum, reused.Header.SubPackageNo, reused.Header.Property.isSubPackage)
 	}
 }
+
+func TestHeader_EncodeDoesNotMutateProperty(t *testing.T) {
+	msg := NewJTMessage()
+	raw, _ := hex.DecodeString("7e0002000001234567890100008a7e")
+	if err := msg.Decode(raw); err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+	origProp := *msg.Header.Property
+
+	packets := msg.Header.EncodePackets(make([]byte, maxBodyLength+10))
+	if len(packets) != 2 {
+		t.Fatalf("EncodePackets len = %d, want 2", len(packets))
+	}
+	if *msg.Header.Property != origProp {
+		t.Fatalf("EncodePackets mutated Header.Property: got=%+v want=%+v", *msg.Header.Property, origProp)
+	}
+
+	// Property 为 nil 时也不 panic
+	nilPropHeader := &Header{
+		ID:                 0x0002,
+		bcdTerminalPhoneNo: []byte{0x01, 0x23, 0x45, 0x67, 0x89, 0x01},
+	}
+	if pkts := nilPropHeader.EncodePackets(nil); len(pkts) != 1 {
+		t.Fatalf("nil Property EncodePackets len = %d, want 1", len(pkts))
+	}
+}

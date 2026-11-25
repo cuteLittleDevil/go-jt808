@@ -124,30 +124,19 @@ func (d *P0x8300TextFlagDetails) toFlag() byte {
 }
 
 func (d *P0x8300TextFlagDetails) parse(textFlag byte) {
-	data := fmt.Sprintf("%.8b", textFlag)
-	if data[7] == '1' {
-		d.Urgent = true
+	infoCategory := 0
+	if (textFlag & (1 << 5)) != 0 {
+		infoCategory = 1
 	}
-	if data[6] == '1' {
-		d.Bit1Reserve = true
-	}
-	if data[5] == '1' {
-		d.Display = true
-	}
-	if data[4] == '1' {
-		d.TTS = true
-	}
-	if data[3] == '1' {
-		d.AdvertisingScreen = true
-	}
-	if data[2] == '1' {
-		d.InfoCategory = 1
-	}
-	if data[1] == '1' {
-		d.Bit6Reserve = true
-	}
-	if data[0] == '1' {
-		d.Bit7Reserve = true
+	*d = P0x8300TextFlagDetails{
+		Urgent:            (textFlag & (1 << 0)) != 0,
+		Bit1Reserve:       (textFlag & (1 << 1)) != 0,
+		Display:           (textFlag & (1 << 2)) != 0,
+		TTS:               (textFlag & (1 << 3)) != 0,
+		AdvertisingScreen: (textFlag & (1 << 4)) != 0,
+		InfoCategory:      infoCategory,
+		Bit6Reserve:       (textFlag & (1 << 6)) != 0,
+		Bit7Reserve:       (textFlag & (1 << 7)) != 0,
 	}
 }
 

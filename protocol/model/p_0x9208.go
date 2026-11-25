@@ -55,7 +55,8 @@ func (p *P0x9208) ReplyProtocol() consts.JT808CommandType {
 
 func (p *P0x9208) Parse(jtMsg *jt808.JTMessage) error {
 	body := jtMsg.Body
-	sign := 1 + 2 + 2 + p.P9208AlarmSign.getAlarmSignLen() + 32
+	alarmSignLen := p.P9208AlarmSign.getAlarmSignLen()
+	sign := 1 + 2 + 2 + alarmSignLen + 32
 	if len(body) < sign {
 		return protocol.ErrBodyLengthInconsistency
 	}
@@ -67,7 +68,7 @@ func (p *P0x9208) Parse(jtMsg *jt808.JTMessage) error {
 	p.ServerAddr = string(body[1 : 1+k])
 	p.TcpPort = binary.BigEndian.Uint16(body[1+k : 1+k+2])
 	p.UdpPort = binary.BigEndian.Uint16(body[3+k : 3+k+2])
-	p.P9208AlarmSign.parse(body[5+k : 5+k+16])
+	p.P9208AlarmSign.parse(body[5+k : 5+k+alarmSignLen])
 	p.AlarmID = string(bytes.Trim(body[sign+k-32:sign+k], "\x00"))
 	p.Reserve = body[sign+k:]
 	return nil

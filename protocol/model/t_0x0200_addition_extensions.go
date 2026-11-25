@@ -231,12 +231,13 @@ func (t *T0x0200AdditionExtension0x65) Parse(id uint8, content []byte) (Addition
 }
 
 func (t *T0x0200AdditionExtension0x66) Parse(id uint8, content []byte) (AdditionContent, bool) {
-	if id == 0x66 && len(content) >= 40 {
+	if id == 0x66 && len(content) >= 41 {
 		t.AlarmID = binary.BigEndian.Uint32(content[0:4])
 		t.FlagStatus = content[4]
 		t.T0x0200ExtensionSBBase.parse(content[5:40])
 		t.AlarmOrEventCount = content[40]
-		if len(content) == 40+int(t.AlarmOrEventCount)*9 {
+		if len(content) == 41+int(t.AlarmOrEventCount)*9 {
+			t.AlarmOrEventList = t.AlarmOrEventList[:0]
 			for i := 0; i < int(t.AlarmOrEventCount); i++ {
 				start := 41 + i*9
 				t.AlarmOrEventList = append(t.AlarmOrEventList, T0x0200ExtensionTable22{
@@ -278,7 +279,7 @@ func (t *T0x0200AdditionExtension0x70) Parse(id uint8, content []byte) (Addition
 		t.AlarmTimeThreshold = binary.BigEndian.Uint16(content[6:8])
 		t.AlarmThreshold1 = binary.BigEndian.Uint16(content[8:10])
 		t.AlarmThreshold2 = binary.BigEndian.Uint16(content[10:12])
-		t.T0x0200ExtensionSBBase.parse(content[12:48])
+		t.T0x0200ExtensionSBBase.parse(content[12:47])
 		return AdditionContent{
 			Data:        content,
 			CustomValue: t,
@@ -419,28 +420,15 @@ func (t *T0x0200ExtensionSBBase) parse(data []byte) {
 }
 
 func (vs *T0x0200ExtensionTable18) parse(value uint16) {
-	vs.OriginalValue = value
-	data := fmt.Sprintf("%.16b", vs.OriginalValue)
-	if data[15] == '1' {
-		vs.ACC = true
-	}
-	if data[14] == '1' {
-		vs.LeftTurn = true
-	}
-	if data[13] == '1' {
-		vs.RightTurn = true
-	}
-	if data[12] == '1' {
-		vs.Wipers = true
-	}
-	if data[11] == '1' {
-		vs.Brake = true
-	}
-	if data[10] == '1' {
-		vs.Card = true
-	}
-	if data[5] == '1' {
-		vs.Location = true
+	*vs = T0x0200ExtensionTable18{
+		OriginalValue: value,
+		ACC:           (value & (1 << 0)) != 0,
+		LeftTurn:      (value & (1 << 1)) != 0,
+		RightTurn:     (value & (1 << 2)) != 0,
+		Wipers:        (value & (1 << 3)) != 0,
+		Brake:         (value & (1 << 4)) != 0,
+		Card:          (value & (1 << 5)) != 0,
+		Location:      (value & (1 << 10)) != 0,
 	}
 }
 
