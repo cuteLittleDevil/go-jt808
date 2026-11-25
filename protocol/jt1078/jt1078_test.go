@@ -272,36 +272,32 @@ func TestDecode_ReuseAndRoundTrip(t *testing.T) {
 	}
 }
 
-func TestPacket_DirectConstructEncodeAndString(t *testing.T) {
-	p := &Packet{
-		ID: "01cd",
-		Flag: Flag{
-			V:  2,
-			CC: 1,
-			M:  1,
-			PT: PTH264,
-		},
-		Seq:                7,
-		Sim:                "12345678901",
-		LogicChannel:       1,
-		DataType:           DataTypeI,
-		Timestamp:          987654321,
-		LastIFrameInterval: 500,
-		LastFrameInterval:  40,
-		Body:               []byte{0x00, 0x00, 0x01},
-	}
+func TestPacket_SubcontractTypeMaskAndString(t *testing.T) {
+	p := NewCustomPacket("12345678901", 1, func(p *Packet) {
+		p.Flag.M = 1
+		p.Flag.PT = PTH264
+		p.Seq = 7
+		p.DataType = DataTypeI
+		p.SubcontractType = 0x1F // 超出 4 bit 的异常值不应污染高 4 位 DataType
+		p.Timestamp = 987654321
+		p.LastIFrameInterval = 500
+		p.LastFrameInterval = 40
+		p.Body = []byte{0x00, 0x00, 0x01}
+	})
 	raw, err := p.Encode()
 	if err != nil {
-		t.Fatalf("Encode direct Packet failed: %v", err)
+		t.Fatalf("Encode Packet failed: %v", err)
 	}
 	decoded := NewPacket()
 	if remain, err := decoded.Decode(raw); err != nil || len(remain) != 0 {
-		t.Fatalf("Decode direct Packet failed: remain=%x err=%v", remain, err)
+		t.Fatalf("Decode Packet failed: remain=%x err=%v", remain, err)
 	}
-	if decoded.Sim != "12345678901" || decoded.LastIFrameInterval != 500 || decoded.LastFrameInterval != 40 || !bytes.Equal(decoded.Body, p.Body) {
-		t.Fatalf("decoded direct Packet mismatch: %+v", decoded)
+	if decoded.DataType != DataTypeI || decoded.SubcontractType != 0x0F ||
+		decoded.Sim != "12345678901" || decoded.LastIFrameInterval != 500 ||
+		decoded.LastFrameInterval != 40 || !bytes.Equal(decoded.Body, p.Body) {
+		t.Fatalf("decoded Packet mismatch: %+v", decoded)
 	}
 	if s := p.String(); !bytes.Contains([]byte(s), []byte("上一个关键帧")) {
-		t.Fatalf("direct video Packet String() missing frame interval info: %s", s)
+		t.Fatalf("video Packet String() missing frame interval info: %s", s)
 	}
 }

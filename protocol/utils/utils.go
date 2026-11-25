@@ -84,11 +84,7 @@ func String2FillingBytes(text string, size int) []byte {
 }
 
 func BCD2Time(bcd []byte) string {
-	result := make([]byte, len(bcd)*2)
-	for i, v := range bcd {
-		result[2*i] = (v >> 4) + '0'
-		result[2*i+1] = (v & 0x0F) + '0'
-	}
+	result := bcdConvert(bcd)
 	if len(bcd) == 6 {
 		return fmt.Sprintf("20%s-%s-%s %s:%s:%s",
 			result[0:2], result[2:4], result[4:6],

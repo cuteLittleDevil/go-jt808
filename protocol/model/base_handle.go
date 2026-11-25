@@ -1,10 +1,12 @@
 // Package model 定义 JT/T 808、JT/T 1078 及主动安全扩展的消息体模型。
 //
-// 设计约定（显式长度/数量字段严格按输入编码）：
-// 结构体中凡显式声明了协议长度或数量字段（如 P0x9101.ServerIPLen、P0x8103.ParamTotal、
-// ParamContent.Len、P0x8302.QuestionContentLen、T0x0704.Num 等），Encode() 均严格按调用方传入的字段值原样编码，
-// 不做隐式重算或覆盖；若传入值与实际内容长度不一致，按输入原样组包，由调用方保证字段一致性（便于协议联调与异常报文模拟，
-// 并确保 Encode() 与 String() 输出完全一致）。
+// 核心设计与运行时约定：
+//  1. 单连接独立实例：每个连接协程持有独立的协议处理 map 与模型实例，不存在跨协程并发共享同一模型实例的场景
+//     （如 P0x8300 / P0x8302 在 Encode 时按需回填 Flag 属于单协程安全操作）。
+//  2. Header 与卡号唯一确定：JTMessage.Header、Property 及手机号/SIM 卡 BCD 在首包解码（或构造函数）时唯一确定，
+//     运行期保证非 nil 且不发生中途改号。
+//  3. 显式长度/数量字段严格按输入编码：凡结构体声明了协议长度或数量字段（如 P0x9101.ServerIPLen、P0x8103.ParamTotal、
+//     ParamContent.Len、P0x8302.QuestionContentLen、T0x0704.Num 等），Encode() 严格按输入值原样组包，不做隐式重算覆盖。
 package model
 
 import (

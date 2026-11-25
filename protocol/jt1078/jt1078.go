@@ -187,14 +187,10 @@ func (p *Packet) Encode() ([]byte, error) {
 	sign := (frag.M&0b1)<<7 | (uint8(frag.PT) & 0b1111_111)
 	data = append(data, attr, sign) // 标志
 
-	data = binary.BigEndian.AppendUint16(data, p.Seq) // 包序号
-	bcd := p.bcdTerminalPhoneNo
-	if len(bcd) == 0 {
-		bcd = utils.String2Bcd(p.Sim, 12)
-	}
-	data = append(data, bcd...)                                        // 终端手机号
-	data = append(data, p.LogicChannel)                                // 逻辑通道号
-	data = append(data, uint8(p.DataType<<4)|uint8(p.SubcontractType)) // 数据类型 | 分包处理标记
+	data = binary.BigEndian.AppendUint16(data, p.Seq)                           // 包序号
+	data = append(data, p.bcdTerminalPhoneNo...)                                // 终端手机号
+	data = append(data, p.LogicChannel)                                         // 逻辑通道号
+	data = append(data, (uint8(p.DataType&0x0F)<<4)|uint8(p.SubcontractType&0x0F)) // 数据类型 | 分包处理标记
 
 	if p.DataType != DataTypePenetrate {
 		data = binary.BigEndian.AppendUint64(data, p.Timestamp) // 时间戳

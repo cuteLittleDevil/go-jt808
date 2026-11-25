@@ -190,6 +190,11 @@ func TestBCD2Time(t *testing.T) {
 			args: "2024100100000",
 			want: "02024100100000",
 		},
+		{
+			name: "未定位全0xFF可逆转换",
+			args: "20ff-ff-ff ff:ff:ff",
+			want: "20ff-ff-ff ff:ff:ff",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

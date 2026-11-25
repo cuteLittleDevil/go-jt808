@@ -28,6 +28,10 @@ const FrameSign byte = 0x7e
 //   - 返回的 frame 是 data 或内部 historyData 的视图，不会复制字节
 //   - 须在下次 conn.Read / Append 之前同步处理完
 //   - 若要异步保存或长期持有，调用方自行 copy
+//
+// 严格帧边界约定（不做容错跳字节）：
+//   - 要求字节流严格按 [0x7e...0x7e] 排列，不自动丢弃非 0x7e 前导噪声，也不合并连续冗余 0x7e
+//   - 若出现连续 0x7e（如 7e7e...），PopFrame 会将其作为 2 字节异常帧弹出，交由上层 Decode 报错并断开异常连接
 type FrameReader struct {
 	// historyData 粘包缓冲区，存放尚未凑齐一帧的字节
 	historyData []byte

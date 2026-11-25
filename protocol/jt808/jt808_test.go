@@ -400,45 +400,4 @@ func TestHeader_EncodeDoesNotMutateProperty(t *testing.T) {
 	if *msg.Header.Property != origProp {
 		t.Fatalf("EncodePackets mutated Header.Property: got=%+v want=%+v", *msg.Header.Property, origProp)
 	}
-
-	// Property 为 nil 时也不 panic
-	nilPropHeader := &Header{
-		ID:                 0x0002,
-		bcdTerminalPhoneNo: []byte{0x01, 0x23, 0x45, 0x67, 0x89, 0x01},
-	}
-	if pkts := nilPropHeader.EncodePackets(nil); len(pkts) != 1 {
-		t.Fatalf("nil Property EncodePackets len = %d, want 1", len(pkts))
-	}
-
-	// 手工构造 Header（未经过 Decode，Property==nil 且 bcdTerminalPhoneNo 为空）：2013 与 2019 均能正确编码、解码及 String()
-	for _, tc := range []struct {
-		ver     consts.ProtocolVersionType
-		phone   string
-		wantVer uint8
-	}{
-		{ver: consts.JT808Protocol2013, phone: "13800138000", wantVer: 0},
-		{ver: consts.JT808Protocol2019, phone: "13800138000", wantVer: 1},
-	} {
-		manual := &Header{
-			ID:                   0x0002,
-			ProtocolVersion:      tc.ver,
-			TerminalPhoneNo:      tc.phone,
-			PlatformSerialNumber: 9,
-		}
-		if s := manual.String(); len(s) == 0 {
-			t.Fatalf("manual Header(%v).String() empty", tc.ver)
-		}
-		rawPkt := manual.Encode(nil)
-		decoded := NewJTMessage()
-		if err := decoded.Decode(rawPkt); err != nil {
-			t.Fatalf("manual Header(%v) Encode->Decode error: %v", tc.ver, err)
-		}
-		if decoded.Header.ProtocolVersion != tc.ver ||
-			decoded.Header.Property.Version != tc.wantVer ||
-			decoded.Header.TerminalPhoneNo != tc.phone ||
-			decoded.Header.SerialNumber != 9 {
-			t.Fatalf("manual Header(%v) roundtrip mismatch: got=%+v prop=%+v",
-				tc.ver, decoded.Header, decoded.Header.Property)
-		}
-	}
 }

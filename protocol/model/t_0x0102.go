@@ -30,7 +30,7 @@ func (t *T0x0102) Protocol() consts.JT808CommandType {
 
 func (t *T0x0102) Parse(jtMsg *jt808.JTMessage) error {
 	version := consts.JT808Protocol2013
-	if jtMsg.Header != nil && jtMsg.Header.ProtocolVersion == consts.JT808Protocol2019 {
+	if jtMsg.Header.ProtocolVersion == consts.JT808Protocol2019 {
 		version = consts.JT808Protocol2019
 	}
 	t.Version = version

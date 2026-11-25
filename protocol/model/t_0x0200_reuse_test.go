@@ -378,11 +378,8 @@ func TestSecondPassProtocolFixes(t *testing.T) {
 		t.Fatalf("custom 0x06 = %v, want 0x0102", got)
 	}
 
-	// 2. T0x0100 零值 ProtocolVersion 或 nil Header 短包均不 panic
+	// 2. T0x0100 零值 ProtocolVersion 短包不 panic
 	var t0100 T0x0100
-	if err := t0100.Parse(&jt808.JTMessage{Body: make([]byte, 10)}); !errors.Is(err, protocol.ErrBodyLengthInconsistency) {
-		t.Fatalf("T0x0100 nil Header short body err = %v, want %v", err, protocol.ErrBodyLengthInconsistency)
-	}
 	if err := t0100.Parse(&jt808.JTMessage{Header: &jt808.Header{}, Body: make([]byte, 10)}); !errors.Is(err, protocol.ErrBodyLengthInconsistency) {
 		t.Fatalf("T0x0100 zero version short body err = %v, want %v", err, protocol.ErrBodyLengthInconsistency)
 	}

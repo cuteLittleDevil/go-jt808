@@ -64,7 +64,7 @@ func (t *T0x0100) Parse(jtMsg *jt808.JTMessage) error {
 		tIDLen = 7
 	)
 	body := jtMsg.Body
-	if jtMsg.Header != nil && jtMsg.Header.ProtocolVersion == consts.JT808Protocol2019 {
+	if jtMsg.Header.ProtocolVersion == consts.JT808Protocol2019 {
 		mLen = 11
 		tLen = 30
 		tIDLen = 30
