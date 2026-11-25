@@ -3,10 +3,11 @@ package jt808
 import (
 	"encoding/binary"
 	"fmt"
+	"strings"
+
 	"github.com/cuteLittleDevil/go-jt808/protocol"
 	"github.com/cuteLittleDevil/go-jt808/protocol/utils"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
-	"strings"
 )
 
 // maxBodyLength 平台下发给设备单个包 body最大长度.
@@ -137,6 +138,9 @@ func (h *Header) decode(data []byte) error {
 		h.SubPackageSum = binary.BigEndian.Uint16(data[start+phoneLen+2 : start+phoneLen+4])
 		h.SubPackageNo = binary.BigEndian.Uint16(data[start+phoneLen+4 : start+phoneLen+6])
 		end += 4
+	} else {
+		h.SubPackageSum = 0
+		h.SubPackageNo = 0
 	}
 	h.headEnd = end
 	return nil
@@ -222,23 +226,21 @@ func (h *Header) createPackage(body []byte, num, sum uint16) []byte {
 func (p *BodyProperty) decode(data []byte) {
 	attribute := binary.BigEndian.Uint16(data)
 	p.attribute = attribute
-	p.bit15 = byte(attribute & 0x8000)      // 第15位 保留
-	p.bit14 = byte((attribute >> 14) & 0b1) // 第14位 协议版本 0-2013 1-2019
+	p.bit15 = byte((attribute & 0b1000_0000_0000_0000) >> 15) // bit15 保留
+	p.bit14 = byte((attribute & 0b0100_0000_0000_0000) >> 14) // bit14 协议版本 0-2013 1-2019
 	p.Version = p.bit14
-	p.PacketFragmented = byte((attribute >> 13) & 0b1) // 第13位 分包
-	if p.PacketFragmented == 1 {
-		p.isSubPackage = true
-	}
-	p.EncryptMethod = uint8((attribute & 0x400) >> 10) // 第10-12位 加密方式 0-不加密 1-RSA
-	p.BodyDayaLen = attribute & 0x3FF                  // 最低10位 消息体长度 3=011 F=1111
+	p.PacketFragmented = byte((attribute & 0b0010_0000_0000_0000) >> 13) // bit13 分包
+	p.isSubPackage = p.PacketFragmented == 1
+	p.EncryptMethod = uint8((attribute & 0b0001_1100_0000_0000) >> 10) // bit10-12 加密方式 0-不加密 1-RSA
+	p.BodyDayaLen = attribute & 0b0000_0011_1111_1111                  // bit0-9 消息体长度
 }
 
 func (p *BodyProperty) encode() uint16 {
-	return (uint16(p.bit15) << 15) | // 第15位 保留
-		(uint16(p.Version) << 14) | // 第14位 协议版本 0-2013 1-2019
-		(uint16(p.PacketFragmented) << 13) | // 第13位 分包
-		(uint16(p.EncryptMethod) << 10) | // 第10位 加密方式
-		p.BodyDayaLen // 最低10位 消息体长度
+	return (uint16(p.bit15&0b1) << 15) | // bit15 保留
+		(uint16(p.Version&0b1) << 14) | // bit14 协议版本 0-2013 1-2019
+		(uint16(p.PacketFragmented&0b1) << 13) | // bit13 分包
+		(uint16(p.EncryptMethod&0b111) << 10) | // bit10-12 加密方式
+		(p.BodyDayaLen & 0b0000_0011_1111_1111) // bit0-9 消息体长度
 }
 
 func (h *Header) String() string {

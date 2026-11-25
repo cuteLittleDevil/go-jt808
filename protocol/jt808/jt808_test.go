@@ -2,6 +2,7 @@ package jt808
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -73,11 +74,62 @@ func TestJTMessageDecode(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			jtMsg := NewJTMessage()
 			arg, _ := hex.DecodeString(tt.args)
-			if err := jtMsg.Decode(arg); err != nil {
-				if !errors.Is(err, tt.wantErr) {
-					t.Errorf("Decode() error = %v, wantErr %v", err, tt.wantErr)
-				}
-				return
+			err := jtMsg.Decode(arg)
+			if !errors.Is(err, tt.wantErr) {
+				t.Errorf("Decode() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestBodyProperty_Bit15AndEncryptMethod(t *testing.T) {
+	tests := []struct {
+		name        string
+		raw         uint16
+		wantBit15   byte
+		wantVersion uint8
+		wantFrag    uint8
+		wantEncrypt uint8
+		wantBodyLen uint16
+	}{
+		{
+			name:        "bit15置1且可无损编回",
+			raw:         0x800A,
+			wantBit15:   1,
+			wantBodyLen: 10,
+		},
+		{
+			name:        "加密方式bit11置1(值=2)",
+			raw:         0x0805,
+			wantEncrypt: 2,
+			wantBodyLen: 5,
+		},
+		{
+			name:        "加密方式bit10-12全1(值=7)+2019+分包",
+			raw:         0xFC10,
+			wantBit15:   1,
+			wantVersion: 1,
+			wantFrag:    1,
+			wantEncrypt: 7,
+			wantBodyLen: 16,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var b [2]byte
+			binary.BigEndian.PutUint16(b[:], tt.raw)
+
+			var p BodyProperty
+			p.decode(b[:])
+			if p.bit15 != tt.wantBit15 ||
+				p.Version != tt.wantVersion ||
+				p.PacketFragmented != tt.wantFrag ||
+				p.EncryptMethod != tt.wantEncrypt ||
+				p.BodyDayaLen != tt.wantBodyLen {
+				t.Fatalf("decode(0x%04x) = %+v", tt.raw, p)
+			}
+			if got := p.encode(); got != tt.raw {
+				t.Fatalf("encode() = 0x%04x, want 0x%04x", got, tt.raw)
 			}
 		})
 	}
@@ -301,5 +353,34 @@ func TestString(t *testing.T) {
 				t.Errorf("Encode() = %s\n want %s", got, string(txt))
 			}
 		})
+	}
+}
+
+func TestJTMessageDecode_ReuseSubPackageReset(t *testing.T) {
+	base := NewJTMessage()
+	rawBase, _ := hex.DecodeString("7e0002000001234567890100008a7e")
+	if err := base.Decode(rawBase); err != nil {
+		t.Fatalf("Decode base failed: %v", err)
+	}
+	packets := base.Header.EncodePackets(make([]byte, maxBodyLength+1))
+	if len(packets) != 2 {
+		t.Fatalf("EncodePackets len = %d, want 2", len(packets))
+	}
+
+	reused := NewJTMessage()
+	if err := reused.Decode(packets[0]); err != nil {
+		t.Fatalf("Decode subpackage failed: %v", err)
+	}
+	if reused.Header.SubPackageSum != 2 || reused.Header.SubPackageNo != 1 || !reused.Header.Property.isSubPackage {
+		t.Fatalf("subpackage header unexpected: sum=%d no=%d isSub=%v",
+			reused.Header.SubPackageSum, reused.Header.SubPackageNo, reused.Header.Property.isSubPackage)
+	}
+
+	if err := reused.Decode(rawBase); err != nil {
+		t.Fatalf("Decode non-subpackage on reused JTMessage failed: %v", err)
+	}
+	if reused.Header.SubPackageSum != 0 || reused.Header.SubPackageNo != 0 || reused.Header.Property.isSubPackage {
+		t.Fatalf("reused header stale subpackage state: sum=%d no=%d isSub=%v",
+			reused.Header.SubPackageSum, reused.Header.SubPackageNo, reused.Header.Property.isSubPackage)
 	}
 }

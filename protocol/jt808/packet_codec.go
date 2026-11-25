@@ -2,6 +2,7 @@ package jt808
 
 import (
 	"bytes"
+
 	"github.com/cuteLittleDevil/go-jt808/protocol"
 )
 
@@ -13,28 +14,28 @@ func unescape(data []byte) ([]byte, error) {
 	if !(len(data) > 2 && data[0] == afterRecover && data[len(data)-1] == afterRecover) {
 		return nil, protocol.ErrUnqualifiedData
 	}
-	// 快速路径 没有需要转义的
-	if !bytes.ContainsRune(data, beforeEscape) {
-		return data[1 : len(data)-1], nil
+	inner := data[1 : len(data)-1]
+	// 快速路径：没有需要反转义的字节，直接零拷贝返回切片
+	if bytes.IndexByte(inner, beforeEscape) == -1 {
+		return inner, nil
 	}
 
-	buf := new(bytes.Buffer)
+	buf := make([]byte, 0, len(inner))
 	index := 1
 	for i := 1; i < len(data)-1; i++ {
-		if v := data[i]; v == beforeEscape {
+		if data[i] == beforeEscape {
 			i++
 			switch data[i] {
 			case 0x01:
-				buf.Write(data[index : i-1])
-				buf.WriteByte(beforeEscape)
+				buf = append(buf, data[index:i-1]...)
+				buf = append(buf, beforeEscape)
 			case 0x02:
-				buf.Write(data[index : i-1])
-				buf.WriteByte(afterRecover)
+				buf = append(buf, data[index:i-1]...)
+				buf = append(buf, afterRecover)
 			default:
 				// 兼容一下设备校验码不转义的情况
 				if i == len(data)-1 {
-					buf.Write(data[index : len(data)-1])
-					return buf.Bytes(), nil
+					return append(buf, data[index:len(data)-1]...), nil
 				}
 				return nil, protocol.ErrUnqualifiedData
 			}
@@ -42,9 +43,9 @@ func unescape(data []byte) ([]byte, error) {
 		}
 	}
 	if index != len(data)-1 {
-		buf.Write(data[index : len(data)-1])
+		buf = append(buf, data[index:len(data)-1]...)
 	}
-	return buf.Bytes(), nil
+	return buf, nil
 }
 
 func escape(data []byte) []byte {
@@ -52,23 +53,32 @@ func escape(data []byte) []byte {
 		flag0x7d = 0x7d // 转义标志 0x7d -> 0x7d 0x01
 		flag0x7e = 0x7e // 转义标志 0x7e -> 0x7d 0x02
 	)
-	buf := new(bytes.Buffer)
-	buf.WriteByte(flag0x7e)
+	// 快速路径：无 0x7d/0x7e 时直接一次分配并整块拷贝
+	if bytes.IndexByte(data, flag0x7e) == -1 && bytes.IndexByte(data, flag0x7d) == -1 {
+		out := make([]byte, len(data)+2)
+		out[0] = flag0x7e
+		copy(out[1:], data)
+		out[len(out)-1] = flag0x7e
+		return out
+	}
+
+	buf := make([]byte, 0, len(data)+4)
+	buf = append(buf, flag0x7e)
 	index := 0
 	for i := 0; i < len(data); i++ {
 		switch data[i] {
 		case flag0x7e:
-			buf.Write(data[index:i])
-			buf.Write([]byte{0x7d, 0x02})
+			buf = append(buf, data[index:i]...)
+			buf = append(buf, flag0x7d, 0x02)
 			index = i + 1
 		case flag0x7d:
-			buf.Write(data[index:i])
-			buf.Write([]byte{0x7d, 0x01})
+			buf = append(buf, data[index:i]...)
+			buf = append(buf, flag0x7d, 0x01)
 			index = i + 1
 		default:
 		}
 	}
-	buf.Write(data[index:])
-	buf.WriteByte(flag0x7e)
-	return buf.Bytes()
+	buf = append(buf, data[index:]...)
+	buf = append(buf, flag0x7e)
+	return buf
 }

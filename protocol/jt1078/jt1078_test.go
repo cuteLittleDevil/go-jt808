@@ -227,3 +227,47 @@ func TestEncode(t *testing.T) {
 		})
 	}
 }
+
+func TestDecode_ReuseAndRoundTrip(t *testing.T) {
+	// 构造带非零时间戳与帧间隔的视频 I 帧
+	videoSrc := NewCustomPacket("295696659617", 1, func(p *Packet) {
+		p.Flag.M = 1
+		p.Flag.PT = PTH264
+		p.DataType = DataTypeI
+		p.Timestamp = 123456789
+		p.LastIFrameInterval = 1000
+		p.LastFrameInterval = 40
+		p.Body = []byte{0xaa, 0xbb}
+	})
+	videoRaw, err := videoSrc.Encode()
+	if err != nil {
+		t.Fatalf("Encode video failed: %v", err)
+	}
+
+	// 1. 先解码视频帧并校验 Decode -> Encode 往返（含 bcdTerminalPhoneNo）
+	reused := NewPacket()
+	if remain, err := reused.Decode(videoRaw); err != nil || len(remain) != 0 {
+		t.Fatalf("Decode video failed: remain=%x err=%v", remain, err)
+	}
+	if !reused.videoFrame || reused.Timestamp != 123456789 ||
+		reused.LastIFrameInterval != 1000 || reused.LastFrameInterval != 40 {
+		t.Fatalf("unexpected video packet fields: %+v", reused)
+	}
+	if got, err := reused.Encode(); err != nil || !bytes.Equal(got, videoRaw) {
+		t.Fatalf("video round-trip mismatch: err=%v got=%x want=%x", err, got, videoRaw)
+	}
+
+	// 2. 复用同一个 Packet 解码透传帧，校验 videoFrame/Timestamp/Interval 已清零且不越界
+	penetrateRaw, _ := hex.DecodeString("3031636481e200002956966596170240000101")
+	if remain, err := reused.Decode(penetrateRaw); err != nil || len(remain) != 0 {
+		t.Fatalf("Decode penetrate on reused packet failed: remain=%x err=%v", remain, err)
+	}
+	if reused.videoFrame || reused.Timestamp != 0 ||
+		reused.LastIFrameInterval != 0 || reused.LastFrameInterval != 0 ||
+		reused.DataBodyLen != 1 || !bytes.Equal(reused.Body, []byte{0x01}) {
+		t.Fatalf("stale state on reused penetrate packet: %+v", reused)
+	}
+	if got, err := reused.Encode(); err != nil || !bytes.Equal(got, penetrateRaw) {
+		t.Fatalf("penetrate round-trip mismatch: err=%v got=%x want=%x", err, got, penetrateRaw)
+	}
+}

@@ -45,10 +45,11 @@ func Test_unescape(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			arg, _ := hex.DecodeString(tt.args)
 			got, err := unescape(arg)
+			if !errors.Is(err, tt.wantErr) {
+				t.Errorf("unescape() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
 			if err != nil {
-				if !errors.Is(err, tt.wantErr) {
-					t.Errorf("unescape() error = %v, wantErr %v", err, tt.wantErr)
-				}
 				return
 			}
 			want, _ := hex.DecodeString(tt.want)

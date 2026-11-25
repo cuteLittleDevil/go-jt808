@@ -136,7 +136,8 @@ func (p *Packet) decodeHead(data []byte) error {
 	}
 
 	p.Seq = binary.BigEndian.Uint16(data[6:8])
-	p.Sim = utils.Bcd2Dec(data[8:14])
+	p.bcdTerminalPhoneNo = data[8:14]
+	p.Sim = utils.Bcd2Dec(p.bcdTerminalPhoneNo)
 	p.LogicChannel = data[14]
 	p.DataType = DataType((data[15] >> 4) & 0x0F)
 	p.SubcontractType = SubcontractType(data[15] & 0x0F)
@@ -145,8 +146,8 @@ func (p *Packet) decodeHead(data []byte) error {
 	if p.DataType != DataTypePenetrate {
 		end += 8
 	}
-	if p.DataType == DataTypeI || p.DataType == DataTypeP || p.DataType == DataTypeB {
-		p.customAttributes.videoFrame = true
+	p.customAttributes.videoFrame = p.DataType == DataTypeI || p.DataType == DataTypeP || p.DataType == DataTypeB
+	if p.customAttributes.videoFrame {
 		end += 4
 	}
 
@@ -157,11 +158,16 @@ func (p *Packet) decodeHead(data []byte) error {
 	if p.DataType != DataTypePenetrate {
 		p.Timestamp = binary.BigEndian.Uint64(data[16:24])
 		start = 24
+	} else {
+		p.Timestamp = 0
 	}
 	if p.customAttributes.videoFrame {
 		p.LastIFrameInterval = binary.BigEndian.Uint16(data[start : start+2])
 		p.LastFrameInterval = binary.BigEndian.Uint16(data[start+2 : start+4])
 		start += 4
+	} else {
+		p.LastIFrameInterval = 0
+		p.LastFrameInterval = 0
 	}
 	p.DataBodyLen = binary.BigEndian.Uint16(data[start : start+2])
 	p.headEnd = start + 2

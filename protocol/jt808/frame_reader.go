@@ -60,14 +60,7 @@ func (r *FrameReader) FeedSingleComplete(data []byte) (frame []byte, ok bool) {
 	if len(r.historyData) != 0 || len(data) <= 2 || data[0] != sign || data[len(data)-1] != sign {
 		return nil, false
 	}
-	count := 0
-	index := bytes.IndexFunc(data, func(b rune) bool {
-		if byte(b) == sign {
-			count++
-		}
-		return count == 2
-	})
-	if index != len(data)-1 {
+	if bytes.IndexByte(data[1:], sign) != len(data)-2 {
 		return nil, false
 	}
 	return data, true
@@ -86,18 +79,14 @@ func (r *FrameReader) Append(data []byte) {
 // 取出的 frame 是 historyData 的子切片，随后会前移缓冲区偏移，零拷贝.
 func (r *FrameReader) PopFrame() (frame []byte, ok bool) {
 	const sign = FrameSign
-	end := -1
-	if len(r.historyData) > 2 && r.historyData[0] == sign {
-		for i := 1; i < len(r.historyData); i++ {
-			if r.historyData[i] == sign {
-				end = i + 1
-				break
-			}
-		}
-	}
-	if end == -1 {
+	if len(r.historyData) <= 2 || r.historyData[0] != sign {
 		return nil, false
 	}
+	idx := bytes.IndexByte(r.historyData[1:], sign)
+	if idx == -1 {
+		return nil, false
+	}
+	end := idx + 2
 	frame = r.historyData[:end]
 	if end == len(r.historyData) {
 		r.historyData = r.historyData[0:0]
