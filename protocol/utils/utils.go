@@ -3,10 +3,11 @@ package utils
 import (
 	"bytes"
 	"fmt"
-	"golang.org/x/text/encoding/simplifiedchinese"
-	"golang.org/x/text/transform"
 	"io"
 	"strings"
+
+	"golang.org/x/text/encoding/simplifiedchinese"
+	"golang.org/x/text/transform"
 )
 
 func Bcd2Dec(data []byte) string {
@@ -47,9 +48,10 @@ func Time2BCD(time string) []byte {
 	}
 	if strings.ContainsAny(time, "-: ") {
 		time = strings.NewReplacer("-", "", ":", "", " ", "").Replace(time)
-		if len(time) == 14 {
-			time = time[2:]
-		}
+	}
+	// 14 位是 YYYYMMDDHHMMSS。协议时间只有 6 字节，丢掉世纪两位。
+	if len(time) == 14 {
+		time = time[2:]
 	}
 	if len(time)%2 != 0 {
 		time = "0" + time

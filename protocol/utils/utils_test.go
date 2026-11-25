@@ -156,6 +156,12 @@ func TestTime2BCD(t *testing.T) {
 	if hyphen := Time2BCD("24-11-27-15-42-30"); !reflect.DeepEqual(hyphen, []byte{0x24, 0x11, 0x27, 0x15, 0x42, 0x30}) {
 		t.Errorf("Time2BCD(hyphen) got = %x", hyphen)
 	}
+	compact := Time2BCD("20241001000000")
+	formatted := Time2BCD("2024-10-01 00:00:00")
+	wantCompact := []byte{0x24, 0x10, 0x01, 0x00, 0x00, 0x00}
+	if !reflect.DeepEqual(compact, wantCompact) || !reflect.DeepEqual(formatted, wantCompact) {
+		t.Errorf("Time2BCD(14-digit) compact=%x formatted=%x want=%x", compact, formatted, wantCompact)
+	}
 }
 
 func BenchmarkTime2BCD(b *testing.B) {
@@ -181,9 +187,9 @@ func TestBCD2Time(t *testing.T) {
 			want: "2024-10-01 00:00:00",
 		},
 		{
-			name: "7位的时间",
+			name: "14位紧凑时间",
 			args: "20241001000000",
-			want: "20241001000000",
+			want: "2024-10-01 00:00:00",
 		},
 		{
 			name: "非正常的时间格式",
