@@ -77,7 +77,8 @@ func (c *connection) run() {
 		if c.readTimeout > 0 {
 			_ = c.conn.SetReadDeadline(time.Now().Add(c.readTimeout))
 		}
-		if n, err := c.conn.Read(curData); err != nil {
+		n, err := c.conn.Read(curData)
+		if err != nil {
 			progress.ExtensionFields.Debug.NetErr = err
 			progress.ExtensionFields.Debug.HistoryData = progress.historyData
 			if errors.Is(err, net.ErrClosed) || errors.Is(err, io.EOF) {
@@ -85,27 +86,34 @@ func (c *connection) run() {
 			}
 			progress.ExtensionFields.Err = err
 			return
-		} else if n > 0 {
-			progress.historyData = append(progress.historyData, curData[:n]...)
-			for err := range progress.iter() {
-				if err == nil {
-					if progress.hasJT808Reply() {
-						data, err := progress.handle.ReplyData()
-						progress.ExtensionFields.RecentPlatformData = data
-						progress.ExtensionFields.Err = err
-						if _, err := c.conn.Write(data); err != nil {
-							progress.ExtensionFields.Err = errors.Join(err, progress.ExtensionFields.Err)
-						}
-					}
-					c.fileEventer.OnEvent(progress)
-				} else if errors.Is(err, ErrInsufficientDataLen) {
-					// 是数据长度不够的错误情况 就结束
-					break
-				} else {
-					progress.ExtensionFields.Err = err
-					return
-				}
-			}
+		}
+		if n > 0 && !c.handleReadData(progress, curData[:n]) {
+			return
 		}
 	}
+}
+
+func (c *connection) handleReadData(progress *PackageProgress, data []byte) bool {
+	progress.historyData = append(progress.historyData, data...)
+	for err := range progress.iter() {
+		switch {
+		case err == nil:
+			if progress.hasJT808Reply() {
+				reply, replyErr := progress.handle.ReplyData()
+				progress.ExtensionFields.RecentPlatformData = reply
+				progress.ExtensionFields.Err = replyErr
+				if _, writeErr := c.conn.Write(reply); writeErr != nil {
+					progress.ExtensionFields.Err = errors.Join(writeErr, progress.ExtensionFields.Err)
+				}
+			}
+			c.fileEventer.OnEvent(progress)
+		case errors.Is(err, ErrInsufficientDataLen):
+			// 是数据长度不够的错误情况 就结束
+			return true
+		default:
+			progress.ExtensionFields.Err = err
+			return false
+		}
+	}
+	return true
 }
