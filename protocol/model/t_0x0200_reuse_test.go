@@ -303,7 +303,7 @@ func TestProtocolModelFixes(t *testing.T) {
 	hookCalled := 0
 	p8103.TerminalParamDetails.ParamParseBeforeFunc = func(uint32, []byte) { hookCalled++ }
 	body1 := []byte{
-		4, // 4 个参数：0x018, 0x019, 0x021, 0x9999(未知)
+		4,                                                    // 4 个参数：0x018, 0x019, 0x021, 0x9999(未知)
 		0x00, 0x00, 0x00, 0x18, 0x04, 0x00, 0x00, 0x1F, 0x90, // 8080
 		0x00, 0x00, 0x00, 0x19, 0x04, 0x00, 0x00, 0x1F, 0x91, // 8081
 		0x00, 0x00, 0x00, 0x21, 0x04, 0x00, 0x00, 0x00, 0x01, // 1
@@ -513,6 +513,98 @@ func TestSecondPassProtocolFixes(t *testing.T) {
 	var got8302Long P0x8302
 	if err := got8302Long.Parse(&jt808.JTMessage{Body: longQuestionBody}); err != nil || len(got8302Long.AnswerList) != 1 {
 		t.Fatalf("P0x8302 QuestionContentLen=255 failed: err=%v answers=%d", err, len(got8302Long.AnswerList))
+	}
+}
+
+func TestT0x0100VersionByModelPadding(t *testing.T) {
+	vinBody := make([]byte, 0, 42)
+	vinBody = binary.BigEndian.AppendUint16(vinBody, 31)
+	vinBody = binary.BigEndian.AppendUint16(vinBody, 115)
+	vinBody = append(vinBody, []byte("cdxxxmodel123term001")...)
+	vinBody = append(vinBody, 0)
+	vinBody = append(vinBody, []byte("LSVAA4182E2123456")...)
+	for _, version := range []consts.ProtocolVersionType{consts.JT808Protocol2011, consts.JT808Protocol2013} {
+		var reg T0x0100
+		if err := reg.Parse(&jt808.JTMessage{
+			Header: &jt808.Header{ProtocolVersion: version},
+			Body:   vinBody,
+		}); err != nil {
+			t.Fatalf("2011 VIN header %d Parse() error = %v", version, err)
+		}
+		if reg.Version != consts.JT808Protocol2011 ||
+			reg.ManufacturerID != "cdxxx" ||
+			reg.TerminalModel != "model123" ||
+			reg.TerminalID != "term001" ||
+			reg.PlateColor != 0 ||
+			reg.LicensePlateNumber != "LSVAA4182E2123456" {
+			t.Fatalf("2011 VIN header %d fields = %+v", version, reg)
+		}
+	}
+
+	padded := make([]byte, 37)
+	for i := 9; i < 24; i++ {
+		padded[i] = 'A'
+	}
+	padded[24] = 0x11
+	padded[36] = 0x22
+	for _, version := range []consts.ProtocolVersionType{consts.JT808Protocol2011, consts.JT808Protocol2013} {
+		var reg2013 T0x0100
+		if err := reg2013.Parse(&jt808.JTMessage{
+			Header: &jt808.Header{ProtocolVersion: version},
+			Body:   padded,
+		}); err != nil || reg2013.Version != consts.JT808Protocol2013 || reg2013.PlateColor != 0x22 {
+			t.Fatalf("padded 2013 header %d err=%v version=%d color=%#x", version, err, reg2013.Version, reg2013.PlateColor)
+		}
+	}
+
+	full := make([]byte, 37)
+	for i := 9; i < 29; i++ {
+		full[i] = 'B'
+	}
+	full[36] = 0x01
+	var regFull T0x0100
+	if err := regFull.Parse(&jt808.JTMessage{
+		Header: &jt808.Header{ProtocolVersion: consts.JT808Protocol2013},
+		Body:   full,
+	}); err != nil || regFull.Version != consts.JT808Protocol2013 || regFull.PlateColor != 0x01 {
+		t.Fatalf("full model err=%v version=%d color=%#x", err, regFull.Version, regFull.PlateColor)
+	}
+}
+
+func TestCargoQueryLocationAndFTPLen(t *testing.T) {
+	// 1. 载客：bit8 半载，bit9 保留，两者都置位为满载。
+	for _, tc := range []struct {
+		bit  byte
+		want uint8
+	}{
+		{0x01, 1},
+		{0x02, 2},
+		{0x03, 3},
+	} {
+		body := make([]byte, 28)
+		body[6] = tc.bit
+		var item T0x0200LocationItem
+		if err := item.parse(body); err != nil || item.StatusSignDetails.Cargo != tc.want {
+			t.Fatalf("cargo bit %#x err=%v cargo=%d, want %d", tc.bit, err, item.StatusSignDetails.Cargo, tc.want)
+		}
+	}
+
+	// 2. 0x9206 地址长度按 FTPAddrLen 原样写入。
+	cmd := P0x9206{
+		FTPAddrLen:        4,
+		FTPAddr:           "1.2.3.4",
+		UsernameLen:       1,
+		Username:          "u",
+		PasswordLen:       1,
+		Password:          "p",
+		FileUploadPathLen: 1,
+		FileUploadPath:    "/",
+		StartTime:         "2020-01-01 00:00:00",
+		EndTime:           "2020-01-01 00:00:01",
+	}
+	encoded := cmd.Encode()
+	if encoded[0] != 4 {
+		t.Fatalf("FTPAddrLen byte = %d, want 4", encoded[0])
 	}
 }
 

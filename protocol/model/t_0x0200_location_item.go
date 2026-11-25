@@ -275,7 +275,8 @@ func (s *StatusSignDetails) parse(statusSign uint32) {
 		Encryption:     (statusSign & (1 << 5)) != 0,
 		EmergencyBrake: (statusSign & (1 << 6)) != 0,
 		LaneOffset:     (statusSign & (1 << 7)) != 0,
-		Cargo:          uint8((((statusSign >> 8) & 1) << 1) | ((statusSign >> 9) & 1)),
+		// bit8 为低位：01 半载，10 保留
+		Cargo:          uint8((statusSign >> 8) & 0x03),
 		Oil:            (statusSign & (1 << 10)) != 0,
 		Electricity:    (statusSign & (1 << 11)) != 0,
 		VehicleDoor:    (statusSign & (1 << 12)) != 0,

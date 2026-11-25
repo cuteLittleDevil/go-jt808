@@ -112,7 +112,7 @@ func (p *P0x9206) Parse(jtMsg *jt808.JTMessage) error {
 
 func (p *P0x9206) Encode() []byte {
 	data := make([]byte, 0, 100)
-	data = append(data, byte(len(p.FTPAddr)))
+	data = append(data, p.FTPAddrLen)
 	data = append(data, p.FTPAddr...)
 	data = binary.BigEndian.AppendUint16(data, p.Port)
 	data = append(data, p.UsernameLen)

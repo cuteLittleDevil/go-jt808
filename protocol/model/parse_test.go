@@ -1249,11 +1249,12 @@ func TestT0x0200LocationItemString(t *testing.T) {
 		return
 	}
 
+	// bit8 为低位。1<<23-1-512 只留 bit8，半载对应 01；1<<23-1-256 只留 bit9，保留对应 10。
 	infos := map[uint32]string{
 		1<<23 - 1:             "./testdata/0x0200_status_sign_03.txt",
 		1<<23 - 1 - 256 - 512: "./testdata/0x0200_status_sign_00.txt",
-		1<<23 - 1 - 256:       "./testdata/0x0200_status_sign_01.txt",
-		1<<23 - 1 - 512:       "./testdata/0x0200_status_sign_02.txt",
+		1<<23 - 1 - 512:       "./testdata/0x0200_status_sign_01.txt",
+		1<<23 - 1 - 256:       "./testdata/0x0200_status_sign_02.txt",
 	}
 	for statusSign, signPath := range infos {
 		var tmp T0x0200LocationItem

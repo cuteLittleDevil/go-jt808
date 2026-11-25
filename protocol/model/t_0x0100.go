@@ -58,32 +58,10 @@ func (t *T0x0100) ReplyProtocol() consts.JT808CommandType {
 }
 
 func (t *T0x0100) Parse(jtMsg *jt808.JTMessage) error {
-	var ( // 默认按照2011版本
-		mLen   = 5
-		tLen   = 8
-		tIDLen = 7
-	)
 	body := jtMsg.Body
-	if jtMsg.Header.ProtocolVersion == consts.JT808Protocol2019 {
-		mLen = 11
-		tLen = 30
-		tIDLen = 30
-		t.Version = consts.JT808Protocol2019
-	} else {
-		// 根据body长度判断是不是2011版本的 2013版本的车牌颜色是36
-		if len(body) > 36 {
-			t.Version = consts.JT808Protocol2013
-			mLen = 5
-			tLen = 20
-			tIDLen = 7
-		} else {
-			t.Version = consts.JT808Protocol2011
-		}
-	}
-
-	if t.Version == consts.JT808Protocol2011 && len(body) < 25 {
-		return protocol.ErrBodyLengthInconsistency
-	} else if t.Version == consts.JT808Protocol2019 && len(body) < 76 {
+	t.Version = chooseRegisterVersion(jtMsg.Header, body)
+	mLen, tLen, tIDLen := t.protocolDiff()
+	if len(body) < 4+mLen+tLen+tIDLen+1 {
 		return protocol.ErrBodyLengthInconsistency
 	}
 
@@ -144,6 +122,33 @@ func (t *T0x0100) String() string {
 		fmt.Sprintf("\t[%x] 车牌号:[%s]", data[4+mLen+tLen+tIDLen+1:], t.LicensePlateNumber),
 		"}",
 	}, "\n")
+}
+
+// bit14=1 才是 2019。2011 和 2013 的 bit14 都是 0，消息头分不出两者。
+// 消息体短于 37 字节只能是 2011；更长时看 20 字节型号是否以 0x00 补齐。
+func chooseRegisterVersion(header *jt808.Header, body []byte) consts.ProtocolVersionType {
+	if header.ProtocolVersion == consts.JT808Protocol2019 {
+		return consts.JT808Protocol2019
+	}
+	if len(body) < 37 || !registerModelPadded(body) {
+		return consts.JT808Protocol2011
+	}
+	return consts.JT808Protocol2013
+}
+
+// 2013 型号在 body[9:29)，不足补 0x00。2011 型号只有 8 字节，同一窗口会夹进终端号。
+func registerModelPadded(body []byte) bool {
+	model := body[9:29]
+	nul := bytes.IndexByte(model, 0)
+	if nul == -1 {
+		return true
+	}
+	for _, b := range model[nul:] {
+		if b != 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func (t *T0x0100) protocolDiff() (int, int, int) {

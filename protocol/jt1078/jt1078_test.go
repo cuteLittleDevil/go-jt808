@@ -301,3 +301,18 @@ func TestPacket_SubcontractTypeMaskAndString(t *testing.T) {
 		t.Fatalf("video Packet String() missing frame interval info: %s", s)
 	}
 }
+
+func TestPacket_EmptyBCD(t *testing.T) {
+	p := NewCustomPacket("12345678901", 1, func(p *Packet) {
+		p.bcdTerminalPhoneNo = nil
+		p.Body = []byte{0x11}
+	})
+	raw, err := p.Encode()
+	if err != nil {
+		t.Fatalf("Encode empty BCD failed: %v", err)
+	}
+	decoded := NewPacket()
+	if remain, err := decoded.Decode(raw); err != nil || len(remain) != 0 || decoded.Sim != "12345678901" {
+		t.Fatalf("empty BCD roundtrip: remain=%x err=%v sim=%s", remain, err, decoded.Sim)
+	}
+}
