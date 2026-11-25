@@ -3,11 +3,12 @@ package model
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/cuteLittleDevil/go-jt808/protocol"
-	"github.com/cuteLittleDevil/go-jt808/protocol/utils"
 	"reflect"
 	"sort"
 	"strings"
+
+	"github.com/cuteLittleDevil/go-jt808/protocol"
+	"github.com/cuteLittleDevil/go-jt808/protocol/utils"
 )
 
 type (
@@ -354,54 +355,69 @@ func (t *TerminalParamDetails) parseParam(id uint32, paramLen byte, content []by
 }
 
 func (t *TerminalParamDetails) encode() []byte {
-	data := make([]byte, 0, 1000)
+	items := make([]paramWire, 0, 32)
 	val := reflect.ValueOf(*t)
 	for i := 0; i < val.NumField(); i++ {
 		field := val.Field(i)
 		if field.CanInterface() {
 			switch v := field.Interface().(type) {
 			case ParamContent[byte]:
-				data = append(data, v.encode(func(b []byte, v byte) []byte {
-					b = append(b, v)
-					return b
-				})...)
+				items = t.appendParamWire(items, v.encode(func(b []byte, v byte) []byte {
+					return append(b, v)
+				}))
 			case ParamContent[uint16]:
-				data = append(data, v.encode(binary.BigEndian.AppendUint16)...)
+				items = t.appendParamWire(items, v.encode(binary.BigEndian.AppendUint16))
 			case ParamContent[uint32]:
-				data = append(data, v.encode(binary.BigEndian.AppendUint32)...)
+				items = t.appendParamWire(items, v.encode(binary.BigEndian.AppendUint32))
 			case ParamContent[[4]byte]:
-				data = append(data, v.encode(func(b []byte, v [4]byte) []byte {
-					for _, b2 := range v {
-						b = append(b, b2)
-					}
-					return b
-				})...)
+				items = t.appendParamWire(items, v.encode(func(b []byte, v [4]byte) []byte {
+					return append(b, v[:]...)
+				}))
 			case ParamContent[[8]byte]:
-				data = append(data, v.encode(func(b []byte, v [8]byte) []byte {
-					for _, b2 := range v {
-						b = append(b, b2)
-					}
-					return b
-				})...)
+				items = t.appendParamWire(items, v.encode(func(b []byte, v [8]byte) []byte {
+					return append(b, v[:]...)
+				}))
 			case ParamContent[string]:
-				data = append(data, v.encode(func(b []byte, v string) []byte {
+				items = t.appendParamWire(items, v.encode(func(b []byte, v string) []byte {
 					return append(b, utils.UTF82GBK([]byte(v))...)
-				})...)
+				}))
 			case map[uint32]ParamContent[[]byte]:
-				keys := make([]int, 0, 10)
+				keys := make([]int, 0, len(v))
 				for k := range v {
 					keys = append(keys, int(k))
 				}
 				sort.Ints(keys)
 				for _, key := range keys {
-					data = append(data, v[uint32(key)].encode(func(b []byte, v []byte) []byte {
+					items = t.appendParamWire(items, v[uint32(key)].encode(func(b []byte, v []byte) []byte {
 						return append(b, v...)
-					})...)
+					}))
 				}
 			}
 		}
 	}
+	sort.SliceStable(items, func(i, j int) bool {
+		return items[i].id < items[j].id
+	})
+	data := make([]byte, 0, 1000)
+	for _, item := range items {
+		data = append(data, item.raw...)
+	}
 	return data
+}
+
+type paramWire struct {
+	id  uint32
+	raw []byte
+}
+
+func (t *TerminalParamDetails) appendParamWire(items []paramWire, raw []byte) []paramWire {
+	if len(raw) < 4 {
+		return items
+	}
+	return append(items, paramWire{
+		id:  binary.BigEndian.Uint32(raw[:4]),
+		raw: raw,
+	})
 }
 
 func (p ParamContent[T]) encode(appendFunc func(b []byte, v T) []byte) []byte {

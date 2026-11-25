@@ -136,6 +136,93 @@ type (
 	}
 )
 
+// encode 按附加信息 ID 升序组包。ID 用 map 键。Len 按字段原样写，不按内容重算。
+// 有原始 Data 时用 Data，否则按标准字段重建。
+func (a *T0x0200AdditionDetails) encode() []byte {
+	if len(a.Additions) == 0 {
+		return nil
+	}
+	ids := make([]int, 0, len(a.Additions))
+	for id := range a.Additions {
+		ids = append(ids, int(id))
+	}
+	sort.Ints(ids)
+	data := make([]byte, 0, len(a.Additions)*8)
+	for _, id := range ids {
+		item := a.Additions[consts.JT808LocationAdditionType(id)]
+		payload := item.Content.Data
+		if len(payload) == 0 {
+			payload = a.additionContentBytes(uint8(id), item.Content)
+		}
+		data = append(data, uint8(id), item.Len)
+		data = append(data, payload...)
+	}
+	return data
+}
+
+func (a *T0x0200AdditionDetails) additionContentBytes(id uint8, content AdditionContent) []byte {
+	switch id {
+	case 0x01:
+		return binary.BigEndian.AppendUint32(nil, content.Mile)
+	case 0x02:
+		return binary.BigEndian.AppendUint16(nil, content.Oil)
+	case 0x03:
+		return binary.BigEndian.AppendUint16(nil, content.Speed)
+	case 0x04:
+		return binary.BigEndian.AppendUint16(nil, content.ManualAlarm)
+	case 0x05:
+		return a.tirePressureBytes(content.TirePressure)
+	case 0x06:
+		return binary.BigEndian.AppendUint16(nil, content.CarTemperature)
+	case 0x11:
+		return a.overSpeedAlarmBytes(content.OverSpeedAlarm)
+	case 0x12:
+		return a.areaAlarmBytes(content.AreaAlarm)
+	case 0x13:
+		return a.drivingTimeAlarmBytes(content.DrivingTimeInsufficientAlarm)
+	case 0x25:
+		return binary.BigEndian.AppendUint32(nil, content.ExtendVehicleStatus.Value)
+	case 0x2A:
+		return binary.BigEndian.AppendUint16(nil, content.IOStatus.Value)
+	case 0x2B:
+		return binary.BigEndian.AppendUint32(nil, content.Analog)
+	case 0x30:
+		return []byte{content.WIFISignalStrength}
+	case 0x31:
+		return []byte{content.GNSSPositionNum}
+	default:
+		return nil
+	}
+}
+
+func (a *T0x0200AdditionDetails) tirePressureBytes(tire AdditionTirePressure) []byte {
+	b := make([]byte, 30)
+	for k, v := range tire.Values {
+		if int(k) < len(b) {
+			b[k] = v
+		}
+	}
+	return b
+}
+
+func (a *T0x0200AdditionDetails) overSpeedAlarmBytes(alarm AdditionOverSpeedAlarm) []byte {
+	if alarm.LocationType == 0 {
+		return []byte{0}
+	}
+	return binary.BigEndian.AppendUint32([]byte{alarm.LocationType}, alarm.AreaID)
+}
+
+func (a *T0x0200AdditionDetails) areaAlarmBytes(alarm AdditionAreaAlarm) []byte {
+	b := binary.BigEndian.AppendUint32([]byte{alarm.LocationType}, alarm.AreaID)
+	return append(b, alarm.Direction)
+}
+
+func (a *T0x0200AdditionDetails) drivingTimeAlarmBytes(alarm AdditionDrivingTimeInsufficientAlarm) []byte {
+	b := binary.BigEndian.AppendUint32(nil, alarm.RoadSectionID)
+	b = binary.BigEndian.AppendUint16(b, alarm.RoadSectionDrivingTimeSecond)
+	return append(b, alarm.Result)
+}
+
 func (a *T0x0200AdditionDetails) parse(body []byte) error {
 	index := 0
 	contrastFunc := func(id uint8, additionLen uint8) bool {

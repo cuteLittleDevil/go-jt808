@@ -78,7 +78,9 @@ func (t *T0x0704) Encode() []byte {
 	binary.BigEndian.PutUint16(data[:2], t.Num)
 	data[2] = t.LocationType
 	for i := 0; i < len(t.Items); i++ {
-		body := t.Items[i].encode()
+		// 数据项长度是位置体加附加信息的实际字节数。Num 仍按字段原样写。
+		body := t.Items[i].T0x0200LocationItem.encode()
+		body = append(body, t.Items[i].T0x0200AdditionDetails.encode()...)
 		data = binary.BigEndian.AppendUint16(data, uint16(len(body)))
 		data = append(data, body...)
 	}

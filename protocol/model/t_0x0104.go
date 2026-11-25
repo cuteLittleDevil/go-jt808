@@ -20,7 +20,10 @@ type T0x0104 struct {
 }
 
 func (t *T0x0104) Encode() []byte {
-	return nil
+	data := make([]byte, 3, 64)
+	binary.BigEndian.PutUint16(data[:2], t.RespondSerialNumber)
+	data[2] = t.RespondParamCount
+	return append(data, t.TerminalParamDetails.encode()...)
 }
 
 func (t *T0x0104) Protocol() consts.JT808CommandType {

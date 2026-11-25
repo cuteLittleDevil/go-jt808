@@ -32,7 +32,8 @@ func (t *T0x0200) Parse(jtMsg *jt808.JTMessage) error {
 }
 
 func (t *T0x0200) Encode() []byte {
-	return t.T0x0200LocationItem.encode()
+	data := t.T0x0200LocationItem.encode()
+	return append(data, t.T0x0200AdditionDetails.encode()...)
 }
 
 func (t *T0x0200) String() string {
