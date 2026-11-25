@@ -28,9 +28,6 @@ func (d *BaseJT808DataHandler[T1210, T1211, T1212]) Parse(jtMsg *jt808.JTMessage
 	d.Command = consts.JT808CommandType(jtMsg.Header.ID)
 	switch d.Command {
 	case consts.T1210AlarmAttachInfoMessage:
-		d.once.Do(func() {
-			d.head = jtMsg.Header
-		})
 		return d.T0x1210.Parse(jtMsg)
 	case consts.T1211FileInfoUpload:
 		return d.T0x1211.Parse(jtMsg)

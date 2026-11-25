@@ -4,17 +4,17 @@ import (
 	"fmt"
 	"github.com/cuteLittleDevil/go-jt808/protocol/model"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
 type fileEvent struct {
-	file *os.File
+	saveRoot string
 }
 
 func newFileEvent() *fileEvent {
-	f, _ := os.OpenFile("file.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o666)
 	return &fileEvent{
-		file: f,
+		saveRoot: ".",
 	}
 }
 
@@ -22,10 +22,6 @@ func (f *fileEvent) OnEvent(progress *PackageProgress) {
 	str := fmt.Sprintf("当前进度: [%s] ", progress.ProgressStage.String())
 	defer func() {
 		fmt.Println(str)
-		if f.file != nil {
-			_, _ = f.file.WriteString(str)
-			_ = f.file.Sync()
-		}
 	}()
 	extension := progress.ExtensionFields
 	switch progress.ProgressStage {
@@ -73,10 +69,17 @@ func (f *fileEvent) OnEvent(progress *PackageProgress) {
 		phone := progress.ExtensionFields.TerminalPhoneNo
 		str += fmt.Sprintf(" 文件传输成功 开始保存 保存数量[%d] 地方标准[%s]\n",
 			len(progress.Record), progress.ExtensionFields.ActiveSafetyType.String())
-		_ = os.MkdirAll(phone, os.ModePerm)
+		root := f.saveRoot
+		if root == "" {
+			root = "."
+		}
 		for name, pack := range progress.Record {
-			savePath := fmt.Sprintf("./%s/%s", phone, name)
-			err := os.WriteFile(savePath, pack.StreamBody, os.ModePerm)
+			dir, savePath, err := safeSavePath(root, phone, name)
+			if err == nil {
+				if err = os.MkdirAll(dir, 0o750); err == nil {
+					err = os.WriteFile(savePath, pack.StreamBody, 0o640)
+				}
+			}
 			str += fmt.Sprintf("保存文件[%s] 文件大小[%d byte] 保存情况[%v]\n",
 				savePath, len(pack.StreamBody), err)
 		}
@@ -85,4 +88,23 @@ func (f *fileEvent) OnEvent(progress *PackageProgress) {
 			extension.Debug.RemoteAddr, extension.Debug.NetErr, extension.Debug.HistoryData)
 	default:
 	}
+}
+
+func safeSavePath(root, phone, name string) (dir string, savePath string, err error) {
+	if !isSafePathSegment(phone) || !isSafePathSegment(name) {
+		return "", "", fmt.Errorf("unsafe save path: phone=%q name=%q", phone, name)
+	}
+	dir = filepath.Join(root, phone)
+	savePath = filepath.Join(dir, name)
+	return dir, savePath, nil
+}
+
+func isSafePathSegment(s string) bool {
+	if s == "" || s == "." || s == ".." {
+		return false
+	}
+	if strings.ContainsAny(s, "/\\\x00") {
+		return false
+	}
+	return filepath.Base(s) == s
 }

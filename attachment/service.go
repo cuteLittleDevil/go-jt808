@@ -33,7 +33,7 @@ func (g *GoJT808) Run() {
 				slog.Any("err", err))
 			continue
 		}
-		conn := newConnection(c, g.opts.ActiveSafetyType, g.opts.DataHandleFunc, g.opts.FileEventerFunc())
+		conn := newConnection(c, g.opts.ActiveSafetyType, g.opts.DataHandleFunc, g.opts.FileEventerFunc(), g.opts.ReadTimeout)
 		go conn.run()
 	}
 }

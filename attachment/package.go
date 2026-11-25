@@ -93,7 +93,9 @@ func (p *Package) StatisticalMissSegments() []model.P0x9212RetransmitPacket {
 					DataLength: segment.DataOffset - currentOffset,
 				})
 			}
-			currentOffset = segment.DataOffset + segment.DataLength
+			if end := segment.DataOffset + segment.DataLength; end > currentOffset {
+				currentOffset = end
+			}
 		}
 	}
 
@@ -112,10 +114,14 @@ func (p *PackageProgress) iter() func(func(err error) bool) {
 	return func(yield func(err error) bool) {
 		for len(p.historyData) > 0 {
 			if err := p.stageStreamData(); err == nil {
-				yield(nil)
+				if !yield(nil) {
+					return
+				}
 			} else if errors.Is(err, _errNotStreamData) { // 不是流数据格式的 换一个格式试一试
 				if err := p.stageJT808Data(); err == nil {
-					yield(nil)
+					if !yield(nil) {
+						return
+					}
 				} else {
 					yield(err)
 					return
@@ -137,6 +143,9 @@ func (p *PackageProgress) stageStreamData() error {
 		return ErrInsufficientDataLen
 	}
 	headLen, bodyLen := stream.Parse(p.historyData)
+	if headLen < 0 || bodyLen < 0 {
+		return ErrDataInconsistency
+	}
 	if len(p.historyData) >= headLen+bodyLen {
 		stream.OnInitEvent(p)
 		p.ProgressStage = ProgressStageStreamData
@@ -146,23 +155,39 @@ func (p *PackageProgress) stageStreamData() error {
 			return errors.Join(fmt.Errorf("name[%s] is not exist record[%v]",
 				name, p.Record), ErrDataInconsistency)
 		}
+		headCopy := bytes.Clone(p.historyData[:headLen])
+		chunk := bytes.Clone(p.historyData[headLen : headLen+bodyLen])
 		defer func() {
 			p.ExtensionFields.CurrentPackage = pack
 			p.Record[name] = pack
-			p.historyData = p.historyData[headLen+bodyLen:]
+			if headLen+bodyLen == len(p.historyData) {
+				p.historyData = p.historyData[:0]
+			} else {
+				p.historyData = p.historyData[headLen+bodyLen:]
+			}
 		}()
 		offset, dataLen := stream.GetDataOffsetAndLen()
 		pack.Offset = offset
-		pack.OffsetRecord[offset] = dataLen
-		pack.OffsetDataRecord[offset] = p.historyData[headLen : headLen+bodyLen]
-		pack.CurrentSize += uint32(bodyLen)
-		if pack.CurrentSize == pack.FileSize {
-			pack.StreamHead = p.historyData[:headLen]
-			keys := make([]int, 0)
+		if prevLen, exists := pack.OffsetRecord[offset]; exists {
+			// 重复/补传同一偏移分片时只补差量，避免 CurrentSize 双计超过 FileSize
+			if dataLen > prevLen {
+				pack.CurrentSize += uint32(dataLen - prevLen)
+				pack.OffsetRecord[offset] = dataLen
+				pack.OffsetDataRecord[offset] = chunk
+			}
+		} else {
+			pack.OffsetRecord[offset] = dataLen
+			pack.OffsetDataRecord[offset] = chunk
+			pack.CurrentSize += uint32(bodyLen)
+		}
+		if pack.CurrentSize == pack.FileSize && len(pack.StreamBody) == 0 {
+			pack.StreamHead = headCopy
+			keys := make([]int, 0, len(pack.OffsetDataRecord))
 			for key := range maps.Keys(pack.OffsetDataRecord) {
 				keys = append(keys, key)
 			}
 			sort.Ints(keys)
+			pack.StreamBody = make([]byte, 0, pack.FileSize)
 			for _, key := range keys {
 				pack.StreamBody = append(pack.StreamBody, pack.OffsetDataRecord[key]...)
 			}
@@ -179,9 +204,7 @@ func (p *PackageProgress) parseJT808Message() (*jt808.JTMessage, error) {
 		return nil, ErrInsufficientDataLen
 	}
 	const sign = 0x7e
-	index := bytes.IndexFunc(p.historyData[1:], func(r rune) bool {
-		return r == sign
-	})
+	index := bytes.IndexByte(p.historyData[1:], sign)
 	if index == -1 {
 		return nil, ErrInsufficientDataLen
 	}
@@ -190,7 +213,11 @@ func (p *PackageProgress) parseJT808Message() (*jt808.JTMessage, error) {
 	if err := jtMsg.Decode(p.historyData[:index]); err != nil {
 		return nil, fmt.Errorf("%w [%x]", err, p.historyData[:index])
 	}
-	p.historyData = p.historyData[index:]
+	if index == len(p.historyData) {
+		p.historyData = p.historyData[:0]
+	} else {
+		p.historyData = p.historyData[index:]
+	}
 	return jtMsg, nil
 }
 

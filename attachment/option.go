@@ -1,6 +1,9 @@
 package attachment
 
-import "github.com/cuteLittleDevil/go-jt808/shared/consts"
+import (
+	"github.com/cuteLittleDevil/go-jt808/shared/consts"
+	"time"
+)
 
 type Option struct {
 	F func(o *Options)
@@ -18,6 +21,8 @@ type Options struct {
 	FileEventerFunc  func() FileEventer
 	ActiveSafetyType consts.ActiveSafetyType
 	DataHandleFunc   func() DataHandler
+	// ReadTimeout 单次读超时，<= 0 表示不限制（默认 0）.
+	ReadTimeout time.Duration
 }
 
 func newOptions(opts []Option) *Options {
@@ -35,7 +40,7 @@ func newOptions(opts []Option) *Options {
 	return options
 }
 
-// WithHostPorts 修改运行地址 默认0.0.0.0:808.
+// WithHostPorts 修改运行地址 默认0.0.0.0:10808.
 func WithHostPorts(address string) Option {
 	return Option{F: func(o *Options) {
 		o.Addr = address
@@ -67,5 +72,14 @@ func WithActiveSafetyType(activeSafetyType consts.ActiveSafetyType) Option {
 func WithDataHandleFunc(handleFunc func() DataHandler) Option {
 	return Option{F: func(o *Options) {
 		o.DataHandleFunc = handleFunc
+	}}
+}
+
+// WithReadTimeout 设置附件连接单次读超时，<= 0 表示不启用.
+func WithReadTimeout(timeout time.Duration) Option {
+	return Option{F: func(o *Options) {
+		if timeout > 0 {
+			o.ReadTimeout = timeout
+		}
 	}}
 }

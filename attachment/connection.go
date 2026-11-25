@@ -5,6 +5,7 @@ import (
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 	"io"
 	"net"
+	"time"
 )
 
 type connection struct {
@@ -12,10 +13,11 @@ type connection struct {
 	activeSafetyType consts.ActiveSafetyType
 	dataHandleFunc   func() DataHandler
 	fileEventer      FileEventer
+	readTimeout      time.Duration
 }
 
 func newConnection(conn net.Conn, activeSafetyType consts.ActiveSafetyType,
-	customDataHandleFunc func() DataHandler, fileEventer FileEventer) *connection {
+	customDataHandleFunc func() DataHandler, fileEventer FileEventer, readTimeout time.Duration) *connection {
 	return &connection{
 		conn:             conn,
 		activeSafetyType: activeSafetyType,
@@ -26,6 +28,7 @@ func newConnection(conn net.Conn, activeSafetyType consts.ActiveSafetyType,
 			return customDataHandleFunc()
 		},
 		fileEventer: fileEventer,
+		readTimeout: readTimeout,
 	}
 }
 
@@ -71,6 +74,9 @@ func (c *connection) run() {
 	}()
 
 	for {
+		if c.readTimeout > 0 {
+			_ = c.conn.SetReadDeadline(time.Now().Add(c.readTimeout))
+		}
 		if n, err := c.conn.Read(curData); err != nil {
 			progress.ExtensionFields.Debug.NetErr = err
 			progress.ExtensionFields.Debug.HistoryData = progress.historyData
