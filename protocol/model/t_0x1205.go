@@ -52,7 +52,8 @@ func (t *T0x1205) Parse(jtMsg *jt808.JTMessage) error {
 	}
 	t.SerialNumber = binary.BigEndian.Uint16(body[0:2])
 	t.AudioVideoResourceTotal = binary.BigEndian.Uint32(body[2:6])
-	if len(body) != 6+int(t.AudioVideoResourceTotal)*28 {
+	// 转 int64 计算期望长度，防止 32 位架构下 int(uint32)*28 乘法溢出回绕绕过校验
+	if int64(len(body)) != 6+int64(t.AudioVideoResourceTotal)*28 {
 		return protocol.ErrBodyLengthInconsistency
 	}
 	t.AudioVideoResourceList = t.AudioVideoResourceList[:0]

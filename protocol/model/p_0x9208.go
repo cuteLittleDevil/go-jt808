@@ -126,8 +126,7 @@ func (p *P9208AlarmSign) encode() []byte {
 		data = append(data, p.AlarmReserve...)
 	}
 	if num := p.getAlarmSignLen() - len(data); num > 0 {
-		p.AlarmReserve = make([]byte, num)
-		data = append(data, p.AlarmReserve...) // 忘记写预留的情况 帮忙补0
+		data = append(data, make([]byte, num)...) // 忘记写预留的情况 帮忙补0
 	}
 	return data
 }
@@ -167,13 +166,18 @@ func (p *P9208AlarmSign) getAlarmSignLen() int {
 }
 
 func (p *P9208AlarmSign) String() string {
+	// 展示时补齐未显式填写的预留 0 字节，避免在 encode() 中原地修改结构体字段引发并发竞态
+	reserve := p.AlarmReserve
+	if num := p.getAlarmSignLen() - (p.getTerminalIDLen() + 8 + len(reserve)); num > 0 {
+		reserve = append(append([]byte(nil), reserve...), make([]byte, num)...)
+	}
 	return strings.Join([]string{
 		fmt.Sprintf("\t报警标识 [%s]{ 默认使用苏标", p.ActiveSafetyType.String()),
 		fmt.Sprintf("\t\t [%014x]终端ID:[%s]", p.TerminalID, p.TerminalID),
 		fmt.Sprintf("\t\t [%012x]时间:[%s]", utils.Time2BCD(p.Time), p.Time),
 		fmt.Sprintf("\t\t [%02x]序号:[%d]", p.SerialNumber, p.SerialNumber),
 		fmt.Sprintf("\t\t [%02x]附件数量:[%d]", p.AttachNumber, p.AttachNumber),
-		fmt.Sprintf("\t\t [%x]预留", p.AlarmReserve),
+		fmt.Sprintf("\t\t [%x]预留", reserve),
 		"\t}",
 	}, "\n")
 }

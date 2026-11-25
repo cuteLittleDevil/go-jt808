@@ -2,7 +2,6 @@ package utils
 
 import (
 	"encoding/hex"
-	"fmt"
 	"reflect"
 	"testing"
 )
@@ -79,6 +78,24 @@ func TestString2Bcd(t *testing.T) {
 			size: 3,
 			want: []byte{0x01, 0x23},
 		},
+		{
+			name: "size小于等于0返回nil",
+			sim:  "123",
+			size: 0,
+			want: nil,
+		},
+		{
+			name: "sim长度超过size取右侧末尾",
+			sim:  "0000123456789012",
+			size: 12,
+			want: []byte{0x12, 0x34, 0x56, 0x78, 0x90, 0x12},
+		},
+		{
+			name: "支持十六进制大小写与非法字符兜底0",
+			sim:  "abCD1z",
+			size: 6,
+			want: []byte{0xab, 0xcd, 0x10},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -132,6 +149,12 @@ func TestTime2BCD(t *testing.T) {
 	want := []byte{32, 36, 16, 1, 0, 0}
 	if !reflect.DeepEqual(bcd, want) {
 		t.Errorf("Time2BCD() got = %x\n want %x", bcd, want)
+	}
+	if empty := Time2BCD(""); !reflect.DeepEqual(empty, make([]byte, 6)) {
+		t.Errorf("Time2BCD(\"\") got = %x, want 6 zero bytes", empty)
+	}
+	if hyphen := Time2BCD("24-11-27-15-42-30"); !reflect.DeepEqual(hyphen, []byte{0x24, 0x11, 0x27, 0x15, 0x42, 0x30}) {
+		t.Errorf("Time2BCD(hyphen) got = %x", hyphen)
 	}
 }
 
@@ -204,6 +227,14 @@ func TestString2FillingBytes(t *testing.T) {
 			},
 			want: []byte{'1', '2', '3', '4'},
 		},
+		{
+			name: "size小于等于0返回nil",
+			args: args{
+				text: "123",
+				size: 0,
+			},
+			want: nil,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -251,7 +282,6 @@ func TestEncodingConversion(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fmt.Println(tt.args.encodingConversion(tt.args.data))
 			if got := tt.args.encodingConversion(tt.args.data); !reflect.DeepEqual(string(got), tt.want) {
 				t.Errorf("EncodingConversion() = %s, want %s", string(got), tt.want)
 			}

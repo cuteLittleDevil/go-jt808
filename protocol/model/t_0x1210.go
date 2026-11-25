@@ -59,6 +59,8 @@ func (t *T0x1210) Parse(jtMsg *jt808.JTMessage) error {
 	cursor := idLen
 	if idLen > 0 {
 		t.TerminalID = string(bytes.Trim(body[0:cursor], "\x00"))
+	} else {
+		t.TerminalID = ""
 	}
 	t.P9208AlarmSign.parse(body[cursor : cursor+alarmSignLen])
 	cursor += alarmSignLen

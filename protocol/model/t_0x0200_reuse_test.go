@@ -356,3 +356,206 @@ func BenchmarkT0x0200Parse(b *testing.B) {
 		_ = loc.Parse(jtMsg)
 	}
 }
+
+func TestSecondPassProtocolFixes(t *testing.T) {
+	// 1. CustomAdditionContentFunc 支持覆盖标准 ID 非标长度（如厂商自定义 0x06 4 字节），返回 false 则回退标准校验
+	var loc T0x0200
+	loc.CustomAdditionContentFunc = func(id uint8, content []byte) (AdditionContent, bool) {
+		if id == 0x06 && len(content) == 4 {
+			return AdditionContent{Data: content, CustomValue: binary.BigEndian.Uint32(content)}, true
+		}
+		return AdditionContent{}, false
+	}
+	bodyCustom := append(make([]byte, 28),
+		0x06, 0x04, 0x00, 0x00, 0x01, 0x02, // 自定义 4 字节 0x06
+		0x30, 0x01, 0x15, // 未被自定义拦截，回退标准解析
+		0xEE, 0x01, 0x99, // 未知 ID 回退默认分支
+	)
+	if err := loc.Parse(&jt808.JTMessage{Body: bodyCustom}); err != nil {
+		t.Fatalf("CustomAdditionContentFunc override Parse error = %v", err)
+	}
+	if got := loc.Additions[consts.JT808LocationAdditionType(0x06)].Content.CustomValue; got != uint32(0x0102) {
+		t.Fatalf("custom 0x06 = %v, want 0x0102", got)
+	}
+
+	// 2. T0x0100 零值 ProtocolVersion 或 nil Header 短包均不 panic
+	var t0100 T0x0100
+	if err := t0100.Parse(&jt808.JTMessage{Body: make([]byte, 10)}); !errors.Is(err, protocol.ErrBodyLengthInconsistency) {
+		t.Fatalf("T0x0100 nil Header short body err = %v, want %v", err, protocol.ErrBodyLengthInconsistency)
+	}
+	if err := t0100.Parse(&jt808.JTMessage{Header: &jt808.Header{}, Body: make([]byte, 10)}); !errors.Is(err, protocol.ErrBodyLengthInconsistency) {
+		t.Fatalf("T0x0100 zero version short body err = %v, want %v", err, protocol.ErrBodyLengthInconsistency)
+	}
+
+	// 3. T0x0102 2019 短 IMEI 补零与去尾零 -> 2013 复用清空 -> ReplyBody 无状态
+	src0102 := T0x0102{
+		Version:         consts.JT808Protocol2019,
+		AuthCodeLen:     7,
+		AuthCode:        "auth123",
+		TerminalIMEI:    "860001",
+		SoftwareVersion: "v1.2.3",
+	}
+	if s := src0102.String(); len(s) == 0 {
+		t.Fatal("T0x0102(2019).String() empty")
+	}
+	var got0102 T0x0102
+	msg2019 := &jt808.JTMessage{
+		Header: &jt808.Header{ProtocolVersion: consts.JT808Protocol2019, SerialNumber: 5},
+		Body:   src0102.Encode(),
+	}
+	if err := got0102.Parse(msg2019); err != nil {
+		t.Fatalf("T0x0102 2019 Parse error = %v", err)
+	}
+	if got0102.AuthCode != "auth123" || got0102.TerminalIMEI != "860001" || got0102.SoftwareVersion != "v1.2.3" {
+		t.Fatalf("T0x0102 2019 mismatch: %+v", got0102)
+	}
+	// ReplyBody 不修改 receiver
+	var stateless0102 T0x0102
+	if _, err := stateless0102.ReplyBody(msg2019); err != nil || stateless0102.AuthCode != "" {
+		t.Fatalf("T0x0102 ReplyBody mutated receiver or failed: err=%v state=%+v", err, stateless0102)
+	}
+	// 复用为 2013 模式，2019 专属字段必须清空
+	msg2013 := &jt808.JTMessage{
+		Header: &jt808.Header{ProtocolVersion: consts.JT808Protocol2013},
+		Body:   []byte("k2013"),
+	}
+	if err := got0102.Parse(msg2013); err != nil {
+		t.Fatalf("T0x0102 2013 Parse error = %v", err)
+	}
+	if got0102.AuthCode != "k2013" || got0102.AuthCodeLen != 0 || got0102.TerminalIMEI != "" || got0102.SoftwareVersion != "" {
+		t.Fatalf("T0x0102 2013 stale 2019 fields: %+v", got0102)
+	}
+
+	// 4. T0x0801 / T0x1212 ReplyBody 对畸形短包返回错误且不污染 receiver
+	var t0801 T0x0801
+	if _, err := t0801.ReplyBody(&jt808.JTMessage{Body: []byte{1, 2}}); !errors.Is(err, protocol.ErrBodyLengthInconsistency) {
+		t.Fatalf("T0x0801 short ReplyBody err = %v, want %v", err, protocol.ErrBodyLengthInconsistency)
+	}
+	var t1212 T0x1212
+	if _, err := t1212.ReplyBody(&jt808.JTMessage{Body: []byte{5, 'a'}}); !errors.Is(err, protocol.ErrBodyLengthInconsistency) {
+		t.Fatalf("T0x1212 short ReplyBody err = %v, want %v", err, protocol.ErrBodyLengthInconsistency)
+	}
+
+	// 5. T0x0704 Num==0 与尾部多余字节校验
+	var t0704 T0x0704
+	if err := t0704.Parse(&jt808.JTMessage{Body: []byte{0x00, 0x00, 0x00, 0x00, 0x01}}); !errors.Is(err, protocol.ErrBodyLengthInconsistency) {
+		t.Fatalf("T0x0704 Num==0 err = %v, want %v", err, protocol.ErrBodyLengthInconsistency)
+	}
+	extraBatch := append([]byte{0x00, 0x01, 0x00, 0x00, 0x1C}, make([]byte, 29)...)
+	if err := t0704.Parse(&jt808.JTMessage{Body: extraBatch}); !errors.Is(err, protocol.ErrBodyLengthInconsistency) {
+		t.Fatalf("T0x0704 trailing byte err = %v, want %v", err, protocol.ErrBodyLengthInconsistency)
+	}
+
+	// 6. T0x1205 防 32 位乘法溢出校验
+	var t1205 T0x1205
+	overflow1205 := make([]byte, 6+8) // rem=8，非 28 倍数
+	binary.BigEndian.PutUint32(overflow1205[2:6], 0x0924924A)
+	if err := t1205.Parse(&jt808.JTMessage{Body: overflow1205}); !errors.Is(err, protocol.ErrBodyLengthInconsistency) {
+		t.Fatalf("T0x1205 overflow err = %v, want %v", err, protocol.ErrBodyLengthInconsistency)
+	}
+	mismatchCount1205 := make([]byte, 6+28)
+	binary.BigEndian.PutUint32(mismatchCount1205[2:6], 2)
+	if err := t1205.Parse(&jt808.JTMessage{Body: mismatchCount1205}); !errors.Is(err, protocol.ErrBodyLengthInconsistency) {
+		t.Fatalf("T0x1205 count mismatch err = %v, want %v", err, protocol.ErrBodyLengthInconsistency)
+	}
+
+	// 7. T0x1210 黑标复用清空 TerminalID
+	var t1210 T0x1210
+	t1210.TerminalID = "staleID"
+	t1210.P9208AlarmSign.ActiveSafetyType = consts.ActiveSafetyHLJ
+	srcHLJ := T0x1210{
+		P9208AlarmSign: P9208AlarmSign{
+			ActiveSafetyType: consts.ActiveSafetyHLJ,
+			TerminalID:       "hlj001",
+			Time:             "2024-11-27 15:42:30",
+		},
+		AlarmID:              "alm1",
+		AttachCount:          1,
+		T0x1210AlarmItemList: []T0x1210AlarmItem{{FileNameLen: 5, FileName: "v.mp4", FileSize: 128}},
+	}
+	if err := t1210.Parse(&jt808.JTMessage{Body: srcHLJ.Encode()}); err != nil {
+		t.Fatalf("T0x1210 HLJ Parse error = %v", err)
+	}
+	if t1210.TerminalID != "" || len(t1210.T0x1210AlarmItemList) != 1 || t1210.T0x1210AlarmItemList[0].FileName != "v.mp4" {
+		t.Fatalf("T0x1210 HLJ unexpected state: %+v", t1210)
+	}
+
+	// 8. P0x8202 超过 6 字节返回错误
+	var p8202 P0x8202
+	if err := p8202.Parse(&jt808.JTMessage{Body: make([]byte, 7)}); !errors.Is(err, protocol.ErrBodyLengthInconsistency) {
+		t.Fatalf("P0x8202 7-byte err = %v, want %v", err, protocol.ErrBodyLengthInconsistency)
+	}
+
+	// 9. TerminalParamDetails 256 个参数但 count=0 不得因 uint8 回绕而误判成功 + P0x9205 空时间条件兼容
+	var got8103 P0x8103
+	var wrapBuf []byte
+	wrapBuf = append(wrapBuf, 0) // count = 0
+	for i := 0; i < 256; i++ {
+		wrapBuf = append(wrapBuf, 0x00, 0x00, 0x99, byte(i), 0x01, 0x00)
+	}
+	if err := got8103.Parse(&jt808.JTMessage{Body: wrapBuf}); !errors.Is(err, protocol.ErrBodyLengthInconsistency) {
+		t.Fatalf("P0x8103 256-param count=0 wraparound err = %v, want %v", err, protocol.ErrBodyLengthInconsistency)
+	}
+
+	var got9205 P0x9205
+	if err := got9205.Parse(&jt808.JTMessage{Body: (&P0x9205{ChannelNo: 1}).Encode()}); err != nil || got9205.ChannelNo != 1 {
+		t.Fatalf("manual P0x9205 empty time failed: err=%v got=%+v", err, got9205)
+	}
+
+	// 10. T0x0102(2019) AuthCodeLen>=221 与 P0x8302 QuestionContentLen>=254 不触发 uint8 切片索引回绕 panic
+	longAuthBody := make([]byte, 1+255+15+20)
+	longAuthBody[0] = 255
+	if err := got0102.Parse(&jt808.JTMessage{
+		Header: &jt808.Header{ProtocolVersion: consts.JT808Protocol2019},
+		Body:   longAuthBody,
+	}); err != nil || len(got0102.AuthCode) != 255 {
+		t.Fatalf("T0x0102 AuthCodeLen=255 failed: err=%v len=%d", err, len(got0102.AuthCode))
+	}
+	longQuestionBody := make([]byte, 2+255+3)
+	longQuestionBody[1] = 255
+	var got8302Long P0x8302
+	if err := got8302Long.Parse(&jt808.JTMessage{Body: longQuestionBody}); err != nil || len(got8302Long.AnswerList) != 1 {
+		t.Fatalf("P0x8302 QuestionContentLen=255 failed: err=%v answers=%d", err, len(got8302Long.AnswerList))
+	}
+}
+
+func FuzzModelParse(f *testing.F) {
+	f.Add([]byte{})
+	f.Add([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05})
+	f.Add(make([]byte, 36))
+	f.Add(make([]byte, 80))
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		for _, ver := range []consts.ProtocolVersionType{
+			0,
+			consts.JT808Protocol2013,
+			consts.JT808Protocol2019,
+		} {
+			jtMsg := &jt808.JTMessage{
+				Header: &jt808.Header{ProtocolVersion: ver},
+				Body:   data,
+			}
+			_ = (&T0x0100{}).Parse(jtMsg)
+			_ = (&T0x0102{}).Parse(jtMsg)
+			_ = (&T0x0104{}).Parse(jtMsg)
+			_ = (&T0x0200{}).Parse(jtMsg)
+			_ = (&T0x0704{}).Parse(jtMsg)
+			_ = (&T0x0801{}).Parse(jtMsg)
+			_ = (&T0x0805{}).Parse(jtMsg)
+			_ = (&T0x1205{}).Parse(jtMsg)
+			_ = (&T0x1210{}).Parse(jtMsg)
+			_ = (&T0x1211{}).Parse(jtMsg)
+			_ = (&T0x1212{}).Parse(jtMsg)
+			_ = (&P0x8003{}).Parse(jtMsg)
+			_ = (&P0x8103{}).Parse(jtMsg)
+			_ = (&P0x8202{}).Parse(jtMsg)
+			_ = (&P0x8302{}).Parse(jtMsg)
+			_ = (&P0x8800{}).Parse(jtMsg)
+			_ = (&P0x9101{}).Parse(jtMsg)
+			_ = (&P0x9201{}).Parse(jtMsg)
+			_ = (&P0x9206{}).Parse(jtMsg)
+			_ = (&P0x9208{}).Parse(jtMsg)
+			_ = (&P0x9212{}).Parse(jtMsg)
+		}
+	})
+}

@@ -46,22 +46,22 @@ func ExampleT0x0200_Parse() {
 	_ = jtMsg.Decode(data)
 	type Me0x0200 struct {
 		T0x0200
-		T0x0200AdditionExtension0x64
+		Ext0x64 T0x0200AdditionExtension0x64
 	}
 	tmp := &Me0x0200{}
 	tmp.T0x0200AdditionDetails.CustomAdditionContentFunc = func(id uint8, content []byte) (AdditionContent, bool) {
 		if id == 0x64 {
-			tmp.T0x0200AdditionExtension0x64.Parse(id, content)
+			tmp.Ext0x64.Parse(id, content)
 			return AdditionContent{
 				Data:        content,
-				CustomValue: tmp.T0x0200AdditionExtension0x64,
+				CustomValue: tmp.Ext0x64,
 			}, true
 		}
 		return AdditionContent{}, false
 	}
 	_ = tmp.T0x0200.Parse(jtMsg)
 	fmt.Println(tmp.T0x0200.String())
-	fmt.Println(tmp.T0x0200AdditionExtension0x64.String())
+	fmt.Println(tmp.Ext0x64.String())
 
 	// Output:
 	//数据体对象:{

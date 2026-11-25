@@ -19,19 +19,19 @@ func (t *T0x1212) ReplyProtocol() consts.JT808CommandType {
 }
 
 func (t *T0x1212) ReplyBody(jtMsg *jt808.JTMessage) ([]byte, error) {
-	_ = t.T0x1211.Parse(jtMsg)
-	p9202 := P0x9212{
-		FileNameLen:                 t.FileNameLen,
-		FileName:                    t.FileName,
-		FileType:                    t.FileType,
-		UploadResult:                0,
-		RetransmitPacketNumber:      0,
-		P0x9212RetransmitPacketList: nil,
+	var f T0x1211
+	if err := f.Parse(jtMsg); err != nil {
+		return nil, err
+	}
+	p9212 := P0x9212{
+		FileNameLen: f.FileNameLen,
+		FileName:    f.FileName,
+		FileType:    f.FileType,
 	}
 	if rLen := len(t.P0x9212RetransmitPacketList); rLen > 0 {
-		p9202.UploadResult = 1
-		p9202.RetransmitPacketNumber = byte(rLen)
-		p9202.P0x9212RetransmitPacketList = t.P0x9212RetransmitPacketList
+		p9212.UploadResult = 1
+		p9212.RetransmitPacketNumber = byte(rLen)
+		p9212.P0x9212RetransmitPacketList = t.P0x9212RetransmitPacketList
 	}
-	return p9202.Encode(), nil
+	return p9212.Encode(), nil
 }

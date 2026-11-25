@@ -64,13 +64,12 @@ func (t *T0x0100) Parse(jtMsg *jt808.JTMessage) error {
 		tIDLen = 7
 	)
 	body := jtMsg.Body
-	switch jtMsg.Header.ProtocolVersion {
-	case consts.JT808Protocol2019:
+	if jtMsg.Header != nil && jtMsg.Header.ProtocolVersion == consts.JT808Protocol2019 {
 		mLen = 11
 		tLen = 30
 		tIDLen = 30
 		t.Version = consts.JT808Protocol2019
-	case consts.JT808Protocol2013, consts.JT808Protocol2011:
+	} else {
 		// 根据body长度判断是不是2011版本的 2013版本的车牌颜色是36
 		if len(body) > 36 {
 			t.Version = consts.JT808Protocol2013

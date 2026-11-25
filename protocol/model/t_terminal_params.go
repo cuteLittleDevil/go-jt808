@@ -251,6 +251,8 @@ func (t *TerminalParamDetails) parse(count uint8, body []byte) error {
 		clear(t.OtherContent)
 	}
 	index := 0
+	// 使用 int 计数，避免 256 个参数使 uint8(count) 递减回绕到 0 误判通过
+	parsed := 0
 	for index < len(body) {
 		if index+5 > len(body) {
 			return protocol.ErrBodyLengthInconsistency
@@ -267,9 +269,9 @@ func (t *TerminalParamDetails) parse(count uint8, body []byte) error {
 			return err
 		}
 		index = end
-		count--
+		parsed++
 	}
-	if count != 0 {
+	if parsed != int(count) {
 		return protocol.ErrBodyLengthInconsistency
 	}
 	return nil

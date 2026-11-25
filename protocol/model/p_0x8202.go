@@ -36,7 +36,7 @@ func (p *P0x8202) Parse(jtMsg *jt808.JTMessage) error {
 		p.TrackValidity = 0
 		return nil
 	}
-	if len(body) < 6 {
+	if len(body) != 6 {
 		return protocol.ErrBodyLengthInconsistency
 	}
 	p.TrackValidity = binary.BigEndian.Uint32(body[2:6])

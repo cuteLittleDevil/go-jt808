@@ -306,4 +306,58 @@ func TestT0x0200AdditionExtension_ExactSliceBoundsAndReuse(t *testing.T) {
 	if tb18.ACC || tb18.LeftTurn || tb18.RightTurn || tb18.Wipers || tb18.Brake || tb18.Card || tb18.Location {
 		t.Fatalf("Table18 stale flags after reuse: %+v", tb18)
 	}
+
+	// 4. 非苏标(粤标 ActiveSafetyGD，报警标识 40 字节)下 0x64/0x65/0x66/0x67/0x70 动态长度解析 + 短包重置 ParseSuccess
+	ext64GD := T0x0200AdditionExtension0x64{T0x0200ExtensionSBBase: T0x0200ExtensionSBBase{P9208AlarmSign: P9208AlarmSign{ActiveSafetyType: consts.ActiveSafetyGD}}}
+	if _, ok := ext64GD.Parse(0x64, make([]byte, 31+40)); !ok || !ext64GD.ParseSuccess {
+		t.Fatal("0x64 GD Parse failed")
+	}
+	if _, ok := ext64GD.Parse(0x64, make([]byte, 10)); ok || ext64GD.ParseSuccess {
+		t.Fatal("0x64 short Parse should fail and reset ParseSuccess")
+	}
+
+	ext65GD := T0x0200AdditionExtension0x65{T0x0200ExtensionSBBase: T0x0200ExtensionSBBase{P9208AlarmSign: P9208AlarmSign{ActiveSafetyType: consts.ActiveSafetyGD}}}
+	if _, ok := ext65GD.Parse(0x65, make([]byte, 31+40)); !ok || !ext65GD.ParseSuccess {
+		t.Fatal("0x65 GD Parse failed")
+	}
+	if _, ok := ext65GD.Parse(0x65, make([]byte, 10)); ok || ext65GD.ParseSuccess {
+		t.Fatal("0x65 short Parse should fail and reset ParseSuccess")
+	}
+
+	ext66GD := T0x0200AdditionExtension0x66{T0x0200ExtensionSBBase: T0x0200ExtensionSBBase{P9208AlarmSign: P9208AlarmSign{ActiveSafetyType: consts.ActiveSafetyGD}}}
+	gd66Buf := make([]byte, 24+40+1+9)
+	gd66Buf[64] = 1
+	if _, ok := ext66GD.Parse(0x66, gd66Buf); !ok || !ext66GD.ParseSuccess {
+		t.Fatal("0x66 GD Parse failed")
+	}
+	// count=1 但长度不足 65+9，触发第二处长度不匹配分支
+	bad66Count := make([]byte, 24+40+2)
+	bad66Count[64] = 1
+	if _, ok := ext66GD.Parse(0x66, bad66Count); ok || ext66GD.ParseSuccess {
+		t.Fatal("0x66 mismatched item count should fail and reset ParseSuccess")
+	}
+
+	ext67GD := T0x0200AdditionExtension0x67{T0x0200ExtensionSBBase: T0x0200ExtensionSBBase{P9208AlarmSign: P9208AlarmSign{ActiveSafetyType: consts.ActiveSafetyGD}}}
+	if _, ok := ext67GD.Parse(0x67, make([]byte, 25+40)); !ok || !ext67GD.ParseSuccess {
+		t.Fatal("0x67 GD Parse failed")
+	}
+	if _, ok := ext67GD.Parse(0x67, make([]byte, 10)); ok || ext67GD.ParseSuccess {
+		t.Fatal("0x67 short Parse should fail and reset ParseSuccess")
+	}
+
+	ext70GD := T0x0200AdditionExtension0x70{T0x0200ExtensionSBBase: T0x0200ExtensionSBBase{P9208AlarmSign: P9208AlarmSign{ActiveSafetyType: consts.ActiveSafetyGD}}}
+	if _, ok := ext70GD.Parse(0x70, make([]byte, 31+40)); !ok || !ext70GD.ParseSuccess {
+		t.Fatal("0x70 GD Parse failed")
+	}
+	if _, ok := ext70GD.Parse(0x70, make([]byte, 10)); ok || ext70GD.ParseSuccess {
+		t.Fatal("0x70 short Parse should fail and reset ParseSuccess")
+	}
+
+	// 直接测试 T0x0200ExtensionSBBase.parse 短包保护
+	var sbBase T0x0200ExtensionSBBase
+	sbBase.ParseSuccess = true
+	sbBase.parse(make([]byte, 5))
+	if sbBase.ParseSuccess {
+		t.Fatal("T0x0200ExtensionSBBase.parse short slice should set ParseSuccess=false")
+	}
 }

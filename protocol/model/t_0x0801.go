@@ -62,9 +62,12 @@ func (t *T0x0801) Encode() []byte {
 }
 
 func (t *T0x0801) ReplyBody(jtMsg *jt808.JTMessage) ([]byte, error) {
-	_ = t.Parse(jtMsg)
+	var tmp T0x0801
+	if err := tmp.Parse(jtMsg); err != nil {
+		return nil, err
+	}
 	p8800 := P0x8800{
-		MultimediaID: t.MultimediaID, // 直接全部完成 不补包
+		MultimediaID: tmp.MultimediaID, // 直接全部完成 不补包
 	}
 	return p8800.Encode(), nil
 }

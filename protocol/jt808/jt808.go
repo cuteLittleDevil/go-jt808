@@ -208,12 +208,21 @@ func (h *Header) createPackage(body []byte, num, sum uint16) []byte {
 	if sum > 0 {
 		prop.PacketFragmented = 1 // 分包
 	}
+	if h.ProtocolVersion == consts.JT808Protocol2019 {
+		prop.Version = 1
+	}
 	binary.BigEndian.PutUint16(data[2:4], prop.encode()) // 写消息属性
+	phoneBCD := h.bcdTerminalPhoneNo
 	if h.ProtocolVersion == consts.JT808Protocol2019 {
 		// 2019版本的标识
 		data = append(data, 0x01)
+		if len(phoneBCD) == 0 {
+			phoneBCD = utils.String2Bcd(h.TerminalPhoneNo, 20)
+		}
+	} else if len(phoneBCD) == 0 {
+		phoneBCD = utils.String2Bcd(h.TerminalPhoneNo, 12)
 	}
-	data = append(data, h.bcdTerminalPhoneNo...) // 写终端手机号
+	data = append(data, phoneBCD...) // 写终端手机号
 	if sum > 0 {
 		data = binary.BigEndian.AppendUint16(data, h.PlatformSerialNumber+num-1) // 写流水号 平台回复的流水号
 		data = binary.BigEndian.AppendUint16(data, sum)                          // 写总包数
@@ -248,17 +257,28 @@ func (p *BodyProperty) encode() uint16 {
 }
 
 func (h *Header) String() string {
+	var prop BodyProperty
+	if h.Property != nil {
+		prop = *h.Property
+	}
+	phoneBCD := h.bcdTerminalPhoneNo
 	str := ""
 	switch h.ProtocolVersion {
 	case consts.JT808Protocol2019:
+		if len(phoneBCD) == 0 {
+			phoneBCD = utils.String2Bcd(h.TerminalPhoneNo, 20)
+		}
 		str += "[01] 协议版本号(2019):[1]\n"
-		str += fmt.Sprintf("[%20x] 终端手机号:[%s]", h.bcdTerminalPhoneNo, h.TerminalPhoneNo)
+		str += fmt.Sprintf("[%20x] 终端手机号:[%s]", phoneBCD, h.TerminalPhoneNo)
 	default:
-		str += fmt.Sprintf("[%12x] 终端手机号:[%s]", h.bcdTerminalPhoneNo, h.TerminalPhoneNo)
+		if len(phoneBCD) == 0 {
+			phoneBCD = utils.String2Bcd(h.TerminalPhoneNo, 12)
+		}
+		str += fmt.Sprintf("[%12x] 终端手机号:[%s]", phoneBCD, h.TerminalPhoneNo)
 	}
 	return strings.Join([]string{
 		fmt.Sprintf("[%04x] 消息ID:[%d] [%s]", h.ID, h.ID, consts.JT808CommandType(h.ID)),
-		h.Property.String(),
+		prop.String(),
 		str,
 		fmt.Sprintf("[%04x] 消息流水号:[%d]", h.SerialNumber, h.SerialNumber),
 	}, "\n")

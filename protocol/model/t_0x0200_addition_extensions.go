@@ -194,7 +194,9 @@ type (
 )
 
 func (t *T0x0200AdditionExtension0x64) Parse(id uint8, content []byte) (AdditionContent, bool) {
-	if id == 0x64 && len(content) == 31+16 {
+	t.ParseSuccess = false
+	baseEnd := 31 + t.P9208AlarmSign.getAlarmSignLen()
+	if id == 0x64 && len(content) == baseEnd {
 		t.AlarmID = binary.BigEndian.Uint32(content[0:4])
 		t.FlagStatus = content[4]
 		t.AlarmEventType = content[5]
@@ -204,7 +206,7 @@ func (t *T0x0200AdditionExtension0x64) Parse(id uint8, content []byte) (Addition
 		t.DeviationType = content[9]
 		t.RoadSignRecognitionType = content[10]
 		t.RoadSignRecognitionData = content[11]
-		t.T0x0200ExtensionSBBase.parse(content[12:47])
+		t.T0x0200ExtensionSBBase.parse(content[12:baseEnd])
 		return AdditionContent{
 			Data:        content,
 			CustomValue: t,
@@ -214,14 +216,16 @@ func (t *T0x0200AdditionExtension0x64) Parse(id uint8, content []byte) (Addition
 }
 
 func (t *T0x0200AdditionExtension0x65) Parse(id uint8, content []byte) (AdditionContent, bool) {
-	if id == 0x65 && len(content) == 31+16 {
+	t.ParseSuccess = false
+	baseEnd := 31 + t.P9208AlarmSign.getAlarmSignLen()
+	if id == 0x65 && len(content) == baseEnd {
 		t.AlarmID = binary.BigEndian.Uint32(content[0:4])
 		t.FlagStatus = content[4]
 		t.AlarmEventType = content[5]
 		t.AlarmLevel = content[6]
 		t.FatigueLevel = content[7]
 		t.Reserved = [4]byte(content[8:12])
-		t.T0x0200ExtensionSBBase.parse(content[12:47])
+		t.T0x0200ExtensionSBBase.parse(content[12:baseEnd])
 		return AdditionContent{
 			Data:        content,
 			CustomValue: t,
@@ -231,15 +235,17 @@ func (t *T0x0200AdditionExtension0x65) Parse(id uint8, content []byte) (Addition
 }
 
 func (t *T0x0200AdditionExtension0x66) Parse(id uint8, content []byte) (AdditionContent, bool) {
-	if id == 0x66 && len(content) >= 41 {
+	t.ParseSuccess = false
+	countIdx := 24 + t.P9208AlarmSign.getAlarmSignLen()
+	if id == 0x66 && len(content) >= countIdx+1 {
 		t.AlarmID = binary.BigEndian.Uint32(content[0:4])
 		t.FlagStatus = content[4]
-		t.T0x0200ExtensionSBBase.parse(content[5:40])
-		t.AlarmOrEventCount = content[40]
-		if len(content) == 41+int(t.AlarmOrEventCount)*9 {
+		t.T0x0200ExtensionSBBase.parse(content[5:countIdx])
+		t.AlarmOrEventCount = content[countIdx]
+		if len(content) == countIdx+1+int(t.AlarmOrEventCount)*9 {
 			t.AlarmOrEventList = t.AlarmOrEventList[:0]
 			for i := 0; i < int(t.AlarmOrEventCount); i++ {
-				start := 41 + i*9
+				start := countIdx + 1 + i*9
 				t.AlarmOrEventList = append(t.AlarmOrEventList, T0x0200ExtensionTable22{
 					TirePressureAlarmLocation: content[start],
 					AlarmOrEventType:          binary.BigEndian.Uint16(content[start+1 : start+3]),
@@ -253,16 +259,19 @@ func (t *T0x0200AdditionExtension0x66) Parse(id uint8, content []byte) (Addition
 				CustomValue: t,
 			}, true
 		}
+		t.ParseSuccess = false
 	}
 	return AdditionContent{}, false
 }
 
 func (t *T0x0200AdditionExtension0x67) Parse(id uint8, content []byte) (AdditionContent, bool) {
-	if id == 0x67 && len(content) == 25+16 {
+	t.ParseSuccess = false
+	baseEnd := 25 + t.P9208AlarmSign.getAlarmSignLen()
+	if id == 0x67 && len(content) == baseEnd {
 		t.AlarmID = binary.BigEndian.Uint32(content[0:4])
 		t.FlagStatus = content[4]
 		t.AlarmEventType = content[5]
-		t.T0x0200ExtensionSBBase.parse(content[6:41])
+		t.T0x0200ExtensionSBBase.parse(content[6:baseEnd])
 		return AdditionContent{
 			Data:        content,
 			CustomValue: t,
@@ -272,14 +281,16 @@ func (t *T0x0200AdditionExtension0x67) Parse(id uint8, content []byte) (Addition
 }
 
 func (t *T0x0200AdditionExtension0x70) Parse(id uint8, content []byte) (AdditionContent, bool) {
-	if id == 0x70 && len(content) == 31+16 {
+	t.ParseSuccess = false
+	baseEnd := 31 + t.P9208AlarmSign.getAlarmSignLen()
+	if id == 0x70 && len(content) == baseEnd {
 		t.AlarmID = binary.BigEndian.Uint32(content[0:4])
 		t.FlagStatus = content[4]
 		t.AlarmEventType = content[5]
 		t.AlarmTimeThreshold = binary.BigEndian.Uint16(content[6:8])
 		t.AlarmThreshold1 = binary.BigEndian.Uint16(content[8:10])
 		t.AlarmThreshold2 = binary.BigEndian.Uint16(content[10:12])
-		t.T0x0200ExtensionSBBase.parse(content[12:47])
+		t.T0x0200ExtensionSBBase.parse(content[12:baseEnd])
 		return AdditionContent{
 			Data:        content,
 			CustomValue: t,
@@ -408,15 +419,19 @@ func (t *T0x0200AdditionExtension0x70) String() string {
 }
 
 func (t *T0x0200ExtensionSBBase) parse(data []byte) {
+	alarmSignLen := t.P9208AlarmSign.getAlarmSignLen()
+	if len(data) < 19+alarmSignLen {
+		t.ParseSuccess = false
+		return
+	}
 	t.VehicleSpeed = data[0]
 	t.Altitude = binary.BigEndian.Uint16(data[1:3])
 	t.Latitude = binary.BigEndian.Uint32(data[3:7])
 	t.Longitude = binary.BigEndian.Uint32(data[7:11])
 	t.DateTime = utils.BCD2Time(data[11:17])
 	t.VehicleStatus.parse(binary.BigEndian.Uint16(data[17:19]))
-	t.P9208AlarmSign.parse(data[19:35])
+	t.P9208AlarmSign.parse(data[19 : 19+alarmSignLen])
 	t.ParseSuccess = true
-	return
 }
 
 func (vs *T0x0200ExtensionTable18) parse(value uint16) {

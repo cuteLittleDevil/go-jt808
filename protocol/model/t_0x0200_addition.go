@@ -169,14 +169,26 @@ func (a *T0x0200AdditionDetails) parse(body []byte) error {
 		id := body[index]
 		additionLen := body[index+1]
 		start := index + 2
-		if ok := contrastFunc(id, additionLen); !ok {
-			return protocol.ErrBodyLengthInconsistency
-		}
 		end := start + int(additionLen)
 		if end > len(body) {
 			return protocol.ErrBodyLengthInconsistency
 		}
 		content := body[start:end]
+		// 优先交给用户自定义附加信息解析函数处理，以兼容厂商在标准 ID 上的非标长度实现
+		if a.CustomAdditionContentFunc != nil {
+			if v, ok := a.CustomAdditionContentFunc(id, content); ok {
+				a.Additions[consts.JT808LocationAdditionType(id)] = Addition{
+					ID:      id,
+					Len:     additionLen,
+					Content: v,
+				}
+				index = end
+				continue
+			}
+		}
+		if ok := contrastFunc(id, additionLen); !ok {
+			return protocol.ErrBodyLengthInconsistency
+		}
 		if id == 0x11 && content[0] != 0 && len(content) != 5 {
 			return protocol.ErrBodyLengthInconsistency
 		}
@@ -191,11 +203,6 @@ func (a *T0x0200AdditionDetails) parse(body []byte) error {
 }
 
 func (a *T0x0200AdditionDetails) decode(id uint8, content []byte) AdditionContent {
-	if a.CustomAdditionContentFunc != nil {
-		if v, ok := a.CustomAdditionContentFunc(id, content); ok {
-			return v
-		}
-	}
 	tmp := AdditionContent{
 		Data: content,
 	}

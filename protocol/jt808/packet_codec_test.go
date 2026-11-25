@@ -40,6 +40,11 @@ func Test_unescape(t *testing.T) {
 			args: "7e02007d0100107d027e",
 			want: "02007d00107e",
 		},
+		{
+			name:    "包内含未转义0x7e",
+			args:    "7e02007e017e",
+			wantErr: protocol.ErrUnqualifiedData,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

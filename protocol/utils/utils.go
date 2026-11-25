@@ -20,27 +20,33 @@ func Bcd2Dec(data []byte) string {
 }
 
 func String2Bcd(sim string, size int) []byte {
+	if size <= 0 {
+		return nil
+	}
 	// 如果字符串长度不足size，在前面补0 size需要偶数
 	if size%2 != 0 {
 		size++
 	}
 	if len(sim) < size {
 		sim = strings.Repeat("0", size-len(sim)) + sim
+	} else if len(sim) > size {
+		sim = sim[len(sim)-size:]
 	}
 	bcd := make([]byte, size/2)
 	for i := 0; i < size; i += 2 {
-		high := sim[i] - '0'
-		low := sim[i+1] - '0'
+		high := hexCharToNibble(sim[i])
+		low := hexCharToNibble(sim[i+1])
 		bcd[i/2] = (high << 4) | low
 	}
 	return bcd
 }
 
 func Time2BCD(time string) []byte {
-	if strings.Contains(time, ":") {
-		time = strings.ReplaceAll(time, "-", "")
-		time = strings.ReplaceAll(time, ":", "")
-		time = strings.ReplaceAll(time, " ", "")
+	if time == "" {
+		return make([]byte, 6)
+	}
+	if strings.ContainsAny(time, "-: ") {
+		time = strings.NewReplacer("-", "", ":", "", " ", "").Replace(time)
 		if len(time) == 14 {
 			time = time[2:]
 		}
@@ -51,7 +57,7 @@ func Time2BCD(time string) []byte {
 	bcd := make([]byte, len(time)/2)
 	for i := 0; i < len(time); i += 2 {
 		// 高4位是第一个字符，低4位是第二个字符
-		bcd[i/2] = ((time[i] - '0') << 4) | (time[i+1] - '0')
+		bcd[i/2] = (hexCharToNibble(time[i]) << 4) | hexCharToNibble(time[i+1])
 	}
 	return bcd
 }
@@ -65,6 +71,9 @@ func CreateVerifyCode(data []byte) byte {
 }
 
 func String2FillingBytes(text string, size int) []byte {
+	if size <= 0 {
+		return nil
+	}
 	data := []byte(text)
 	if len(data) < size {
 		data = append(data, make([]byte, size-len(data))...)
@@ -130,4 +139,17 @@ func nibbleToHexChar(nibble byte) byte {
 	}
 	// 0x0f bcd编码16进制 只有0-9和a-f
 	return 'f'
+}
+
+func hexCharToNibble(c byte) byte {
+	switch {
+	case c >= '0' && c <= '9':
+		return c - '0'
+	case c >= 'a' && c <= 'f':
+		return c - 'a' + 10
+	case c >= 'A' && c <= 'F':
+		return c - 'A' + 10
+	default:
+		return 0
+	}
 }

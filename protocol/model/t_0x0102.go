@@ -30,7 +30,7 @@ func (t *T0x0102) Protocol() consts.JT808CommandType {
 
 func (t *T0x0102) Parse(jtMsg *jt808.JTMessage) error {
 	version := consts.JT808Protocol2013
-	if jtMsg.Header.ProtocolVersion == consts.JT808Protocol2019 {
+	if jtMsg.Header != nil && jtMsg.Header.ProtocolVersion == consts.JT808Protocol2019 {
 		version = consts.JT808Protocol2019
 	}
 	t.Version = version
@@ -41,17 +41,22 @@ func (t *T0x0102) Parse(jtMsg *jt808.JTMessage) error {
 			return protocol.ErrBodyLengthInconsistency
 		}
 		t.AuthCodeLen = body[0]
-		if len(body) < 1+int(t.AuthCodeLen)+15+20 {
+		// 先转 int 再计算偏移，避免 AuthCodeLen >= 221 时 uint8 加法回绕触发切片越界 panic
+		authLen := int(t.AuthCodeLen)
+		if len(body) < 1+authLen+15+20 {
 			return protocol.ErrBodyLengthInconsistency
 		}
-		t.AuthCode = string(body[1 : 1+t.AuthCodeLen])
-		t.TerminalIMEI = string(body[1+t.AuthCodeLen : 1+t.AuthCodeLen+15])
-		data := body[1+t.AuthCodeLen+15 : 1+t.AuthCodeLen+15+20]
+		t.AuthCode = string(body[1 : 1+authLen])
+		t.TerminalIMEI = string(bytes.TrimRight(body[1+authLen:1+authLen+15], "\x00"))
+		data := body[1+authLen+15 : 1+authLen+15+20]
 		if index := bytes.IndexByte(data, 0x00); index != -1 {
 			data = data[:index]
 		}
 		t.SoftwareVersion = string(data)
 	} else {
+		t.AuthCodeLen = 0
+		t.TerminalIMEI = ""
+		t.SoftwareVersion = ""
 		t.AuthCode = string(body)
 	}
 	return nil
@@ -62,7 +67,7 @@ func (t *T0x0102) Encode() []byte {
 	if t.Version == consts.JT808Protocol2019 {
 		data = append(data, t.AuthCodeLen)
 		data = append(data, []byte(t.AuthCode)...)
-		data = append(data, []byte(t.TerminalIMEI)...)
+		data = append(data, utils.String2FillingBytes(t.TerminalIMEI, 15)...)
 		data = append(data, utils.String2FillingBytes(t.SoftwareVersion, 20)...)
 	} else {
 		data = append(data, []byte(t.AuthCode)...)
@@ -71,12 +76,13 @@ func (t *T0x0102) Encode() []byte {
 }
 
 func (t *T0x0102) ReplyBody(jtMsg *jt808.JTMessage) ([]byte, error) {
-	if err := t.Parse(jtMsg); err != nil {
+	var tmp T0x0102
+	if err := tmp.Parse(jtMsg); err != nil {
 		return nil, err
 	}
 	// 鉴权码=手机号
 	result := byte(1)
-	if jtMsg.Header.TerminalPhoneNo == t.AuthCode {
+	if jtMsg.Header.TerminalPhoneNo == tmp.AuthCode {
 		result = 0
 	}
 	head := jtMsg.Header
@@ -97,7 +103,7 @@ func (t *T0x0102) String() string {
 		str += fmt.Sprintf("\t[%02x] 鉴权码长度:[%d]\n", t.AuthCodeLen, t.AuthCodeLen)
 		str += fmt.Sprintf("\t[%x] 鉴权码:[%s]\n", t.AuthCode, t.AuthCode)
 		str += fmt.Sprintf("\t[%015x] 终端IMEI:[%s]\n", t.TerminalIMEI, t.TerminalIMEI)
-		str += fmt.Sprintf("\t[%020x]软件版本:[%s]\n", body[1+t.AuthCodeLen+15:], t.SoftwareVersion)
+		str += fmt.Sprintf("\t[%020x]软件版本:[%s]\n", utils.String2FillingBytes(t.SoftwareVersion, 20), t.SoftwareVersion)
 	} else {
 		str += fmt.Sprintf("\t鉴权码:[%s]\n", t.AuthCode)
 	}

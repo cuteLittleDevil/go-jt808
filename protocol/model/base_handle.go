@@ -1,3 +1,10 @@
+// Package model 定义 JT/T 808、JT/T 1078 及主动安全扩展的消息体模型。
+//
+// 设计约定（显式长度/数量字段严格按输入编码）：
+// 结构体中凡显式声明了协议长度或数量字段（如 P0x9101.ServerIPLen、P0x8103.ParamTotal、
+// ParamContent.Len、P0x8302.QuestionContentLen、T0x0704.Num 等），Encode() 均严格按调用方传入的字段值原样编码，
+// 不做隐式重算或覆盖；若传入值与实际内容长度不一致，按输入原样组包，由调用方保证字段一致性（便于协议联调与异常报文模拟，
+// 并确保 Encode() 与 String() 输出完全一致）。
 package model
 
 import (

@@ -40,6 +40,9 @@ func (t *T0x0704) Parse(jtMsg *jt808.JTMessage) error {
 		return protocol.ErrBodyLengthInconsistency
 	}
 	t.Num = binary.BigEndian.Uint16(body[:2])
+	if t.Num == 0 {
+		return protocol.ErrBodyLengthInconsistency
+	}
 	t.LocationType = body[2]
 	t.Items = t.Items[:0]
 	start := 3
@@ -63,6 +66,9 @@ func (t *T0x0704) Parse(jtMsg *jt808.JTMessage) error {
 		}
 		t.Items = append(t.Items, item)
 		start += 2 + int(item.Len)
+	}
+	if start != len(body) {
+		return protocol.ErrBodyLengthInconsistency
 	}
 	return nil
 }

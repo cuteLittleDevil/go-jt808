@@ -69,12 +69,13 @@ func (p *P0x8302) Parse(jtMsg *jt808.JTMessage) error {
 	}
 	p.Flag = body[0]
 	p.QuestionContentLen = body[1]
-	if len(body) < 2+int(p.QuestionContentLen)+3 {
+	// 先转 int 再相加，避免 QuestionContentLen >= 254 时 byte 加法回绕触发切片越界 panic
+	start := 2 + int(p.QuestionContentLen)
+	if len(body) < start+3 {
 		return protocol.ErrBodyLengthInconsistency
 	}
-	p.QuestionContent = string(utils.GBK2UTF8(body[2 : 2+p.QuestionContentLen]))
+	p.QuestionContent = string(utils.GBK2UTF8(body[2:start]))
 	p.AnswerList = p.AnswerList[:0]
-	start := 2 + int(p.QuestionContentLen)
 	for {
 		if start+3 > len(body) {
 			return protocol.ErrBodyLengthInconsistency

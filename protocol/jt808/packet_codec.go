@@ -15,6 +15,10 @@ func unescape(data []byte) ([]byte, error) {
 		return nil, protocol.ErrUnqualifiedData
 	}
 	inner := data[1 : len(data)-1]
+	// 首尾标识位之间不允许出现未转义的裸 0x7e
+	if bytes.IndexByte(inner, afterRecover) != -1 {
+		return nil, protocol.ErrUnqualifiedData
+	}
 	// 快速路径：没有需要反转义的字节，直接零拷贝返回切片
 	if bytes.IndexByte(inner, beforeEscape) == -1 {
 		return inner, nil
