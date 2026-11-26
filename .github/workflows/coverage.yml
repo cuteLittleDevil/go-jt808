@@ -20,11 +20,14 @@ jobs:
         run: |
           cd ./protocol
           go test -coverprofile=coverage.txt ./jt808 ./model ./utils ./jt1078
+          cd ../attachment
+          go test -race -coverprofile=coverage.txt ./...
           cd ../
 
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./protocol/coverage.txt,./attachment/coverage.txt
           flags: unittests # optional
           verbose: true # optional (default = false)
