@@ -20,47 +20,40 @@ type BaseJT808DataHandler[T1210, T1211, T1212 JT808Handler] struct {
 	seq     uint16
 }
 
+func (d *BaseJT808DataHandler[T1210, T1211, T1212]) currentHandler() (JT808Handler, bool) {
+	switch d.Command {
+	case consts.T1210AlarmAttachInfoMessage:
+		return d.T0x1210, true
+	case consts.T1211FileInfoUpload:
+		return d.T0x1211, true
+	case consts.T1212FileUploadComplete:
+		return d.T0x1212, true
+	default:
+		return nil, false
+	}
+}
+
 func (d *BaseJT808DataHandler[T1210, T1211, T1212]) Parse(jtMsg *jt808.JTMessage) error {
 	d.once.Do(func() {
 		d.head = jtMsg.Header
 	})
 	d.jtMsg = jtMsg
 	d.Command = consts.JT808CommandType(jtMsg.Header.ID)
-	switch d.Command {
-	case consts.T1210AlarmAttachInfoMessage:
-		return d.T0x1210.Parse(jtMsg)
-	case consts.T1211FileInfoUpload:
-		return d.T0x1211.Parse(jtMsg)
-	case consts.T1212FileUploadComplete:
-		return d.T0x1212.Parse(jtMsg)
-	default:
+	if h, ok := d.currentHandler(); ok {
+		return h.Parse(jtMsg)
 	}
 	return errors.Join(fmt.Errorf("%s", d.Command), ErrUnknownCommand)
 }
 
 func (d *BaseJT808DataHandler[T1210, T1211, T1212]) ReplyData() ([]byte, error) {
-	type Handle struct {
-		ReplyBody    func(jtMsg *jt808.JTMessage) ([]byte, error)
-		replyCommand consts.JT808CommandType
-	}
-	handle := Handle{}
-	switch d.Command {
-	case consts.T1210AlarmAttachInfoMessage:
-		handle.ReplyBody = d.T0x1210.ReplyBody
-		handle.replyCommand = d.T0x1210.ReplyProtocol()
-	case consts.T1211FileInfoUpload:
-		handle.ReplyBody = d.T0x1211.ReplyBody
-		handle.replyCommand = d.T0x1211.ReplyProtocol()
-	case consts.T1212FileUploadComplete:
-		handle.ReplyBody = d.T0x1212.ReplyBody
-		handle.replyCommand = d.T0x1212.ReplyProtocol()
-	default:
+	h, ok := d.currentHandler()
+	if !ok {
 		return nil, ErrUnknownCommand
 	}
-	d.head.ReplyID = uint16(handle.replyCommand)
+	d.head.ReplyID = uint16(h.ReplyProtocol())
 	d.head.PlatformSerialNumber = d.seq
 	d.seq++
-	body, err := handle.ReplyBody(d.jtMsg)
+	body, err := h.ReplyBody(d.jtMsg)
 	if err != nil {
 		return nil, err
 	}

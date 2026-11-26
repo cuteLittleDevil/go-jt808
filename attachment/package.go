@@ -8,6 +8,7 @@ import (
 	"github.com/cuteLittleDevil/go-jt808/protocol/model"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 	"maps"
+	"slices"
 	"sort"
 )
 
@@ -113,21 +114,11 @@ func (p *Package) StatisticalMissSegments() []model.P0x9212RetransmitPacket {
 func (p *PackageProgress) iter() func(func(err error) bool) {
 	return func(yield func(err error) bool) {
 		for len(p.historyData) > 0 {
-			if err := p.stageStreamData(); err == nil {
-				if !yield(nil) {
-					return
-				}
-			} else if errors.Is(err, _errNotStreamData) { // 不是流数据格式的 换一个格式试一试
-				if err := p.stageJT808Data(); err == nil {
-					if !yield(nil) {
-						return
-					}
-				} else {
-					yield(err)
-					return
-				}
-			} else {
-				yield(err)
+			err := p.stageStreamData()
+			if errors.Is(err, _errNotStreamData) { // 不是流数据格式的 换一个格式试一试
+				err = p.stageJT808Data()
+			}
+			if !yield(err) || err != nil {
 				return
 			}
 		}
@@ -165,7 +156,6 @@ func (p *PackageProgress) stageStreamData() error {
 		p.ProgressStage = ProgressStageStreamDataComplete
 	}
 	p.ExtensionFields.CurrentPackage = pack
-	p.Record[name] = pack
 	p.consumeHistory(headLen + bodyLen)
 	return nil
 }
@@ -196,13 +186,8 @@ func recordStreamChunk(pack *Package, offset, dataLen, bodyLen int, chunk []byte
 
 func assembleStreamBody(pack *Package, head []byte) {
 	pack.StreamHead = head
-	keys := make([]int, 0, len(pack.OffsetDataRecord))
-	for key := range maps.Keys(pack.OffsetDataRecord) {
-		keys = append(keys, key)
-	}
-	sort.Ints(keys)
 	pack.StreamBody = make([]byte, 0, pack.FileSize)
-	for _, key := range keys {
+	for _, key := range slices.Sorted(maps.Keys(pack.OffsetDataRecord)) {
 		pack.StreamBody = append(pack.StreamBody, pack.OffsetDataRecord[key]...)
 	}
 }
@@ -225,11 +210,7 @@ func (p *PackageProgress) parseJT808Message() (*jt808.JTMessage, error) {
 	if err := jtMsg.Decode(p.historyData[:index]); err != nil {
 		return nil, fmt.Errorf("%w [%x]", err, p.historyData[:index])
 	}
-	if index == len(p.historyData) {
-		p.historyData = p.historyData[:0]
-	} else {
-		p.historyData = p.historyData[index:]
-	}
+	p.consumeHistory(index)
 	return jtMsg, nil
 }
 

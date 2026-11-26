@@ -60,8 +60,6 @@ type heiBiaoStreamDataHandle struct {
 	baseStreamDataHandle
 	// FileNameLen 文件名长度
 	FileNameLen byte
-	// FileName 文件名
-	FileName string
 }
 
 func newHeiBiaoStreamDataHandle() *heiBiaoStreamDataHandle {
@@ -78,19 +76,15 @@ func (h *heiBiaoStreamDataHandle) HasMinHeadLen(data []byte) bool {
 }
 
 func (h *heiBiaoStreamDataHandle) Parse(data []byte) (headLen int, bodyLen int) {
-	h.FrameSign = binary.BigEndian.Uint32(data[0:4])
 	h.FileNameLen = data[4]
-	start, end := 5, 5+int(h.FileNameLen)
-	h.FileName = string(bytes.Trim(data[start:end], "\x00"))
-	start = end
-	end += 4
-	const sign = 808543076 // 0x30 0x31 0x63 0x64 固定标识
+	nameEnd := 5 + int(h.FileNameLen)
+	headLen = nameEnd + 8
 	h.baseStreamDataHandle = baseStreamDataHandle{
-		FrameSign:  sign,
-		FileName:   h.FileName,
-		DataOffset: binary.BigEndian.Uint32(data[start:end]),
-		DataLen:    binary.BigEndian.Uint32(data[start+4 : end+4]),
-		Data:       data[end+4:],
+		FrameSign:  binary.BigEndian.Uint32(data[0:4]),
+		FileName:   string(bytes.Trim(data[5:nameEnd], "\x00")),
+		DataOffset: binary.BigEndian.Uint32(data[nameEnd : nameEnd+4]),
+		DataLen:    binary.BigEndian.Uint32(data[nameEnd+4 : headLen]),
+		Data:       data[headLen:],
 	}
-	return 4 + 1 + int(h.FileNameLen) + 4 + 4, int(h.DataLen)
+	return headLen, int(h.DataLen)
 }

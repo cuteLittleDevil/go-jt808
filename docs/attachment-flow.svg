@@ -1,0 +1,159 @@
+<svg viewBox="0 0 820 740" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>attachment 主动安全附件服务交互与解析流程</title>
+  <desc>展示终端与 attachment 服务的 0x1210/0x1211/流分片/0x1212/0x9212 补传交互时序，以及单连接拆包、事件回调和退出判定流程。</desc>
+  <defs>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#D97706" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#3B82F6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#10B981" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrow-indigo" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#6366F1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrow-slate" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#64748B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+
+    <filter id="cardShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="1" dy="2" stdDeviation="2.5" flood-color="#000000" flood-opacity="0.08"/>
+    </filter>
+    <style>
+      .title { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 16px; font-weight: 700; fill: #0F172A; }
+      .sec-title { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 12px; font-weight: 600; }
+      .box-title { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 12.5px; font-weight: 600; }
+      .box-desc { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 10.5px; font-weight: 400; }
+      .msg-text { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 11px; font-weight: 500; }
+      .badge { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 10px; font-weight: 600; }
+    </style>
+  </defs>
+
+  <!-- 外层背景与主卡片 -->
+  <rect x="0" y="0" width="820" height="740" fill="#F1F5F9"/>
+  <rect x="16" y="14" width="788" height="712" rx="18" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1"/>
+
+  <!-- 顶部标题 -->
+  <text x="410" y="42" text-anchor="middle" class="title">attachment 主动安全附件服务 — 交互与拆包流程</text>
+
+  <!-- ================= 上半区：交互时序图 ================= -->
+  <rect x="34" y="56" width="752" height="368" rx="14" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1"/>
+  <text x="50" y="76" class="sec-title" fill="#334155">1. 终端与平台交互时序（支持苏标 / 黑标 / 广东标 / 湖南标 / 四川标）</text>
+
+  <!-- 参与者头部 -->
+  <rect x="95" y="88" width="150" height="34" rx="8" fill="#FFFBEB" stroke="#D97706" stroke-width="1.4" filter="url(#cardShadow)"/>
+  <text x="170" y="109" text-anchor="middle" class="box-title" fill="#92400E">车机终端</text>
+
+  <rect x="575" y="88" width="150" height="34" rx="8" fill="#EFF6FF" stroke="#3B82F6" stroke-width="1.4" filter="url(#cardShadow)"/>
+  <text x="650" y="109" text-anchor="middle" class="box-title" fill="#1E3A8A">attachment 服务</text>
+
+  <!-- 生命线 -->
+  <line x1="170" y1="122" x2="170" y2="412" stroke="#D97706" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <line x1="650" y1="122" x2="650" y2="412" stroke="#3B82F6" stroke-width="1.5" stroke-dasharray="4 4"/>
+
+  <!-- Step 1: 0x1210 -> 0x8001 -->
+  <line x1="170" y1="146" x2="642" y2="146" stroke="#D97706" stroke-width="1.6" marker-end="url(#arrow-orange)"/>
+  <text x="410" y="140" text-anchor="middle" class="msg-text" fill="#92400E">0x1210 报警附件信息（声明附件列表与文件大小）</text>
+
+  <line x1="650" y1="172" x2="178" y2="172" stroke="#3B82F6" stroke-width="1.6" stroke-dasharray="5 3" marker-end="url(#arrow-blue)"/>
+  <text x="410" y="166" text-anchor="middle" class="msg-text" fill="#1E40AF">0x8001 通用应答  ·  ProgressStageInit</text>
+
+  <!-- Step 2: 0x1211 -> 0x8001 -->
+  <line x1="170" y1="200" x2="642" y2="200" stroke="#D97706" stroke-width="1.6" marker-end="url(#arrow-orange)"/>
+  <text x="410" y="194" text-anchor="middle" class="msg-text" fill="#92400E">0x1211 文件信息上传（逐文件开始）</text>
+
+  <line x1="650" y1="226" x2="178" y2="226" stroke="#3B82F6" stroke-width="1.6" stroke-dasharray="5 3" marker-end="url(#arrow-blue)"/>
+  <text x="410" y="220" text-anchor="middle" class="msg-text" fill="#1E40AF">0x8001 通用应答  ·  ProgressStageStart</text>
+
+  <!-- Step 3: 流分片 -->
+  <line x1="170" y1="254" x2="642" y2="254" stroke="#10B981" stroke-width="1.8" marker-end="url(#arrow-green)"/>
+  <text x="410" y="248" text-anchor="middle" class="msg-text" fill="#065F46">0x30 0x31 0x63 0x64 文件码流分片 × N  ·  StreamData → StreamDataComplete</text>
+
+  <!-- Step 4: 0x1212 + 补传闭环 -->
+  <line x1="170" y1="282" x2="642" y2="282" stroke="#D97706" stroke-width="1.6" marker-end="url(#arrow-orange)"/>
+  <text x="410" y="276" text-anchor="middle" class="msg-text" fill="#92400E">0x1212 文件上传完成</text>
+
+  <!-- 补传闭环高亮框 -->
+  <rect x="132" y="294" width="556" height="66" rx="8" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.2" stroke-dasharray="5 3"/>
+  <text x="142" y="309" class="badge" fill="#4338CA">若存在缺失分片（补传闭环）</text>
+
+  <line x1="650" y1="324" x2="178" y2="324" stroke="#6366F1" stroke-width="1.6" stroke-dasharray="5 3" marker-end="url(#arrow-indigo)"/>
+  <text x="410" y="319" text-anchor="middle" class="msg-text" fill="#4338CA">0x9212 补传数据包清单  ·  ProgressStageSupplementary</text>
+
+  <line x1="170" y1="348" x2="642" y2="348" stroke="#6366F1" stroke-width="1.6" marker-end="url(#arrow-indigo)"/>
+  <text x="410" y="343" text-anchor="middle" class="msg-text" fill="#4338CA">0x30316364 补传缺失分片  →  再次发送 0x1212</text>
+
+  <!-- Step 5: 最终 0x9212 与断开 -->
+  <line x1="650" y1="382" x2="178" y2="382" stroke="#10B981" stroke-width="1.8" stroke-dasharray="5 3" marker-end="url(#arrow-green)"/>
+  <text x="410" y="376" text-anchor="middle" class="msg-text" fill="#065F46">0x9212 上传完成（UploadResult=0） ·  ProgressStageComplete</text>
+
+  <line x1="170" y1="406" x2="642" y2="406" stroke="#64748B" stroke-width="1.4" stroke-dasharray="3 3" marker-end="url(#arrow-slate)"/>
+  <text x="410" y="401" text-anchor="middle" class="msg-text" fill="#475569">全部文件传完，终端断开 TCP 连接（EOF）</text>
+
+  <!-- ================= 下半区：单连接拆包与退出判定 ================= -->
+  <rect x="34" y="438" width="752" height="272" rx="14" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1"/>
+  <text x="50" y="458" class="sec-title" fill="#334155">2. 单连接拆包循环与退出判定（每连接独立 goroutine）</text>
+
+  <!-- 读数据 -->
+  <rect x="52" y="482" width="128" height="68" rx="10" fill="#EFF6FF" stroke="#3B82F6" stroke-width="1.3" filter="url(#cardShadow)"/>
+  <text x="116" y="505" text-anchor="middle" class="box-title" fill="#1E3A8A">conn.Read</text>
+  <text x="116" y="523" text-anchor="middle" class="box-desc" fill="#1E40AF">支持 ReadTimeout</text>
+  <text x="116" y="538" text-anchor="middle" class="box-desc" fill="#1E40AF">追加至 historyData</text>
+
+  <line x1="180" y1="516" x2="210" y2="516" stroke="#3B82F6" stroke-width="1.6" marker-end="url(#arrow-blue)"/>
+
+  <!-- 迭代器分发 -->
+  <rect x="214" y="482" width="136" height="68" rx="10" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.3" filter="url(#cardShadow)"/>
+  <text x="282" y="505" text-anchor="middle" class="box-title" fill="#3730A3">progress.iter()</text>
+  <text x="282" y="523" text-anchor="middle" class="box-desc" fill="#4338CA">自动处理粘包 / 半包</text>
+  <text x="282" y="538" text-anchor="middle" class="box-desc" fill="#4338CA">按帧头分流解析</text>
+
+  <!-- 分流到流数据 & JT808 -->
+  <path d="M350 502 L386 490" fill="none" stroke="#10B981" stroke-width="1.6" marker-end="url(#arrow-green)"/>
+  <path d="M350 530 L386 544" fill="none" stroke="#3B82F6" stroke-width="1.6" marker-end="url(#arrow-blue)"/>
+
+  <!-- 流数据分支 -->
+  <rect x="390" y="468" width="218" height="46" rx="9" fill="#ECFDF5" stroke="#10B981" stroke-width="1.3" filter="url(#cardShadow)"/>
+  <text x="499" y="487" text-anchor="middle" class="box-title" fill="#065F46">stageStreamData（0x30316364）</text>
+  <text x="499" y="504" text-anchor="middle" class="box-desc" fill="#047857">记录 OffsetRecord · 满大小组装 StreamBody</text>
+
+  <!-- JT808分支 -->
+  <rect x="390" y="524" width="218" height="46" rx="9" fill="#EFF6FF" stroke="#3B82F6" stroke-width="1.3" filter="url(#cardShadow)"/>
+  <text x="499" y="543" text-anchor="middle" class="box-title" fill="#1E3A8A">stageJT808Data（0x7e ... 0x7e）</text>
+  <text x="499" y="560" text-anchor="middle" class="box-desc" fill="#1E40AF">解析 1210/1211/1212 · 下发 8001/9212</text>
+
+  <!-- 汇合到 FileEventer -->
+  <path d="M608 491 L638 512" fill="none" stroke="#10B981" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+  <path d="M608 547 L638 524" fill="none" stroke="#3B82F6" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+
+  <rect x="642" y="482" width="126" height="68" rx="10" fill="#FFFBEB" stroke="#D97706" stroke-width="1.3" filter="url(#cardShadow)"/>
+  <text x="705" y="507" text-anchor="middle" class="box-title" fill="#92400E">FileEventer</text>
+  <text x="705" y="525" text-anchor="middle" class="box-desc" fill="#B45309">OnEvent 回调</text>
+  <text x="705" y="540" text-anchor="middle" class="box-desc" fill="#B45309">进度/日志/落盘</text>
+
+  <!-- 半包回环提示 -->
+  <path d="M282 550 L282 572 L116 572 L116 554" fill="none" stroke="#64748B" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#arrow-slate)"/>
+  <text x="199" y="567" text-anchor="middle" class="box-desc" fill="#64748B">ErrInsufficientDataLen 继续读</text>
+
+  <!-- 退出判定 defer 区域 -->
+  <rect x="52" y="592" width="716" height="104" rx="12" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2"/>
+  <text x="68" y="612" class="sec-title" fill="#334155">连接退出 defer 最终状态判定（统一触发一次 OnEvent 并关闭连接）</text>
+
+  <!-- 三态卡片 -->
+  <rect x="68" y="624" width="214" height="58" rx="9" fill="#F1F5F9" stroke="#64748B" stroke-width="1.2"/>
+  <text x="175" y="644" text-anchor="middle" class="box-title" fill="#334155">ProgressStageUnexpectedExit</text>
+  <text x="175" y="662" text-anchor="middle" class="box-desc" fill="#475569">TerminalPhoneNo 为空</text>
+  <text x="175" y="675" text-anchor="middle" class="box-desc" fill="#64748B">未解析到手机号即断连/超时</text>
+
+  <rect x="303" y="624" width="214" height="58" rx="9" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.2"/>
+  <text x="410" y="644" text-anchor="middle" class="box-title" fill="#991B1B">ProgressStageFailQuit</text>
+  <text x="410" y="662" text-anchor="middle" class="box-desc" fill="#B91C1C">Err != nil 或存在未完整文件</text>
+  <text x="410" y="675" text-anchor="middle" class="box-desc" fill="#DC2626">不落盘残缺文件</text>
+
+  <rect x="538" y="624" width="214" height="58" rx="9" fill="#ECFDF5" stroke="#10B981" stroke-width="1.2"/>
+  <text x="645" y="644" text-anchor="middle" class="box-title" fill="#065F46">ProgressStageSuccessQuit</text>
+  <text x="645" y="662" text-anchor="middle" class="box-desc" fill="#047857">Err == nil 且 Record 全部完整</text>
+  <text x="645" y="675" text-anchor="middle" class="box-desc" fill="#059669">safeSavePath 校验后安全落盘</text>
+</svg>

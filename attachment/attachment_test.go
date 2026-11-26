@@ -879,7 +879,14 @@ func TestEdgeCases_ParserAndHandlers(t *testing.T) {
 
 	t.Run("fileEvent FailQuit, UnexpectedExit, empty saveRoot and ProgressStage.String", func(t *testing.T) {
 		tmp := t.TempDir()
-		t.Chdir(tmp)
+		origDir, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("getwd: %v", err)
+		}
+		if err := os.Chdir(tmp); err != nil {
+			t.Fatalf("chdir: %v", err)
+		}
+		t.Cleanup(func() { _ = os.Chdir(origDir) })
 
 		ev := &fileEvent{saveRoot: ""}
 		ev.OnEvent(&PackageProgress{

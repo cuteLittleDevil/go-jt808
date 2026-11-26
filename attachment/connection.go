@@ -41,23 +41,15 @@ func (c *connection) run() {
 		progress = &PackageProgress{
 			ProgressStage: ProgressStageInit,
 			Record:        map[string]*Package{},
-			historyData:   make([]byte, 0),
 			handle:        c.dataHandleFunc(),
 			ExtensionFields: ExtensionFields{
-				CurrentPackage:        nil,
-				RecentTerminalMessage: nil,
-				RecentPlatformData:    nil,
-				ActiveSafetyType:      c.activeSafetyType,
-				Err:                   nil,
-				TerminalPhoneNo:       "",
+				ActiveSafetyType: c.activeSafetyType,
 				Debug: struct {
 					RemoteAddr  string
 					NetErr      error
 					HistoryData []byte
 				}{
-					RemoteAddr:  c.conn.RemoteAddr().String(),
-					NetErr:      nil,
-					HistoryData: nil,
+					RemoteAddr: c.conn.RemoteAddr().String(),
 				},
 			},
 		}
