@@ -1,6 +1,7 @@
 package terminal
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
@@ -45,19 +46,18 @@ func New(opts ...Option) *Terminal {
 
 // CreateDefaultCommandData 创建默认指令.
 func (t *Terminal) CreateDefaultCommandData(commandType consts.JT808CommandType) []byte {
+	return joinPackets(t.CreateDefaultCommandPackets(commandType))
+}
+
+// CreateDefaultCommandPackets 创建默认指令分包.
+func (t *Terminal) CreateDefaultCommandPackets(commandType consts.JT808CommandType) [][]byte {
 	if t.CreateCustomMessageFunc != nil {
 		if v, ok := t.CreateCustomMessageFunc(commandType); ok {
-			body := v.Encode()
-			t.header.ReplyID = uint16(commandType)
-			t.header.PlatformSerialNumber++
-			return t.header.Encode(body)
+			return t.CreateCommandPackets(commandType, v.Encode())
 		}
 	}
 	if v, ok := t.protocolHandles[commandType]; ok {
-		body := v.Encode()
-		t.header.ReplyID = uint16(commandType)
-		t.header.PlatformSerialNumber++
-		return t.header.Encode(body)
+		return t.CreateCommandPackets(commandType, v.Encode())
 	}
 	slog.Warn("not found command",
 		slog.String("command", commandType.String()))
@@ -66,9 +66,29 @@ func (t *Terminal) CreateDefaultCommandData(commandType consts.JT808CommandType)
 
 // CreateCommandData 创建指令.
 func (t *Terminal) CreateCommandData(commandType consts.JT808CommandType, body []byte) []byte {
+	return joinPackets(t.CreateCommandPackets(commandType, body))
+}
+
+// CreateCommandPackets 创建指令分包.
+func (t *Terminal) CreateCommandPackets(commandType consts.JT808CommandType, body []byte) [][]byte {
 	t.header.ReplyID = uint16(commandType)
 	t.header.PlatformSerialNumber++
-	return t.header.Encode(body)
+	packets := t.header.EncodePackets(body)
+	if len(packets) > 1 {
+		t.header.PlatformSerialNumber += uint16(len(packets) - 1)
+	}
+	return packets
+}
+
+func joinPackets(packets [][]byte) []byte {
+	switch len(packets) {
+	case 0:
+		return nil
+	case 1:
+		return packets[0]
+	default:
+		return bytes.Join(packets, nil)
+	}
 }
 
 // ExpectedReply 指令预期回复.
@@ -89,7 +109,7 @@ func (t *Terminal) ExpectedReply(seq uint16, msg string) []byte {
 		header.PlatformSerialNumber = seq
 		body, _ = v.ReplyBody(jtMsg)
 	}
-	return header.Encode(body)
+	return joinPackets(header.EncodePackets(body))
 }
 
 // ProtocolDetails 协议详情.

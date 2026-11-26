@@ -72,29 +72,40 @@ func defaultProtocolHandles(protocolVersion consts.ProtocolVersionType) map[cons
 		consts.T0002HeartBeat:                         &model.T0x0002{},
 		consts.T0100Register:                          newT0x0100(protocolVersion),
 		consts.T0102RegisterAuth:                      newT0x0102(protocolVersion),
+		consts.T0104QueryParameter:                    newT0x0104(),
 		consts.T0200LocationReport:                    newT0x0200(item),
 		consts.T0201QueryLocation:                     newT0x0201(item),
 		consts.T0302QuestionAnswer:                    newT0x0302(),
 		consts.T0704LocationBatchUpload:               newT0x0704(item),
+		consts.T0800MultimediaEventInfoUpload:         newT0x0800(),
+		consts.T0801MultimediaDataUpload:              newT0x0801(item),
+		consts.T0805CameraShootImmediately:            newT0x0805(),
 		consts.T1003UploadAudioVideoAttr:              newT0x1003(),
+		consts.T1005UploadPassengerFlow:               newT0x1005(),
 		consts.T1205UploadAudioVideoResourceList:      newT0x1205(),
 		consts.T1206FileUploadCompleteNotice:          newT0x1206(),
 		consts.P8001GeneralRespond:                    newDefaultHandle(consts.P8001GeneralRespond),
 		consts.P8003ReissueSubcontractingRequest:      newDefaultHandle(consts.P8003ReissueSubcontractingRequest),
 		consts.P8100RegisterRespond:                   newDefaultHandle(consts.P8100RegisterRespond),
+		consts.P8103SetTerminalParams:                 newP0x8103(),
 		consts.P8104QueryTerminalParams:               &model.P0x8104{},
 		consts.P8201QueryLocation:                     &model.P0x8201{},
 		consts.P8202TmpLocationTrack:                  newP0x8202(),
 		consts.P8300TextInfoDistribution:              newP0x8300(),
 		consts.P8302QuestionDistribution:              newP0x8302(),
+		consts.P8800MultimediaUploadRespond:           newP0x8800(),
 		consts.P8801CameraShootImmediateCommand:       newP0x8801(),
 		consts.P9003QueryTerminalAudioVideoProperties: &model.P0x9003{},
 		consts.P9101RealTimeAudioVideoRequest:         newP0x9101(),
 		consts.P9102AudioVideoControl:                 newP0x9102(),
+		consts.P9105AudioVideoControlStatusNotice:     newP0x9105(),
 		consts.P9201SendVideoRecordRequest:            newP0x9201(),
+		consts.P9202SendVideoRecordControl:            newP0x9202(),
 		consts.P9205QueryResourceList:                 newP0x9205(),
 		consts.P9206FileUploadInstructions:            newP0x9206(),
 		consts.P9207FileUploadControl:                 newP0x9207(),
+		consts.P9208AlarmAttachUpload:                 newP0x9208(),
+		consts.P9212FileUploadCompleteRespond:         newP0x9212(),
 		consts.T1210AlarmAttachInfoMessage:            newP0x1210(),
 		consts.T1211FileInfoUpload:                    newP0x1211(),
 		consts.T1212FileUploadComplete:                newP0x1212(),
@@ -392,5 +403,123 @@ func newP0x9207() *model.P0x9207 {
 	return &model.P0x9207{
 		RespondSerialNumber: 0,
 		UploadControl:       2,
+	}
+}
+
+func newT0x0104() *model.T0x0104 {
+	return &model.T0x0104{
+		RespondSerialNumber: 1,
+		RespondParamCount:   1,
+		TerminalParamDetails: model.TerminalParamDetails{
+			T0x001HeartbeatInterval: model.ParamContent[uint32]{
+				ID:    0x0001,
+				Len:   4,
+				Value: 30,
+			},
+		},
+	}
+}
+
+func newT0x0800() *model.T0x0800 {
+	return &model.T0x0800{
+		MultimediaID:           1,
+		MultimediaType:         0,
+		MultimediaFormatEncode: 0,
+		EventItemEncode:        0,
+		ChannelID:              1,
+	}
+}
+
+func newT0x0801(item model.T0x0200LocationItem) *model.T0x0801 {
+	return &model.T0x0801{
+		MultimediaID:           1,
+		MultimediaType:         0,
+		MultimediaFormatEncode: 0,
+		EventItemEncode:        0,
+		ChannelID:              1,
+		T0x0200LocationItem:    item,
+		MultimediaPackage:      []byte{0xff, 0xd8, 0xff, 0xd9},
+	}
+}
+
+func newT0x0805() *model.T0x0805 {
+	return &model.T0x0805{
+		RespondSerialNumber: 1,
+		Result:              0,
+		MultimediaIDNumber:  1,
+		MultimediaIDList:    []uint32{1},
+	}
+}
+
+func newT0x1005() *model.T0x1005 {
+	return &model.T0x1005{
+		StartTime:    "2024-10-07 19:23:59",
+		EndTime:      "2024-10-07 20:23:59",
+		BoardNumber:  10,
+		AlightNumber: 5,
+	}
+}
+
+func newP0x8103() *model.P0x8103 {
+	return &model.P0x8103{
+		ParamTotal: 1,
+		TerminalParamDetails: model.TerminalParamDetails{
+			T0x001HeartbeatInterval: model.ParamContent[uint32]{
+				ID:    0x0001,
+				Len:   4,
+				Value: 30,
+			},
+		},
+	}
+}
+
+func newP0x8800() *model.P0x8800 {
+	return &model.P0x8800{
+		MultimediaID:      1,
+		AgainPackageCount: 0,
+	}
+}
+
+func newP0x9105() *model.P0x9105 {
+	return &model.P0x9105{
+		ChannelNo:       1,
+		PackageLossRate: 0,
+	}
+}
+
+func newP0x9202() *model.P0x9202 {
+	return &model.P0x9202{
+		ChannelNo:   1,
+		PlayControl: 0,
+		PlaySpeed:   0,
+		DateTime:    "2024-10-07 19:23:59",
+	}
+}
+
+func newP0x9208() *model.P0x9208 {
+	return &model.P0x9208{
+		ServerIPLen: 9,
+		ServerAddr:  "127.0.0.1",
+		TcpPort:     10002,
+		UdpPort:     0,
+		P9208AlarmSign: model.P9208AlarmSign{
+			TerminalID:       "123cd",
+			Time:             "2024-11-11 00:00:00",
+			SerialNumber:     1,
+			AttachNumber:     2,
+			ActiveSafetyType: consts.ActiveSafetyJS,
+		},
+		AlarmID: "aaa",
+		Reserve: make([]byte, 16),
+	}
+}
+
+func newP0x9212() *model.P0x9212 {
+	return &model.P0x9212{
+		FileNameLen:            byte(len("123_aaa.jpg")),
+		FileName:               "123_aaa.jpg",
+		FileType:               0,
+		UploadResult:           0,
+		RetransmitPacketNumber: 0,
 	}
 }

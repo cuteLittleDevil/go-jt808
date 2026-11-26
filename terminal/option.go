@@ -3,11 +3,12 @@ package terminal
 import (
 	"encoding/hex"
 	"fmt"
+	"log/slog"
+	"strings"
+
 	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
 	"github.com/cuteLittleDevil/go-jt808/protocol/utils"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
-	"log/slog"
-	"strings"
 )
 
 type Option struct {
@@ -41,7 +42,7 @@ func WithHeader(protocolVersion consts.ProtocolVersionType, phone string) Option
 		phone = fmt.Sprintf("%012s", phone)
 		body = strings.Replace(body, "012345678901", phone, 1)
 		if protocolVersion == consts.JT808Protocol2019 {
-			body = "000240000112345678901234567890000002"
+			body = "0002400001123456789012345678900000"
 			phone = fmt.Sprintf("%020s", phone)
 			body = strings.Replace(body, "12345678901234567890", phone, 1)
 		}
