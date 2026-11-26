@@ -43,13 +43,15 @@ func (f *fileEvent) OnEvent(progress *PackageProgress) {
 			"",
 		}, "\n")
 	case ProgressStageStreamData:
-		curPack := extension.CurrentPackage
-		str += fmt.Sprintf(" 文件传输中[%s] 进度[%d/%d] 偏移[%d]\n", curPack.FileName,
-			curPack.CurrentSize, curPack.FileSize, curPack.Offset)
+		if curPack := extension.CurrentPackage; curPack != nil {
+			str += fmt.Sprintf(" 文件传输中[%s] 进度[%d/%d] 偏移[%d]\n", curPack.FileName,
+				curPack.CurrentSize, curPack.FileSize, curPack.Offset)
+		}
 	case ProgressStageSupplementary:
-		curPack := extension.CurrentPackage
-		str += fmt.Sprintf(" 文件补传传输中[%s] 进度[%d/%d] 偏移[%d]\n", curPack.FileName,
-			curPack.CurrentSize, curPack.FileSize, curPack.Offset)
+		if curPack := extension.CurrentPackage; curPack != nil {
+			str += fmt.Sprintf(" 文件补传传输中[%s] 进度[%d/%d] 偏移[%d]\n", curPack.FileName,
+				curPack.CurrentSize, curPack.FileSize, curPack.Offset)
+		}
 	case ProgressStageStreamDataComplete:
 		str += " 目前传输文件整体进度:\n"
 		for name, v := range progress.Record {

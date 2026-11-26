@@ -18,6 +18,9 @@ type connection struct {
 
 func newConnection(conn net.Conn, activeSafetyType consts.ActiveSafetyType,
 	customDataHandleFunc func() DataHandler, fileEventer FileEventer, readTimeout time.Duration) *connection {
+	if fileEventer == nil {
+		fileEventer = newFileEvent()
+	}
 	return &connection{
 		conn:             conn,
 		activeSafetyType: activeSafetyType,
@@ -63,9 +66,13 @@ func (c *connection) run() {
 		if progress.ExtensionFields.TerminalPhoneNo == "" {
 			progress.ProgressStage = ProgressStageUnexpectedExit
 		} else {
-			progress.ProgressStage = ProgressStageSuccessQuit
+			if progress.ExtensionFields.Err == nil && !progress.isAllComplete() {
+				progress.ExtensionFields.Err = ErrDataInconsistency
+			}
 			if progress.ExtensionFields.Err != nil {
 				progress.ProgressStage = ProgressStageFailQuit
+			} else {
+				progress.ProgressStage = ProgressStageSuccessQuit
 			}
 		}
 		c.fileEventer.OnEvent(progress)
@@ -101,9 +108,13 @@ func (c *connection) handleReadData(progress *PackageProgress, data []byte) bool
 			if progress.hasJT808Reply() {
 				reply, replyErr := progress.handle.ReplyData()
 				progress.ExtensionFields.RecentPlatformData = reply
-				progress.ExtensionFields.Err = replyErr
+				if replyErr != nil {
+					progress.ExtensionFields.Err = replyErr
+					return false
+				}
 				if _, writeErr := c.conn.Write(reply); writeErr != nil {
-					progress.ExtensionFields.Err = errors.Join(writeErr, progress.ExtensionFields.Err)
+					progress.ExtensionFields.Err = writeErr
+					return false
 				}
 			}
 			c.fileEventer.OnEvent(progress)

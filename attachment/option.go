@@ -57,7 +57,9 @@ func WithNetwork(network string) Option {
 // WithFileEventerFunc 自定义文件事件变化.
 func WithFileEventerFunc(handleFunc func() FileEventer) Option {
 	return Option{F: func(o *Options) {
-		o.FileEventerFunc = handleFunc
+		if handleFunc != nil {
+			o.FileEventerFunc = handleFunc
+		}
 	}}
 }
 
@@ -78,8 +80,10 @@ func WithDataHandleFunc(handleFunc func() DataHandler) Option {
 // WithReadTimeout 设置附件连接单次读超时，<= 0 表示不启用.
 func WithReadTimeout(timeout time.Duration) Option {
 	return Option{F: func(o *Options) {
-		if timeout > 0 {
-			o.ReadTimeout = timeout
+		if timeout <= 0 {
+			o.ReadTimeout = 0
+			return
 		}
+		o.ReadTimeout = timeout
 	}}
 }

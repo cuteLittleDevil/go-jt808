@@ -213,6 +213,9 @@ func (p *PackageProgress) parseJT808Message() (*jt808.JTMessage, error) {
 		return nil, ErrInsufficientDataLen
 	}
 	const sign = 0x7e
+	if p.historyData[0] != sign {
+		return nil, fmt.Errorf("%w [%x]", ErrDataInconsistency, p.historyData)
+	}
 	index := bytes.IndexByte(p.historyData[1:], sign)
 	if index == -1 {
 		return nil, ErrInsufficientDataLen
@@ -251,4 +254,13 @@ func (p *PackageProgress) hasJT808Reply() bool {
 	default:
 	}
 	return false
+}
+
+func (p *PackageProgress) isAllComplete() bool {
+	for _, pack := range p.Record {
+		if pack == nil || pack.CurrentSize != pack.FileSize {
+			return false
+		}
+	}
+	return true
 }

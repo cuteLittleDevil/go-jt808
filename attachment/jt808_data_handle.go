@@ -115,8 +115,10 @@ func (s *standardJT808DataHandle) OnPackageProgressEvent(progress *PackageProgre
 			}
 		}
 	case consts.T1212FileUploadComplete:
+		s.T0x1212.P0x9212RetransmitPacketList = nil
 		name := s.T0x1212.FileName
 		if v, ok := progress.Record[name]; ok {
+			progress.ExtensionFields.CurrentPackage = v
 			s.T0x1212.P0x9212RetransmitPacketList = v.StatisticalMissSegments()
 			if len(s.T0x1212.P0x9212RetransmitPacketList) > 0 {
 				progress.ProgressStage = ProgressStageSupplementary

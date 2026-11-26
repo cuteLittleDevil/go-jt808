@@ -1,9 +1,12 @@
 package attachment
 
 import (
+	"errors"
 	"log/slog"
 	"net"
 )
+
+var netListen = net.Listen
 
 type GoJT808 struct {
 	opts *Options
@@ -18,7 +21,7 @@ func New(opts ...Option) *GoJT808 {
 }
 
 func (g *GoJT808) Run() {
-	in, err := net.Listen(g.opts.Network, g.opts.Addr)
+	in, err := netListen(g.opts.Network, g.opts.Addr)
 	if err != nil {
 		slog.Error("listen fail",
 			slog.Any("addr", g.opts.Addr),
@@ -29,6 +32,9 @@ func (g *GoJT808) Run() {
 	for {
 		c, err := in.Accept()
 		if err != nil {
+			if errors.Is(err, net.ErrClosed) {
+				return
+			}
 			slog.Warn("accept fail",
 				slog.Any("err", err))
 			continue

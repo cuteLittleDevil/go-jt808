@@ -90,7 +90,7 @@ func (h *heiBiaoStreamDataHandle) Parse(data []byte) (headLen int, bodyLen int) 
 		FileName:   h.FileName,
 		DataOffset: binary.BigEndian.Uint32(data[start:end]),
 		DataLen:    binary.BigEndian.Uint32(data[start+4 : end+4]),
-		Data:       data[end:],
+		Data:       data[end+4:],
 	}
 	return 4 + 1 + int(h.FileNameLen) + 4 + 4, int(h.DataLen)
 }

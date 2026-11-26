@@ -26,7 +26,7 @@ type (
 		OnInitEvent(progress *PackageProgress)          // 数据完整解析 初始化
 		GetFileName() string                            // 获取文件名
 		GetDataOffsetAndLen() (offset int, dataLen int) // 获取当前传输文件的数据偏移量 和 本次数据的长度
-	} // 	}
+	}
 
 	FileEventer interface {
 		OnEvent(pack *PackageProgress)
