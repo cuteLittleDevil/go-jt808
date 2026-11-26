@@ -200,3 +200,138 @@ func TestTerminal_CreateCommandPackets(t *testing.T) {
 		t.Errorf("unknown command packets = %v, want nil", got)
 	}
 }
+
+func TestTerminal_DefaultNewAndEdgeCases(t *testing.T) {
+	// Default New() without options
+	term := New()
+	if term.TerminalPhoneNo != "123456782013" {
+		t.Errorf("default TerminalPhoneNo = %q, want 123456782013", term.TerminalPhoneNo)
+	}
+
+	// Unknown command via CreateDefaultCommandData (joinPackets empty case)
+	if got := term.CreateDefaultCommandData(consts.JT808CommandType(0xffff)); got != nil {
+		t.Errorf("unknown command data = %x, want nil", got)
+	}
+
+	// Multi-packet via CreateCommandData (joinPackets default case)
+	multi := term.CreateCommandData(consts.T0801MultimediaDataUpload, bytes.Repeat([]byte{0xab}, 2500))
+	if len(multi) == 0 {
+		t.Errorf("multi-packet CreateCommandData returned empty")
+	}
+
+	// ExpectedReply with invalid frame
+	if got := term.ExpectedReply(1, "invalid"); got != nil {
+		t.Errorf("ExpectedReply(invalid) = %x, want nil", got)
+	}
+
+	// ProtocolDetails with invalid frame
+	if got := term.ProtocolDetails("invalid"); got != "" {
+		t.Errorf("ProtocolDetails(invalid) = %q, want empty", got)
+	}
+
+	// ProtocolDetails with valid frame but unregistered command
+	unregistered := term.CreateCommandData(consts.JT808CommandType(0x9999), nil)
+	if got := term.ProtocolDetails(fmt.Sprintf("%x", unregistered)); got != "" {
+		t.Errorf("ProtocolDetails(unregistered) = %q, want empty", got)
+	}
+}
+
+func TestTerminal_RoundTripSeqIncrement(t *testing.T) {
+	versions := []struct {
+		version consts.ProtocolVersionType
+		phone   string
+	}{
+		{version: consts.JT808Protocol2013, phone: "123456782013"},
+		{version: consts.JT808Protocol2019, phone: "12345678901234562019"},
+	}
+
+	for _, v := range versions {
+		t.Run(v.version.String(), func(t *testing.T) {
+			term := New(WithHeader(v.version, v.phone))
+
+			steps := []struct {
+				cmd          consts.JT808CommandType
+				wantReplyCmd consts.JT808CommandType
+			}{
+				{cmd: consts.T0100Register, wantReplyCmd: consts.P8100RegisterRespond},
+				{cmd: consts.T0102RegisterAuth, wantReplyCmd: consts.P8001GeneralRespond},
+				{cmd: consts.T0002HeartBeat, wantReplyCmd: consts.P8001GeneralRespond},
+				{cmd: consts.T0200LocationReport, wantReplyCmd: consts.P8001GeneralRespond},
+			}
+
+			var wantTermSeq uint16
+			var platformSeq uint16
+			verifyRoundTrip := func(cmd, wantReplyCmd consts.JT808CommandType) {
+				t.Helper()
+				wantTermSeq++
+				platformSeq++
+
+				reqBytes := term.CreateDefaultCommandData(cmd)
+				reqMsg := jt808.NewJTMessage()
+				if err := reqMsg.Decode(reqBytes); err != nil {
+					t.Fatalf("cmd %s decode req err = %v", cmd, err)
+				}
+				if reqMsg.Header.SerialNumber != wantTermSeq {
+					t.Errorf("cmd %s terminal seq = %d, want %d", cmd, reqMsg.Header.SerialNumber, wantTermSeq)
+				}
+
+				replyBytes := term.ExpectedReply(platformSeq, fmt.Sprintf("%x", reqBytes))
+				replyMsg := jt808.NewJTMessage()
+				if err := replyMsg.Decode(replyBytes); err != nil {
+					t.Fatalf("cmd %s decode reply err = %v", cmd, err)
+				}
+				if consts.JT808CommandType(replyMsg.Header.ID) != wantReplyCmd {
+					t.Errorf("cmd %s reply ID = %04x, want %04x", cmd, replyMsg.Header.ID, uint16(wantReplyCmd))
+				}
+				if replyMsg.Header.SerialNumber != platformSeq {
+					t.Errorf("cmd %s platform reply seq = %d, want %d", cmd, replyMsg.Header.SerialNumber, platformSeq)
+				}
+
+				switch wantReplyCmd {
+				case consts.P8100RegisterRespond:
+					var p8100 model.P0x8100
+					if err := p8100.Parse(replyMsg); err != nil {
+						t.Fatalf("parse P0x8100 err = %v", err)
+					}
+					if p8100.RespondSerialNumber != wantTermSeq {
+						t.Errorf("P0x8100 RespondSerialNumber = %d, want %d", p8100.RespondSerialNumber, wantTermSeq)
+					}
+				case consts.P8001GeneralRespond:
+					var p8001 model.P0x8001
+					if err := p8001.Parse(replyMsg); err != nil {
+						t.Fatalf("parse P0x8001 err = %v", err)
+					}
+					if p8001.RespondSerialNumber != wantTermSeq {
+						t.Errorf("P0x8001 RespondSerialNumber = %d, want %d", p8001.RespondSerialNumber, wantTermSeq)
+					}
+					if consts.JT808CommandType(p8001.RespondID) != cmd {
+						t.Errorf("P0x8001 RespondID = %04x, want %04x", p8001.RespondID, uint16(cmd))
+					}
+				}
+			}
+
+			for _, s := range steps {
+				verifyRoundTrip(s.cmd, s.wantReplyCmd)
+			}
+
+			// Interleave a 3-packet fragmented upload: terminal seq should advance 5, 6, 7
+			packets := term.CreateCommandPackets(consts.T0801MultimediaDataUpload, bytes.Repeat([]byte{0xab}, 2500))
+			if len(packets) != 3 {
+				t.Fatalf("fragmented packets len = %d, want 3", len(packets))
+			}
+			for _, pkt := range packets {
+				wantTermSeq++
+				pktMsg := jt808.NewJTMessage()
+				if err := pktMsg.Decode(pkt); err != nil {
+					t.Fatalf("decode fragment err = %v", err)
+				}
+				if pktMsg.Header.SerialNumber != wantTermSeq {
+					t.Errorf("fragment terminal seq = %d, want %d", pktMsg.Header.SerialNumber, wantTermSeq)
+				}
+			}
+
+			// Next heartbeat should continue at terminal seq 8 and platform seq 5
+			verifyRoundTrip(consts.T0002HeartBeat, consts.P8001GeneralRespond)
+		})
+	}
+}
