@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/cuteLittleDevil/go-jt808/gb28181/command"
@@ -10,12 +11,15 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 type adapterServer struct {
 	stopOnce    sync.Once
 	stopChan    chan struct{}
 	listen      atomic.Pointer[net.TCPListener]
+	srcConn     atomic.Pointer[net.Conn]
+	dstConn     atomic.Pointer[net.Conn]
 	rtpChan     chan [][]byte
 	streamPort  int
 	gb28181IP   string
@@ -67,12 +71,25 @@ func (j *adapterServer) run() {
 	if err != nil {
 		return
 	}
+	if ln := j.listen.Swap(nil); ln != nil {
+		_ = ln.Close()
+	}
 	slog.Info("jt1078 connect success",
 		slog.String("listen addr", in.Addr().String()),
 		slog.Any("conn", conn.RemoteAddr()))
 
 	gb28181Address := net.JoinHostPort(j.gb28181IP, strconv.Itoa(j.gb28181Port))
-	gb28181Conn, err := net.Dial("tcp", gb28181Address)
+	dialCtx, dialCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	go func() {
+		select {
+		case <-j.stopChan:
+			dialCancel()
+		case <-dialCtx.Done():
+		}
+	}()
+	var dialer net.Dialer
+	gb28181Conn, err := dialer.DialContext(dialCtx, "tcp", gb28181Address)
+	dialCancel()
 	if err != nil {
 		slog.Warn("dial gb28181 fail",
 			slog.String("address", gb28181Address),
@@ -91,6 +108,12 @@ func (j *adapterServer) stop(msg string) {
 		if ln := j.listen.Swap(nil); ln != nil {
 			_ = ln.Close()
 		}
+		if conn := j.srcConn.Swap(nil); conn != nil {
+			_ = (*conn).Close()
+		}
+		if conn := j.dstConn.Swap(nil); conn != nil {
+			_ = (*conn).Close()
+		}
 		if j.toGB28181er != nil {
 			j.toGB28181er.OnBye(msg)
 		}
@@ -98,10 +121,12 @@ func (j *adapterServer) stop(msg string) {
 }
 
 func (j *adapterServer) readPacket(conn net.Conn) {
+	j.srcConn.Store(&conn)
 	// 根据真实设备报文有3w+ byte调整
 	data := make([]byte, 10*10*1024)
 	defer func() {
 		clear(data)
+		j.srcConn.Swap(nil)
 		_ = conn.Close()
 		j.stop("")
 		close(j.rtpChan)
@@ -142,7 +167,9 @@ func (j *adapterServer) readPacket(conn net.Conn) {
 }
 
 func (j *adapterServer) writeGB28181Packet(conn net.Conn) {
+	j.dstConn.Store(&conn)
 	defer func() {
+		j.dstConn.Swap(nil)
 		_ = conn.Close()
 		j.stop("")
 	}()

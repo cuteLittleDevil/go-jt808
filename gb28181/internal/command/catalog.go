@@ -152,10 +152,17 @@ type (
 )
 
 func NewCatalogResponse(catalog Catalog, channelNum int) *CatalogResponse {
-	items := make([]CatalogItem, 0, 4)
+	if channelNum < 0 {
+		channelNum = 0
+	}
+	prefix := ""
+	if len(catalog.DeviceID) > 0 {
+		prefix = catalog.DeviceID[:len(catalog.DeviceID)-1]
+	}
+	items := make([]CatalogItem, 0, channelNum)
 	for i := 0; i < channelNum; i++ {
 		// 通道id 是把设备id的最后一位换了
-		channelID := catalog.DeviceID[:len(catalog.DeviceID)-1] + strconv.Itoa(i+1)
+		channelID := prefix + strconv.Itoa(i+1)
 		items = append(items, CatalogItem{
 			DeviceID:     channelID,
 			Name:         fmt.Sprintf("通道-%d", i+1),

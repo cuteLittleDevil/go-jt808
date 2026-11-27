@@ -96,3 +96,50 @@ func verifyXML[T XMLTypes](t *testing.T, data []byte, instance T) {
 		return
 	}
 }
+
+func TestCommandConstructorsAndBoundary(t *testing.T) {
+	ka := NewKeepalive("34020000001320000011", 7)
+	if ka.CmdType != "Keepalive" || ka.Status != "OK" || ka.SN != 7 || ka.DeviceID != "34020000001320000011" {
+		t.Fatalf("unexpected Keepalive: %+v", ka)
+	}
+	if xmlBytes := ToXML(ka); !strings.Contains(string(xmlBytes), "<CmdType>Keepalive</CmdType>") {
+		t.Fatalf("unexpected Keepalive XML: %s", string(xmlBytes))
+	}
+
+	devInfo := NewDeviceInfoResponse("1001-sim", DeviceInfo{CmdType: "DeviceInfo", SN: 3, DeviceID: "34020000001320000011"})
+	if devInfo.DeviceName != "1001-sim" || devInfo.Result != "OK" || devInfo.Channel != 4 {
+		t.Fatalf("unexpected DeviceInfoResponse: %+v", devInfo)
+	}
+
+	devStatus := NewDeviceStatusResponse(DeviceStatus{CmdType: "DeviceStatus", SN: 4, DeviceID: "34020000001320000011"})
+	if devStatus.Online != "ONLINE" || devStatus.Status != "OK" || devStatus.Result != "OK" {
+		t.Fatalf("unexpected DeviceStatusResponse: %+v", devStatus)
+	}
+
+	// 空 DeviceID 与负数通道数不 panic
+	emptyCatalog := NewCatalogResponse(Catalog{CmdType: "Catalog", SN: 5, DeviceID: ""}, 2)
+	if emptyCatalog.SumNum != 2 || len(emptyCatalog.DeviceList.Items) != 2 || emptyCatalog.DeviceList.Items[0].DeviceID != "1" {
+		t.Fatalf("unexpected empty DeviceID CatalogResponse: %+v", emptyCatalog)
+	}
+	negCatalog := NewCatalogResponse(Catalog{CmdType: "Catalog", SN: 6, DeviceID: "34020000001320000310"}, -1)
+	if negCatalog.SumNum != 0 || len(negCatalog.DeviceList.Items) != 0 {
+		t.Fatalf("unexpected negative channelNum CatalogResponse: %+v", negCatalog)
+	}
+}
+
+func TestParseXMLCharsetsAndError(t *testing.T) {
+	gbkXML := utf82gbk18030([]byte(`<?xml version="1.0" encoding="GBK"?><Query><CmdType>Catalog</CmdType><SN>1</SN><DeviceID>34020000001320000310</DeviceID></Query>`))
+	var ct ConfirmType
+	if err := ParseXML(gbkXML, &ct); err != nil || ct.CmdType != "Catalog" {
+		t.Fatalf("GBK ParseXML failed: ct=%+v err=%v", ct, err)
+	}
+
+	utf8XML := []byte(`<?xml version="1.0" encoding="UTF-8"?><Query><CmdType>DeviceInfo</CmdType></Query>`)
+	if err := ParseXML(utf8XML, &ct); err != nil || ct.CmdType != "DeviceInfo" {
+		t.Fatalf("UTF-8 ParseXML failed: ct=%+v err=%v", ct, err)
+	}
+
+	if err := ParseXML([]byte("<broken"), &ct); err == nil {
+		t.Fatal("expected error for broken XML")
+	}
+}

@@ -37,13 +37,15 @@ func (p *packageParse) parse(data []byte) func(func(packet *jt1078.Packet, err e
 				complete := false
 				switch packet.SubcontractType {
 				case jt1078.SubcontractTypeAtomic:
-					p.record[packet.DataType] = packet.Body
+					delete(p.record, packet.DataType)
 					complete = true
 				case jt1078.SubcontractTypeFirst:
-					p.record[packet.DataType] = nil
-					p.record[packet.DataType] = packet.Body
+					// 拷贝独立切片，避免后续 append 沿 historyData 的 cap 原地覆写同批次其他包（如混流音频）
+					p.record[packet.DataType] = append([]byte(nil), packet.Body...)
 				case jt1078.SubcontractTypeLast:
 					p.record[packet.DataType] = append(p.record[packet.DataType], packet.Body...)
+					packet.Body = p.record[packet.DataType]
+					delete(p.record, packet.DataType)
 					complete = true
 				case jt1078.SubcontractTypeMiddle:
 					p.record[packet.DataType] = append(p.record[packet.DataType], packet.Body...)
@@ -52,7 +54,6 @@ func (p *packageParse) parse(data []byte) func(func(packet *jt1078.Packet, err e
 					return
 				}
 				if complete {
-					packet.Body = p.record[packet.DataType]
 					yield(packet, nil)
 				}
 			} else {

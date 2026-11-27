@@ -1,6 +1,7 @@
 package gb28181
 
 import (
+	"context"
 	"fmt"
 	"github.com/cuteLittleDevil/go-jt808/gb28181/command"
 	"github.com/cuteLittleDevil/go-jt808/gb28181/internal/stream"
@@ -12,19 +13,23 @@ import (
 	"time"
 )
 
+var initSIPOnce sync.Once
+
 type Client struct {
 	Options
-	client    *sipgo.Client
-	server    *sipgo.Server
-	stopOnce  sync.Once
-	stopChan  chan struct{}
-	sn        atomic.Uint32
-	online    bool
-	recipient sip.Uri
-	from      *sip.FromHeader
-	to        *sip.ToHeader
-	callID    sip.CallIDHeader
-	contact   *sip.ContactHeader
+	client     *sipgo.Client
+	server     *sipgo.Server
+	stopOnce   sync.Once
+	stopChan   chan struct{}
+	runStarted atomic.Bool
+	runDone    chan struct{}
+	sn         atomic.Uint32
+	online     bool
+	recipient  sip.Uri
+	from       *sip.FromHeader
+	to         *sip.ToHeader
+	callID     sip.CallIDHeader
+	contact    *sip.ContactHeader
 	// keepaliveReplyCount 心跳有多少次没有回复了.
 	keepaliveReplyCount int
 	manage              *stream.Manage
@@ -40,6 +45,7 @@ func New(sim string, opts ...Option) *Client {
 			ToGBType:  command.JT1078ToPS,
 		},
 		stopChan: make(chan struct{}),
+		runDone:  make(chan struct{}),
 	}
 	for _, op := range opts {
 		op.F(&client.Options)
@@ -71,7 +77,9 @@ func New(sim string, opts ...Option) *Client {
 
 func (c *Client) Init() error {
 	// 不知道查询目录时 通道>4时如何按要求一个个分 干脆一次性发送完成
-	sip.UDPMTUSize = 15000
+	initSIPOnce.Do(func() {
+		sip.UDPMTUSize = 15000
+	})
 	ua, err := sipgo.NewUA(
 		sipgo.WithUserAgent(fmt.Sprintf("jt808-sim:%s", c.Sim)),
 	)
@@ -139,28 +147,56 @@ func (c *Client) Init() error {
 }
 
 func (c *Client) Run() {
-	ticker := time.NewTicker(c.Options.KeepAlive)
+	c.runStarted.Store(true)
+	defer close(c.runDone)
+
+	select {
+	case <-c.stopChan:
+		return
+	default:
+	}
+
+	runCtx, runCancel := context.WithCancel(context.Background())
+	defer runCancel()
+	go func() {
+		<-c.stopChan
+		runCancel()
+	}()
+
+	keepAlive := c.Options.KeepAlive
+	if keepAlive <= 0 {
+		keepAlive = 30 * time.Second
+	}
+	ticker := time.NewTicker(keepAlive)
 	registerChan := make(chan bool, 1)
 	defer func() {
 		ticker.Stop()
 		close(registerChan)
 	}()
-	registerChan <- true
+	triggerRegister := func() {
+		select {
+		case registerChan <- true:
+		default:
+		}
+	}
+	triggerRegister()
 
 	for {
 		select {
 		case <-c.stopChan:
 			if c.online {
-				if _, err := c.handleRegister(false); err != nil {
+				unregisterCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				if _, err := c.handleRegister(unregisterCtx, false); err != nil {
 					slog.Warn("unregister fail",
 						slog.String("sim", c.Options.Sim),
 						slog.String("id", c.Options.DeviceInfo.ID),
 						slog.Any("err", err))
 				}
+				cancel()
 			}
 			return
 		case <-registerChan:
-			if ok, err := c.handleRegister(true); err != nil {
+			if ok, err := c.handleRegister(runCtx, true); err != nil {
 				slog.Warn("register fail",
 					slog.String("sim", c.Options.Sim),
 					slog.String("id", c.Options.DeviceInfo.ID),
@@ -173,15 +209,15 @@ func (c *Client) Run() {
 			}
 		case <-ticker.C: // 心跳保活
 			if !c.online {
-				registerChan <- true // 不在线就注册
+				triggerRegister() // 不在线就注册
 				continue
 			}
-			if err := c.handleKeepalive(); err != nil {
+			if err := c.handleKeepalive(runCtx); err != nil {
 				c.keepaliveReplyCount++
 				if c.keepaliveReplyCount == 3 { // 服务器一段时间不回复就触发注册
 					c.online = false
 					c.keepaliveReplyCount = 0
-					registerChan <- true // 保活指令失败就重新注册
+					triggerRegister() // 保活指令失败就重新注册
 				}
 			} else {
 				c.keepaliveReplyCount = 0
@@ -193,6 +229,9 @@ func (c *Client) Run() {
 func (c *Client) Stop() {
 	c.stopOnce.Do(func() {
 		close(c.stopChan)
+		if c.runStarted.Load() {
+			<-c.runDone
+		}
 		if c.client != nil {
 			if err := c.client.Close(); err != nil {
 				slog.Warn("client close fail",
@@ -219,8 +258,10 @@ func (c *Client) nextSN() uint32 {
 	return c.sn.Add(1)
 }
 
-func (c *Client) getResponse(tx sip.ClientTransaction) (*sip.Response, error) {
+func (c *Client) getResponse(ctx context.Context, tx sip.ClientTransaction) (*sip.Response, error) {
 	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	case <-tx.Done():
 		return nil, fmt.Errorf("事务已终止")
 	case res := <-tx.Responses():

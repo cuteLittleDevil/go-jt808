@@ -3,11 +3,15 @@ package stream
 import (
 	"encoding/binary"
 	"hash/crc32"
+	"math"
 )
 
 const (
-	streamIDVideo = byte(0xe0)
-	streamIDAudio = byte(0xc0)
+	streamIDVideo      = byte(0xe0)
+	streamIDVideoH265  = byte(0xe1)
+	streamIDAudio      = byte(0xc0)
+	streamIDAudioG711U = byte(0xc1)
+	streamIDAudioAAC   = byte(0xc2)
 )
 
 // ProgramStreamPackHeader Table 2-33 https://ocw.unican.es/pluginfile.php/2825/course/section/2777/iso13818-1.pdf.
@@ -74,7 +78,7 @@ func (p *ProgramStreamPackHeader) Encode() []byte {
 	// SystemClockReferenceBase3(剩余5位) + MarkerBit3(1) + SystemClockReferenceExtension(高2位)
 	data = append(data, (byte(p.SystemClockReferenceBase3<<3)&0b1111_1000)|
 		p.MarkerBit3<<2|
-		(byte(p.SystemClockReferenceExtension>>5)&0b0000_0011))
+		(byte(p.SystemClockReferenceExtension>>7)&0b0000_0011))
 
 	// SystemClockReferenceExtension(剩余7位) + MarkerBit4(1)
 	data = append(data, byte(p.SystemClockReferenceExtension<<1&0b1111_1110)|p.MarkerBit4)
@@ -181,8 +185,8 @@ func (s *SystemHeader) Encode() []byte {
 		s.CSPSFlag&0b0000_0001)
 
 	// SystemAudioLockFlag(1) + SystemVideoLockFlag(1) + MarkerBit3(1) + VideoBound(5)
-	data = append(data, s.SystemVideoLockFlag<<7&0b1000_0000|
-		s.SystemAudioLockFlag<<6&0b0100_0000|
+	data = append(data, s.SystemAudioLockFlag<<7&0b1000_0000|
+		s.SystemVideoLockFlag<<6&0b0100_0000|
 		s.MarkerBit3<<5&0b0010_0000|
 		s.VideoBound&0b0001_1111)
 
@@ -334,10 +338,15 @@ type PESPacket struct {
 }
 
 func NewPESPacket(streamID byte, bodyLen uint16, pts uint32) *PESPacket {
+	const pesOptionalHeaderLen = 3 + 5
+	var pesPacketLen uint16
+	if bodyLen > 0 && uint32(bodyLen)+pesOptionalHeaderLen <= math.MaxUint16 {
+		pesPacketLen = pesOptionalHeaderLen + bodyLen
+	}
 	pes := &PESPacket{
 		PacketStartCodePrefix:  0x000001,
 		StreamID:               streamID,
-		PesPacketLength:        3 + 5 + bodyLen,
+		PesPacketLength:        pesPacketLen,
 		ConstTen:               0b10,
 		PesScramblingControl:   0,
 		PesPriority:            1,
@@ -355,7 +364,7 @@ func NewPESPacket(streamID byte, bodyLen uint16, pts uint32) *PESPacket {
 		PTS:                    pts,
 		DTS:                    0,
 	}
-	if streamID == streamIDAudio {
+	if streamID >= 0xc0 && streamID <= 0xdf {
 		pes.DataAlignmentIndicator = 0
 	}
 	return pes

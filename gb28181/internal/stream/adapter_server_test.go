@@ -105,3 +105,112 @@ func TestAdapterServer_stopConcurrentNoRace(t *testing.T) {
 		t.Fatalf("OnBye called %d times, want 1", got)
 	}
 }
+
+func TestAdapterServer_stopUnblocksBlockedRead(t *testing.T) {
+	conv := &stubConverter{}
+	srv := newAdapterServer(&command.InviteInfo{
+		IP:   "127.0.0.1",
+		Port: 20000,
+	}, conv)
+
+	srcServer, srcClient := net.Pipe()
+	defer func() {
+		_ = srcClient.Close()
+	}()
+
+	readDone := make(chan struct{})
+	go func() {
+		defer close(readDone)
+		srv.readPacket(srcServer)
+	}()
+
+	// 等待 readPacket 进入阻塞 conn.Read
+	time.Sleep(20 * time.Millisecond)
+
+	// 模拟收到 BYE 调用 stop()，即使对端未关闭连接，readPacket 也必须立刻退出
+	srv.stop("收到bye")
+	select {
+	case <-readDone:
+	case <-time.After(time.Second):
+		t.Fatal("readPacket remained blocked after stop()")
+	}
+}
+
+func TestManage_Lifecycle(t *testing.T) {
+	var ackCount, byeCount atomic.Int32
+	m := NewManage(func(info *command.InviteInfo) *command.InviteInfo {
+		if info.CallId == "drop-me" {
+			return nil
+		}
+		info.Adapter.Enable = false
+		return info
+	}, func() command.ToGB28181er {
+		return &manageStubConverter{ackCount: &ackCount, byeCount: &byeCount}
+	})
+	go m.Run()
+
+	waitFor := func(cond func() bool, msg string) {
+		t.Helper()
+		deadline := time.Now().Add(time.Second)
+		for time.Now().Before(deadline) {
+			if cond() {
+				return
+			}
+			time.Sleep(5 * time.Millisecond)
+		}
+		t.Fatalf("%s (ack=%d bye=%d)", msg, ackCount.Load(), byeCount.Load())
+	}
+
+	// 1. OnInviteEvent 返回 nil 时不 panic
+	m.SubmitInvite(&command.InviteInfo{CallId: "drop-me"})
+	m.SubmitAck("drop-me")
+
+	// 2. 正常 Invite -> Ack -> 同 CallId 覆盖 -> Bye（按 SIP 顺序等待处理完成）
+	m.SubmitInvite(&command.InviteInfo{CallId: "call-1"})
+	time.Sleep(10 * time.Millisecond)
+	m.SubmitAck("call-1")
+	waitFor(func() bool { return ackCount.Load() == 1 }, "first ack not processed")
+
+	m.SubmitInvite(&command.InviteInfo{CallId: "call-1"})
+	waitFor(func() bool { return byeCount.Load() == 1 }, "old server not stopped on duplicate invite")
+
+	m.SubmitAck("call-1")
+	waitFor(func() bool { return ackCount.Load() == 2 }, "second ack not processed")
+
+	m.SubmitBye("call-1")
+	waitFor(func() bool { return byeCount.Load() == 2 }, "bye not processed")
+
+	// 3. Stop 后继续 Submit 不阻塞
+	m.Stop()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for i := 0; i < 20; i++ {
+			m.SubmitInvite(&command.InviteInfo{CallId: "after-stop"})
+			m.SubmitAck("after-stop")
+			m.SubmitBye("after-stop")
+		}
+	}()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("Submit* blocked after Manage.Stop()")
+	}
+}
+
+type manageStubConverter struct {
+	ackCount *atomic.Int32
+	byeCount *atomic.Int32
+}
+
+func (m *manageStubConverter) OnAck(_ *command.InviteInfo) {
+	m.ackCount.Add(1)
+}
+
+func (m *manageStubConverter) ConvertToGB28181(data []byte) ([][]byte, error) {
+	return [][]byte{data}, nil
+}
+
+func (m *manageStubConverter) OnBye(_ string) {
+	m.byeCount.Add(1)
+}

@@ -59,6 +59,9 @@ func (s *Manage) Run() {
 				if s.OnInviteEvent != nil {
 					inviteInfo = s.OnInviteEvent(inviteInfo)
 				}
+				if inviteInfo == nil {
+					continue
+				}
 				// 监听端口A 有数据时 建立TCP连接 连接到端口B（收流端口)
 				// 把端口A收到的数据(默认jt1078) 转ps流数据上传
 				toGB := s.ConvertFunc()
@@ -88,26 +91,20 @@ func (s *Manage) Stop() {
 func (s *Manage) SubmitInvite(inviteInfo *command.InviteInfo) {
 	select {
 	case <-s.stopChan:
-		return
-	default:
-		s.inviteChan <- inviteInfo
+	case s.inviteChan <- inviteInfo:
 	}
 }
 
 func (s *Manage) SubmitAck(callID string) {
 	select {
 	case <-s.stopChan:
-		return
-	default:
-		s.ackChan <- callID
+	case s.ackChan <- callID:
 	}
 }
 
 func (s *Manage) SubmitBye(callID string) {
 	select {
 	case <-s.stopChan:
-		return
-	default:
-		s.byeChan <- callID
+	case s.byeChan <- callID:
 	}
 }

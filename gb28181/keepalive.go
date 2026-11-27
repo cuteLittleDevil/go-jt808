@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func (c *Client) handleKeepalive() error {
+func (c *Client) handleKeepalive(parentCtx context.Context) error {
 	platform := c.Options.PlatformInfo
 	req := sip.NewRequest(sip.MESSAGE, c.recipient)
 	req.SetTransport(c.Options.Transport)
@@ -41,7 +41,7 @@ func (c *Client) handleKeepalive() error {
 
 	keep := inCommand.NewKeepalive(c.Options.DeviceInfo.ID, sn)
 	req.SetBody(inCommand.ToXML(keep))
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(parentCtx, 10*time.Second)
 	defer cancel()
 	_, err := c.client.Do(ctx, req)
 	return err

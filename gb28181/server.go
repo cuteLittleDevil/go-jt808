@@ -85,7 +85,7 @@ func (c *Client) message(req *sip.Request, tx sip.ServerTransaction) {
 		return
 	}
 	defer clientTx.Terminate()
-	_, _ = c.getResponse(clientTx)
+	_, _ = c.getResponse(ctx, clientTx)
 }
 
 func (c *Client) invite(req *sip.Request, tx sip.ServerTransaction) {
@@ -131,11 +131,21 @@ func (c *Client) invite(req *sip.Request, tx sip.ServerTransaction) {
 }
 
 func (c *Client) ack(req *sip.Request, _ sip.ServerTransaction) {
-	c.manage.SubmitAck(req.CallID().Value())
+	if callID := req.CallID(); callID != nil {
+		c.manage.SubmitAck(callID.Value())
+	}
 }
 
-func (c *Client) bye(req *sip.Request, _ sip.ServerTransaction) {
-	c.manage.SubmitBye(req.CallID().Value())
+func (c *Client) bye(req *sip.Request, tx sip.ServerTransaction) {
+	if callID := req.CallID(); callID != nil {
+		c.manage.SubmitBye(callID.Value())
+	}
+	if err := tx.Respond(sip.NewResponseFromRequest(req, sip.StatusOK, "OK", nil)); err != nil {
+		slog.Warn("bye respond fail",
+			slog.String("sim", c.Options.Sim),
+			slog.String("id", c.Options.DeviceInfo.ID),
+			slog.Any("err", err))
+	}
 }
 
 func (c *Client) defaultInvite(inviteInfo *command.InviteInfo) *command.InviteInfo {

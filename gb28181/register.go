@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func (c *Client) handleRegister(hasRegister bool) (bool, error) {
+func (c *Client) handleRegister(parentCtx context.Context, hasRegister bool) (bool, error) {
 	req := sip.NewRequest(sip.REGISTER, c.recipient)
 	platform := c.Options.PlatformInfo
 	req.AppendHeader(&sip.ViaHeader{
@@ -42,7 +42,7 @@ func (c *Client) handleRegister(hasRegister bool) (bool, error) {
 	}
 	req.AppendHeader(sip.NewHeader("Content-Length", "0"))
 	// 注册wvp 有时候10秒不够 换30秒
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(parentCtx, 30*time.Second)
 	defer cancel()
 	tx, err := c.client.TransactionRequest(ctx, req)
 	if err != nil {
@@ -50,7 +50,7 @@ func (c *Client) handleRegister(hasRegister bool) (bool, error) {
 	}
 	defer tx.Terminate()
 
-	res, err := c.getResponse(tx)
+	res, err := c.getResponse(ctx, tx)
 	if err != nil {
 		return false, err
 	}
@@ -59,38 +59,16 @@ func (c *Client) handleRegister(hasRegister bool) (bool, error) {
 		success = true
 	}
 	if hasRegister && res.StatusCode == sip.StatusUnauthorized {
-		wwwAuth := res.GetHeader("WWW-Authenticate")
-		if wwwAuth == nil {
-			return false, fmt.Errorf("auth not exist")
-		}
-		chal, err := digest.ParseChallenge(wwwAuth.Value())
+		newReq, err := c.buildAuthRegisterRequest(req, res)
 		if err != nil {
 			return false, err
 		}
-		opts := digest.Options{
-			Method:   req.Method.String(),
-			URI:      "sip:" + platform.Domain,
-			Username: c.Options.DeviceInfo.ID,
-			Password: platform.Password,
-			Cnonce:   sip.GenerateTagN(16),
-			Count:    1,
-		}
-
-		cred, err := digest.Digest(chal, opts)
-		if err != nil {
-			return false, fmt.Errorf("calculating digest failed %v", err)
-		}
-
-		// 创建新的带认证信息的请求
-		newReq := req.Clone()
-		newReq.RemoveHeader("Via")
-		newReq.AppendHeader(sip.NewHeader("Authorization", cred.String()))
 		tx, err := c.client.TransactionRequest(ctx, newReq)
 		if err != nil {
 			return false, err
 		}
 		defer tx.Terminate()
-		newRes, err := c.getResponse(tx)
+		newRes, err := c.getResponse(ctx, tx)
 		if err != nil {
 			return false, err
 		}
@@ -99,4 +77,40 @@ func (c *Client) handleRegister(hasRegister bool) (bool, error) {
 		}
 	}
 	return success, nil
+}
+
+func (c *Client) buildAuthRegisterRequest(req *sip.Request, res *sip.Response) (*sip.Request, error) {
+	wwwAuth := res.GetHeader("WWW-Authenticate")
+	if wwwAuth == nil {
+		return nil, fmt.Errorf("auth not exist")
+	}
+	chal, err := digest.ParseChallenge(wwwAuth.Value())
+	if err != nil {
+		return nil, err
+	}
+	platform := c.Options.PlatformInfo
+	opts := digest.Options{
+		Method:   req.Method.String(),
+		URI:      "sip:" + platform.Domain,
+		Username: c.Options.DeviceInfo.ID,
+		Password: platform.Password,
+		Cnonce:   sip.GenerateTagN(16),
+		Count:    1,
+	}
+
+	cred, err := digest.Digest(chal, opts)
+	if err != nil {
+		return nil, fmt.Errorf("calculating digest failed %w", err)
+	}
+
+	// 创建新的带认证信息的请求
+	newReq := req.Clone()
+	newReq.RemoveHeader("Via")
+	newReq.RemoveHeader("CSeq")
+	newReq.AppendHeader(&sip.CSeqHeader{
+		SeqNo:      c.nextSN(),
+		MethodName: sip.REGISTER,
+	})
+	newReq.AppendHeader(sip.NewHeader("Authorization", cred.String()))
+	return newReq, nil
 }

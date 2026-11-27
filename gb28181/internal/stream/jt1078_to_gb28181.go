@@ -85,10 +85,7 @@ func (j *JT1078ToGB28181) ConvertToGB28181(jt1078Data []byte) ([][]byte, error) 
 }
 
 func (j *JT1078ToGB28181) jt1078ToGB28181(pack *jt1078.Packet) [][]byte {
-	streamID := streamIDAudio
-	if pack.Flag.PT == jt1078.PTH264 || pack.Flag.PT == jt1078.PTH265 {
-		streamID = streamIDVideo
-	}
+	streamID := j.getStreamID(pack.Flag.PT)
 
 	// todo 如果时间戳不对 让流媒体进行处理 比如zlm修改 protocol.modify_stamp=1
 	pts := uint32(pack.Timestamp)
@@ -128,7 +125,7 @@ func (j *JT1078ToGB28181) jt1078ToGB28181(pack *jt1078.Packet) [][]byte {
 				data = append(data, psm.Encode()...)
 			}
 			bodyLen := len(pack.Body)
-			if bodyLen > math.MaxUint16 {
+			if bodyLen > math.MaxUint16-8 {
 				bodyLen = 0
 			}
 			pes := NewPESPacket(streamID, uint16(bodyLen), pts)
@@ -188,50 +185,69 @@ func (j *JT1078ToGB28181) getRtpType(pt jt1078.PTType) byte {
 	return payloadType
 }
 
+func (j *JT1078ToGB28181) getStreamID(pt jt1078.PTType) byte {
+	switch pt {
+	case jt1078.PTH264:
+		return streamIDVideo
+	case jt1078.PTH265:
+		return streamIDVideoH265
+	case jt1078.PTG711A:
+		return streamIDAudio
+	case jt1078.PTG711U:
+		return streamIDAudioG711U
+	case jt1078.PTAAC:
+		return streamIDAudioAAC
+	default:
+		return streamIDAudio
+	}
+}
+
 func (j *JT1078ToGB28181) createStreamMap() []streamMap {
 	if len(j.streamTypes) == 0 {
 		return []streamMap{
 			{
 				StreamType:                 0x1b, // h264
-				ElementaryStreamId:         0xe0,
+				ElementaryStreamId:         streamIDVideo,
 				ElementaryStreamInfoLength: 0,
 			},
 			{
 				StreamType:                 0x90, // g711
-				ElementaryStreamId:         0xc0,
+				ElementaryStreamId:         streamIDAudio,
 				ElementaryStreamInfoLength: 0,
 			},
 		}
 	}
-	list := make([]streamMap, 0, 2)
+	list := make([]streamMap, 0, len(j.streamTypes))
 	for _, ptType := range j.streamTypes {
 		var tmp streamMap
 		switch ptType {
 		case jt1078.PTH264:
 			tmp = streamMap{
 				StreamType:         0x1b, // h264
-				ElementaryStreamId: 0xe0,
+				ElementaryStreamId: streamIDVideo,
 			}
 		case jt1078.PTH265:
 			tmp = streamMap{
 				StreamType:         0x24, // h265
-				ElementaryStreamId: 0xe1,
+				ElementaryStreamId: streamIDVideoH265,
 			}
 		case jt1078.PTG711A:
 			tmp = streamMap{
 				StreamType:         0x90, // g711a
-				ElementaryStreamId: 0xc0,
+				ElementaryStreamId: streamIDAudio,
 			}
 		case jt1078.PTG711U:
 			tmp = streamMap{
 				StreamType:         0x90, // g711u
-				ElementaryStreamId: 0xc1,
+				ElementaryStreamId: streamIDAudioG711U,
 			}
 		case jt1078.PTAAC:
 			tmp = streamMap{
 				StreamType:         0x0F, // aac
-				ElementaryStreamId: 0xc2,
+				ElementaryStreamId: streamIDAudioAAC,
 			}
+		default:
+			continue
 		}
 		list = append(list, tmp)
 	}
