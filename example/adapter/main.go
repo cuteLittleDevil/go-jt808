@@ -69,9 +69,7 @@ func main() {
 	address := "0.0.0.0:18080"
 	adapterGroup := adapter.New(
 		adapter.WithHostPorts(address),
-		//adapter.WithAllowCommand( // 全局都允许的向设备写的命令
-		//	consts.P9101RealTimeAudioVideoRequest,
-		//),
+		//adapter.WithAllowCommand(), // 传空可关闭全局默认放行列表，仅使用下方 Terminal.AllowCommands
 		adapter.WithTimeoutRetry(10*time.Second), // 模拟连接断开后 多久重试一次
 		adapter.WithTerminals(
 			adapter.Terminal{
@@ -79,10 +77,10 @@ func main() {
 				TargetAddr: "127.0.0.1:18081", // 其他项目的jt808服务
 			},
 			adapter.Terminal{
-				Mode:       adapter.Follower,  // 服务读正常 写默认拒绝（只下发指定命令）
+				Mode:       adapter.Follower,  // 服务读正常 写仅放行全局默认 AllowCommand + 当前 AllowCommands
 				TargetAddr: "127.0.0.1:18082", // go-jt808项目的jt808服务
 				AllowCommands: []consts.JT808CommandType{
-					consts.P9205QueryResourceList, // 允许向设备发送的命令
+					consts.P9205QueryResourceList, // 额外允许向设备发送的命令
 				},
 			},
 		),
