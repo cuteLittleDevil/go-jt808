@@ -19,7 +19,6 @@ type session struct {
 	conn      net.Conn
 	opts      *Options
 	terminals []Terminal
-	onClose   func()
 	// backends：key=TargetAddr(string)，value=*backend。写入必须走 putBackend。
 	backends sync.Map
 	// reconnecting：key=TargetAddr，标记该地址是否已有重连协程在跑（含重试等待期间）。
@@ -30,16 +29,14 @@ type session struct {
 	stopOnce     sync.Once
 }
 
-func newSession(conn net.Conn, timeoutRetry time.Duration, terminals []Terminal) *session {
-	return newSessionWithOptions(conn, newOptions([]Option{WithTimeoutRetry(timeoutRetry)}), terminals, nil)
-}
-
-func newSessionWithOptions(conn net.Conn, opts *Options, terminals []Terminal, onClose func()) *session {
+func newSession(conn net.Conn, opts *Options, terminals []Terminal) *session {
+	if opts == nil {
+		opts = newOptions(nil)
+	}
 	s := &session{
 		conn:       conn,
 		opts:       opts,
 		terminals:  terminals,
-		onClose:    onClose,
 		replyQueue: make(chan []byte, 10),
 		stopCh:     make(chan struct{}),
 	}
@@ -196,9 +193,6 @@ func (s *session) stop() {
 		})
 		s.backends.Clear()
 		s.reconnecting.Clear()
-		if s.onClose != nil {
-			s.onClose()
-		}
 	})
 }
 

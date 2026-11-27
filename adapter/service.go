@@ -4,30 +4,22 @@ import (
 	"errors"
 	"log/slog"
 	"net"
-	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 )
 
 type Adapter struct {
-	opts     *Options
-	ln       atomic.Pointer[net.Listener]
-	sessions sync.Map
-	stopCh   chan struct{}
-	stopOnce sync.Once
+	opts *Options
 }
 
 func New(opts ...Option) *Adapter {
-	options := newOptions(opts)
 	return &Adapter{
-		opts:   options,
-		stopCh: make(chan struct{}),
+		opts: newOptions(opts),
 	}
 }
 
-// Run 启动适配器并阻塞接受真实终端连接，直到 Stop 或监听失败。
+// Run 启动适配器并持续接收真实终端连接。
 func (a *Adapter) Run() {
 	addr, err := net.ResolveTCPAddr("tcp", a.opts.Addr)
 	if err != nil {
@@ -48,26 +40,11 @@ func (a *Adapter) Run() {
 }
 
 func (a *Adapter) serve(in net.Listener) {
-	a.ln.Store(&in)
-	select {
-	case <-a.stopCh:
-		if ln := a.ln.Swap(nil); ln != nil {
-			_ = (*ln).Close()
-		}
-		return
-	default:
-	}
-
 	for {
 		c, err := in.Accept()
 		if err != nil {
 			if errors.Is(err, net.ErrClosed) {
 				return
-			}
-			select {
-			case <-a.stopCh:
-				return
-			default:
 			}
 			slog.Warn("accept fail",
 				slog.Any("err", err))
@@ -75,35 +52,9 @@ func (a *Adapter) serve(in net.Listener) {
 			continue
 		}
 
-		var s *session
-		s = newSessionWithOptions(c, a.opts, a.createTerminals(), func() {
-			a.sessions.Delete(s)
-		})
-		a.sessions.Store(s, struct{}{})
-		select {
-		case <-a.stopCh:
-			s.stop()
-			return
-		default:
-		}
+		s := newSession(c, a.opts, a.createTerminals())
 		go s.run()
 	}
-}
-
-// Stop 关闭监听并主动关闭所有已建立的终端会话及其后端模拟连接。
-func (a *Adapter) Stop() {
-	a.stopOnce.Do(func() {
-		close(a.stopCh)
-		if ln := a.ln.Swap(nil); ln != nil {
-			_ = (*ln).Close()
-		}
-		a.sessions.Range(func(key, _ any) bool {
-			if s, ok := key.(*session); ok {
-				s.stop()
-			}
-			return true
-		})
-	})
 }
 
 func (a *Adapter) createTerminals() []Terminal {

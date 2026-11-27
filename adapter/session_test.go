@@ -44,7 +44,6 @@ func TestBackendClient_BranchesAndDownlinkSafety(t *testing.T) {
 		bc.readLoop()
 	}()
 
-	// 单帧快路径 + 多帧粘包 + 坏帧触发 unpackErr 退出
 	if _, err := serverEnd.Write(testDownlink8001); err != nil {
 		t.Fatal(err)
 	}
@@ -92,9 +91,8 @@ func TestBackendClient_BranchesAndDownlinkSafety(t *testing.T) {
 	if !bcWriteErr.enqueueUplink([]byte{0x7e, 0x01, 0x7e}) {
 		t.Fatal("expected enqueueUplink true before stop")
 	}
-	bcWriteErr.run() // writeQueue 中有 1 包，写入已关闭的 wClient 报错退出并关闭 stopCh
+	bcWriteErr.run()
 
-	// 填满队列使 select 必走 stopCh / sessionStop 分支
 	bcWriteErr.writeQueue <- []byte{1}
 	if bcWriteErr.enqueueUplink([]byte{2}) {
 		t.Fatal("expected false when stopCh closed")
@@ -146,15 +144,17 @@ func TestBackendClient_BranchesAndDownlinkSafety(t *testing.T) {
 }
 
 func TestSession_EdgeBranchesAndReconnect(t *testing.T) {
-	// 1. 单飞重连 + TargetAddr 字符串 key 约束 + Timer 在 stop 后立即退出
+	// 1. opts=nil 默认兜底 + 单飞重连 + TargetAddr 字符串 key 约束 + Timer 在 stop 后立即退出
 	devA, devB := net.Pipe()
 	defer func() {
 		_ = devA.Close()
 		_ = devB.Close()
 	}()
 
+	_ = newSession(devA, nil, nil)
+
 	term := Terminal{Mode: Leader, TargetAddr: "127.0.0.1:1"}
-	s := newSession(devA, time.Hour, []Terminal{term})
+	s := newSession(devA, newOptions([]Option{WithTimeoutRetry(time.Hour)}), []Terminal{term})
 	s.putBackend(term, nil)
 
 	var wg sync.WaitGroup
@@ -197,13 +197,12 @@ func TestSession_EdgeBranchesAndReconnect(t *testing.T) {
 	// 2. s.run 首次 dialBackend 失败分支 + readLoop 扇出遇到已失效 client 分支 + 非预期读错误分支
 	upClient, upServer := net.Pipe()
 	defer upClient.Close()
-	sFail := newSessionWithOptions(upServer, newOptions([]Option{
+	sFail := newSession(upServer, newOptions([]Option{
 		WithDialTimeout(30 * time.Millisecond),
 		WithTimeoutRetry(time.Hour),
-	}), []Terminal{{Mode: Leader, TargetAddr: "127.0.0.1:99999"}}, nil)
-	sFail.run() // 触发 dialBackend 拨号失败日志与重连占位
+	}), []Terminal{{Mode: Leader, TargetAddr: "127.0.0.1:99999"}})
+	sFail.run()
 
-	// 塞入一个已关闭但尚未从 map 摘除的 backendClient，验证 readLoop 扇出失败置空分支
 	deadTerm := Terminal{Mode: Follower, TargetAddr: "dead-backend"}
 	deadBC := &backendClient{
 		terminal:    deadTerm,
@@ -219,10 +218,9 @@ func TestSession_EdgeBranchesAndReconnect(t *testing.T) {
 	time.Sleep(30 * time.Millisecond)
 	sFail.stop()
 
-	// 非 EOF / 非超时的普通读错误分支
 	baseA, baseB := net.Pipe()
 	defer baseB.Close()
-	sReadErr := newSession(&errReadConn{Conn: baseA, err: errors.New("boom")}, time.Second, nil)
+	sReadErr := newSession(&errReadConn{Conn: baseA, err: errors.New("boom")}, nil, nil)
 	sReadErr.readLoop()
 
 	// 3. IdleTimeout 空闲超时与 WriteLoop 写失败主动关闭会话
@@ -231,10 +229,9 @@ func TestSession_EdgeBranchesAndReconnect(t *testing.T) {
 	bcPipeA, bcPipeB := net.Pipe()
 	defer bcPipeB.Close()
 
-	idleClosed := make(chan struct{})
-	sIdle := newSessionWithOptions(idleSrv, newOptions([]Option{
+	sIdle := newSession(idleSrv, newOptions([]Option{
 		WithIdleTimeout(30 * time.Millisecond),
-	}), nil, func() { close(idleClosed) })
+	}), nil)
 	bcAlive := &backendClient{
 		terminal:    term,
 		sessionStop: sIdle.stopCh,
@@ -243,17 +240,26 @@ func TestSession_EdgeBranchesAndReconnect(t *testing.T) {
 		stopCh:      make(chan struct{}),
 	}
 	sIdle.putBackend(term, bcAlive)
-	go sIdle.readLoop()
+	idleDone := make(chan struct{})
+	go func() {
+		defer close(idleDone)
+		sIdle.readLoop()
+	}()
 	go sIdle.writeLoop()
-	waitSignal(t, idleClosed, "idle timeout close")
+	waitSignal(t, idleDone, "idle timeout close")
+	waitSignal(t, bcAlive.stopCh, "backend stopped after idle timeout")
 
 	writeCli, writeSrv := net.Pipe()
 	_ = writeCli.Close()
-	writeClosed := make(chan struct{})
-	sWrite := newSessionWithOptions(writeSrv, newOptions([]Option{
+	sWrite := newSession(writeSrv, newOptions([]Option{
 		WithWriteTimeout(30 * time.Millisecond),
-	}), nil, func() { close(writeClosed) })
-	go sWrite.writeLoop()
+	}), nil)
+	writeDone := make(chan struct{})
+	go func() {
+		defer close(writeDone)
+		sWrite.writeLoop()
+	}()
 	sWrite.enqueueReply(testDownlink8001)
-	waitSignal(t, writeClosed, "write error close")
+	waitSignal(t, writeDone, "write error close")
+	waitSignal(t, sWrite.stopCh, "session stopped after write error")
 }

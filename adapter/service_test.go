@@ -228,56 +228,37 @@ func TestOptionsAndCreateTerminals(t *testing.T) {
 	}
 }
 
-func TestAdapter_RunServeAndStopBranches(t *testing.T) {
-	// 1. 地址解析失败与监听失败分支
+func TestAdapter_RunAndServe(t *testing.T) {
+	// 1. Run 地址解析失败、监听失败与正常进入 serve 分支
 	New(WithHostPorts(":::")).Run()
 	New(WithHostPorts("203.0.113.1:18080")).Run()
-
-	// 2. 启动前已 Stop，serve 立即关闭 listener 返回
-	adPreStopped := New()
-	adPreStopped.Stop()
-	adPreStopped.serve(&stubListener{steps: make(chan func() (net.Conn, error))})
-
-	// 3. Accept 临时错误退避 + ErrClosed 退出
-	lnErr := &stubListener{steps: make(chan func() (net.Conn, error), 2)}
-	lnErr.steps <- func() (net.Conn, error) { return nil, errors.New("temporary emfile") }
-	lnErr.steps <- func() (net.Conn, error) { return nil, net.ErrClosed }
-	New().serve(lnErr)
-
-	// 4. Accept 返回错误时恰好已触发 Stop
-	adStopOnErr := New()
-	lnStopOnErr := &stubListener{steps: make(chan func() (net.Conn, error), 1)}
-	lnStopOnErr.steps <- func() (net.Conn, error) {
-		adStopOnErr.Stop()
-		return nil, errors.New("accept interrupted")
+	if probe, err := net.Listen("tcp", "127.0.0.1:0"); err == nil {
+		_ = probe.Close()
+		go New(WithHostPorts("127.0.0.1:0")).Run()
+		time.Sleep(15 * time.Millisecond)
 	}
-	adStopOnErr.serve(lnStopOnErr)
 
-	// 5. Accept 成功拿到连接但此时已 Stop，立即关闭该 session 返回
-	adStopAfterAccept := New()
+	// 2. serve 临时错误退避 + 正常接收连接 + ErrClosed 退出
 	srvConn, cliConn := net.Pipe()
-	defer cliConn.Close()
-	lnStopAfterAccept := &stubListener{steps: make(chan func() (net.Conn, error), 1)}
-	lnStopAfterAccept.steps <- func() (net.Conn, error) {
-		adStopAfterAccept.Stop()
-		return srvConn, nil
-	}
-	adStopAfterAccept.serve(lnStopAfterAccept)
+	_ = cliConn.Close()
+	ln := &stubListener{steps: make(chan func() (net.Conn, error), 3)}
+	ln.steps <- func() (net.Conn, error) { return nil, errors.New("temporary emfile") }
+	ln.steps <- func() (net.Conn, error) { return srvConn, nil }
+	ln.steps <- func() (net.Conn, error) { return nil, net.ErrClosed }
+	New().serve(ln)
 }
 
-func TestLifeCycleAndStopActiveSessions(t *testing.T) {
+func TestLifeCycle(t *testing.T) {
 	leader := startMockBackend(t, "127.0.0.1:0")
 	follower := startMockBackend(t, "127.0.0.1:0")
 
-	probe, err := net.Listen("tcp", "127.0.0.1:0")
+	in, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
-		t.Fatalf("probe addr: %v", err)
+		t.Fatalf("listen adapter: %v", err)
 	}
-	adapterAddr := probe.Addr().String()
-	_ = probe.Close()
+	t.Cleanup(func() { _ = in.Close() })
 
 	ad := New(
-		WithHostPorts(adapterAddr),
 		WithTimeoutRetry(30*time.Millisecond),
 		WithTerminals(
 			Terminal{Mode: Leader, TargetAddr: leader.addr},
@@ -288,24 +269,11 @@ func TestLifeCycleAndStopActiveSessions(t *testing.T) {
 			},
 		),
 	)
-	runDone := make(chan struct{})
-	go func() {
-		defer close(runDone)
-		ad.Run()
-	}()
-	t.Cleanup(ad.Stop)
+	go ad.serve(in)
 
-	var dev net.Conn
-	deadline := time.Now().Add(2 * time.Second)
-	for {
-		dev, err = net.DialTimeout("tcp", adapterAddr, 50*time.Millisecond)
-		if err == nil {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatalf("dial adapter: %v", err)
-		}
-		time.Sleep(10 * time.Millisecond)
+	dev, err := net.DialTimeout("tcp", in.Addr().String(), time.Second)
+	if err != nil {
+		t.Fatalf("dial adapter: %v", err)
 	}
 	defer func() { _ = dev.Close() }()
 
@@ -344,7 +312,7 @@ func TestLifeCycleAndStopActiveSessions(t *testing.T) {
 		t.Fatalf("follower 0x9205 got %x, err=%v", got9205, err)
 	}
 
-	// Leader 宕机 → 重启自动重连 → 再次宕机（覆盖重连后生成的 onDead 回调）→ 最终 Stop 主动回收活跃连接
+	// Leader 宕机 → 重启自动重连 → 再次宕机（覆盖重连后生成的 onDead 回调）→ 终端下线回收所有连接
 	leaderAddr := leader.addr
 	leader.Close()
 	waitSignal(t, leader.connClose, "leader first close")
@@ -363,13 +331,12 @@ func TestLifeCycleAndStopActiveSessions(t *testing.T) {
 	_ = waitBytes(t, leader.uplink)
 	_ = waitBytes(t, follower.uplink)
 
-	// 再次关闭重连后的 leader，触发 reconnectBackend 内的 onDead 分支
+	// 再次关闭重连后的 leader，覆盖 reconnectBackend 内的 onDead 回调
 	leader.Close()
 	waitSignal(t, leader.connClose, "leader second close")
 	time.Sleep(20 * time.Millisecond)
 
-	// 调用 Adapter.Stop 主动关闭存量会话与 follower 模拟连接
-	ad.Stop()
-	waitSignal(t, follower.connClose, "follower close after Adapter.Stop")
-	waitSignal(t, runDone, "Adapter.Run exit")
+	// 真实终端断开后，follower 模拟连接同步断开
+	_ = dev.Close()
+	waitSignal(t, follower.connClose, "follower close after device offline")
 }
