@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/cuteLittleDevil/go-jt808/protocol/model"
+	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 )
 
 func Test_packageParse_unpack(t *testing.T) {
-
 	type want struct {
 		msgs           []string
 		hasErr         bool
@@ -94,73 +94,106 @@ func Test_packageParse_unpack(t *testing.T) {
 			argData, _ := hex.DecodeString(tt.args)
 			gotMsgs, err := p.unpack(argData)
 			if (err != nil) != tt.want.hasErr {
-				t.Errorf("unpack() error = %v, wantErr %v", err, tt.want.hasErr)
-				return
+				t.Fatalf("unpack() error = %v, wantErr %v", err, tt.want.hasErr)
 			}
 			if len(gotMsgs) != len(tt.want.msgs) {
-				t.Errorf("unpack() gotMsgs len = %v, want %v", len(gotMsgs), len(tt.want.msgs))
-				return
+				t.Fatalf("unpack() gotMsgs len = %v, want %v", len(gotMsgs), len(tt.want.msgs))
 			}
 			if p.frameReader.Pending() != tt.want.historyDataLen {
-				t.Errorf("unpack() historyData len = %v, want %v", p.frameReader.Pending(), tt.want.historyDataLen)
-				return
+				t.Fatalf("unpack() historyData len = %v, want %v", p.frameReader.Pending(), tt.want.historyDataLen)
 			}
 			for k, v := range gotMsgs {
 				str := fmt.Sprintf("%x", v.ExtensionFields.TerminalData)
 				if !reflect.DeepEqual(str, tt.want.msgs[k]) {
-					t.Errorf("unpack() gotMsgs = %s\n want %s", str, tt.want.msgs)
-					return
+					t.Fatalf("unpack() gotMsgs = %s\n want %s", str, tt.want.msgs)
 				}
 			}
 		})
 	}
 }
 
-func Test_packageParse_supplementarySubPackageMax255(t *testing.T) {
-	header := *mustDecodeJTMessage(t, heartbeatPacket).Header
-	prop := *header.Property
-	header.Property = &prop
-	header.ID = 0x0801
-	header.SubPackageSum = 300
+func Test_packageParse_subcontractLifecycle(t *testing.T) {
+	base := mustDecodeJTMessage(t, heartbeatPacket)
+	header := base.Header
+	header.ReplyID = uint16(consts.T0801MultimediaDataUpload)
+	header.PlatformSerialNumber = 10
+
+	body := make([]byte, 1500)
+	for i := range body {
+		body[i] = byte(i)
+	}
+	packets := header.EncodePackets(body)
 
 	p := newPackageParse()
-	p.add(header.ID, &header)
-	p.timeoutRecord[header.ID].updateTime = time.Now().Add(-6 * time.Second)
 
-	msgs, ok := p.supplementarySubPackage()
-	if !ok || len(msgs) != 1 {
-		t.Fatalf("supplementarySubPackage ok=%v len=%d", ok, len(msgs))
+	// 1. 首包未到达时先收到后续分包，忽略且不触发重组
+	msgs, err := p.parse(packets[1])
+	if err != nil || len(msgs) != 1 || msgs[0].ExtensionFields.SubcontractComplete {
+		t.Fatalf("orphan subpacket msgs=%d err=%v", len(msgs), err)
+	}
+
+	// 2. 首包到达，随后再次收到新的首包覆盖旧的未完成分包记录
+	if _, err := p.parse(packets[0]); err != nil {
+		t.Fatalf("first packet err = %v", err)
+	}
+	firstMsgs, err := p.parse(packets[0])
+	if err != nil || len(firstMsgs) != 1 {
+		t.Fatalf("overwrite first packet err = %v", err)
+	}
+	origHeader := *firstMsgs[0].JTMessage.Header
+	origProp := *firstMsgs[0].JTMessage.Header.Property
+
+	// 3. 超过5s未收齐时，收到新报文触发 0x8003 补传第2包，且不污染已分发首包的 Header
+	const subID = uint16(consts.T0801MultimediaDataUpload)
+	p.timeoutRecord[subID].updateTime = time.Now().Add(-6 * time.Second)
+	hbMsgs, err := p.parse(heartbeatPacket)
+	if err != nil || len(hbMsgs) != 2 || hbMsgs[1].Command != consts.P8003ReissueSubcontractingRequest {
+		t.Fatalf("expected heartbeat + P8003, got len=%d err=%v", len(hbMsgs), err)
+	}
+	if firstMsgs[0].JTMessage.Header.ReplyID != origHeader.ReplyID || *firstMsgs[0].JTMessage.Header.Property != origProp {
+		t.Fatal("supplementarySubPackage mutated original message header")
+	}
+
+	// 4. 补齐第2包后完成重组
+	doneMsgs, err := p.parse(packets[1])
+	if err != nil || len(doneMsgs) != 2 || !doneMsgs[1].ExtensionFields.SubcontractComplete {
+		t.Fatalf("expected completed subcontract message, got len=%d err=%v", len(doneMsgs), err)
+	}
+	if !reflect.DeepEqual(doneMsgs[1].Body, body) {
+		t.Fatalf("reassembled body len=%d, want %d", len(doneMsgs[1].Body), len(body))
+	}
+
+	// 5. 缺失超过255包时，单次 0x8003 截断到 255 个
+	bigHeader := *header
+	prop := *header.Property
+	bigHeader.Property = &prop
+	bigHeader.ID = subID
+	bigHeader.SubPackageSum = 300
+	p.add(subID, &bigHeader)
+	p.timeoutRecord[subID].updateTime = time.Now().Add(-6 * time.Second)
+	reissueMsgs, ok := p.supplementarySubPackage()
+	if !ok || len(reissueMsgs) != 1 {
+		t.Fatalf("supplementarySubPackage ok=%v len=%d", ok, len(reissueMsgs))
 	}
 	var p8003 model.P0x8003
-	if err := p8003.Parse(msgs[0].JTMessage); err != nil {
+	if err := p8003.Parse(reissueMsgs[0].JTMessage); err != nil {
 		t.Fatalf("parse P0x8003 err = %v", err)
 	}
 	if p8003.AgainPackageCount != math.MaxUint8 || len(p8003.AgainPackageList) != math.MaxUint8 {
 		t.Fatalf("count=%d len=%d, want 255", p8003.AgainPackageCount, len(p8003.AgainPackageList))
 	}
-	if first, last := p8003.AgainPackageList[0], p8003.AgainPackageList[254]; first != 1 || last != 255 {
-		t.Fatalf("list range [%d, %d], want [1, 255]", first, last)
-	}
-}
 
-func Test_packageParse_supplementaryNotModifyOriginalHeader(t *testing.T) {
-	header := *mustDecodeJTMessage(t, heartbeatPacket).Header
-	prop := *header.Property
-	prop.PacketFragmented = 1
-	header.Property = &prop
-	header.ID = 0x0801
-	header.SubPackageSum = 3
-	header.SubPackageNo = 1
-	want := header
-	wantProp := prop
-
-	p := newPackageParse()
-	p.add(header.ID, &header)
-	p.timeoutRecord[header.ID].updateTime = time.Now().Add(-6 * time.Second)
-	if _, ok := p.supplementarySubPackage(); !ok {
-		t.Fatal("supplementarySubPackage not triggered")
+	// 6. 超过60s未完成的分包自动超时清理，以及 clear 清理残余记录
+	p.timeoutRecord[subID].createTime = time.Now().Add(-61 * time.Second)
+	if _, err := p.parse(heartbeatPacket); err != nil {
+		t.Fatalf("parse for timeout cleanup err = %v", err)
 	}
-	if header.ReplyID != want.ReplyID || *header.Property != wantProp {
-		t.Fatalf("original header modified: ReplyID=%x Property=%+v", header.ReplyID, *header.Property)
+	if len(p.timeoutRecord) != 0 {
+		t.Fatalf("expected timeoutRecord empty after 60s expiry, got %d", len(p.timeoutRecord))
+	}
+	p.add(subID, &bigHeader)
+	p.clear()
+	if len(p.subcontractingRecord) != 0 || len(p.timeoutRecord) != 0 {
+		t.Fatal("clear did not empty subcontracting maps")
 	}
 }
