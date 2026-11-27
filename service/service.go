@@ -3,11 +3,11 @@ package service
 import (
 	"errors"
 	"log/slog"
+	"maps"
 	"net"
 	"time"
 
 	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
-
 	"github.com/cuteLittleDevil/go-jt808/protocol/model"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 )
@@ -106,20 +106,14 @@ func (g *GoJT808) SendActiveMessage(activeMsg *ActiveMessage) *Message {
 
 func (g *GoJT808) createCommandHandle() map[consts.JT808CommandType]Handler {
 	handles := g.createDefaultHandle()
-	customHandles := g.opts.CustomHandleFunc()
-	for k, v := range customHandles {
-		handles[k] = v
-	}
+	maps.Copy(handles, g.opts.CustomHandleFunc())
 	return handles
 }
 
 func (g *GoJT808) createActiveRespondHandle() map[consts.JT808CommandType]func(
 	platformMsg *ActiveMessage, terminalMsg *Message) bool {
 	handles := g.createDefaultRespondHandle()
-	customHandles := g.opts.CustomActiveRespondHandlerFunc()
-	for k, v := range customHandles {
-		handles[k] = v
-	}
+	maps.Copy(handles, g.opts.CustomActiveRespondHandlerFunc())
 	return handles
 }
 
@@ -181,7 +175,7 @@ func (g *GoJT808) createDefaultHandle() map[consts.JT808CommandType]Handler {
 	}
 }
 
-// HasMatch 判断当前应答是否匹配某条平台下发的主动指令.
+// createDefaultRespondHandle 创建默认的主动指令应答匹配规则.
 func (g *GoJT808) createDefaultRespondHandle() map[consts.JT808CommandType]func(
 	platformMsg *ActiveMessage, terminalMsg *Message) bool {
 	return map[consts.JT808CommandType]func(*ActiveMessage, *Message) bool{
@@ -189,72 +183,38 @@ func (g *GoJT808) createDefaultRespondHandle() map[consts.JT808CommandType]func(
 		consts.T1003UploadAudioVideoAttr: func(activeMsg *ActiveMessage, _ *Message) bool {
 			return activeMsg.Command == consts.P9003QueryTerminalAudioVideoProperties
 		},
-		// 通用应答，有部分指令先忽略，如8801 -> 0001(跳过) -> 8805
-		consts.T0001GeneralRespond: g.makeSerialMatchHandler(func(jtMsg *jt808.JTMessage) (uint16, error) {
-			var tmp model.T0x0001
-			if err := tmp.Parse(jtMsg); err != nil {
-				return 0, err
-			}
-			return tmp.SerialNumber, nil
-		}),
+		// 通用应答，有部分指令先忽略，如8801 -> 0001(跳过) -> 0805
+		consts.T0001GeneralRespond: matchSerial(func(m *model.T0x0001) uint16 { return m.SerialNumber }),
 		// 以下情况匹配下发指令的序列号
-		consts.T0104QueryParameter: g.makeSerialMatchHandler(func(jtMsg *jt808.JTMessage) (uint16, error) {
-			var tmp model.T0x0104
-			if err := tmp.Parse(jtMsg); err != nil {
-				return 0, err
-			}
-			return tmp.RespondSerialNumber, nil
+		consts.T0104QueryParameter: matchSerial(func(m *model.T0x0104) uint16 { return m.RespondSerialNumber }),
+		consts.T0201QueryLocation:  matchSerial(func(m *model.T0x0201) uint16 { return m.RespondSerialNumber }),
+		consts.T0302QuestionAnswer: matchSerial(func(m *model.T0x0302) uint16 { return m.SerialNumber }),
+		consts.T1205UploadAudioVideoResourceList: matchSerial(func(m *model.T0x1205) uint16 {
+			return m.SerialNumber
 		}),
-		consts.T0201QueryLocation: g.makeSerialMatchHandler(func(jtMsg *jt808.JTMessage) (uint16, error) {
-			var tmp model.T0x0201
-			if err := tmp.Parse(jtMsg); err != nil {
-				return 0, err
-			}
-			return tmp.RespondSerialNumber, nil
+		consts.T1206FileUploadCompleteNotice: matchSerial(func(m *model.T0x1206) uint16 {
+			return m.RespondSerialNumber
 		}),
-		consts.T0302QuestionAnswer: g.makeSerialMatchHandler(func(jtMsg *jt808.JTMessage) (uint16, error) {
-			var tmp model.T0x0302
-			if err := tmp.Parse(jtMsg); err != nil {
-				return 0, err
-			}
-			return tmp.SerialNumber, nil
-		}),
-		consts.T1205UploadAudioVideoResourceList: g.makeSerialMatchHandler(func(jtMsg *jt808.JTMessage) (uint16, error) {
-			var tmp model.T0x1205
-			if err := tmp.Parse(jtMsg); err != nil {
-				return 0, err
-			}
-			return tmp.SerialNumber, nil
-		}),
-		consts.T1206FileUploadCompleteNotice: g.makeSerialMatchHandler(func(jtMsg *jt808.JTMessage) (uint16, error) {
-			var tmp model.T0x1206
-			if err := tmp.Parse(jtMsg); err != nil {
-				return 0, err
-			}
-			return tmp.RespondSerialNumber, nil
-		}),
-		consts.T0805CameraShootImmediately: g.makeSerialMatchHandler(func(jtMsg *jt808.JTMessage) (uint16, error) {
-			var tmp model.T0x0805
-			if err := tmp.Parse(jtMsg); err != nil {
-				return 0, err
-			}
-			return tmp.RespondSerialNumber, nil
+		consts.T0805CameraShootImmediately: matchSerial(func(m *model.T0x0805) uint16 {
+			return m.RespondSerialNumber
 		}),
 	}
 }
 
-// makeSerialMatchHandler 匹配流水号.
-func (g *GoJT808) makeSerialMatchHandler(parseSerial func(*jt808.JTMessage) (uint16, error)) func(*ActiveMessage, *Message) bool {
+// matchSerial 解析终端应答消息体并匹配平台下发流水号.
+func matchSerial[T any, PT interface {
+	*T
+	Parse(jtMsg *jt808.JTMessage) error
+}](seq func(*T) uint16) func(*ActiveMessage, *Message) bool {
 	return func(platformMsg *ActiveMessage, terminalMsg *Message) bool {
 		if terminalMsg.Command == consts.T0001GeneralRespond && isWaitingCommand(platformMsg.Command) {
 			return false
 		}
-
-		serial, err := parseSerial(terminalMsg.JTMessage)
-		if err != nil {
+		var tmp T
+		if err := PT(&tmp).Parse(terminalMsg.JTMessage); err != nil {
 			return false
 		}
-		return platformMsg.ExtensionFields.PlatformSeq == serial
+		return platformMsg.ExtensionFields.PlatformSeq == seq(&tmp)
 	}
 }
 

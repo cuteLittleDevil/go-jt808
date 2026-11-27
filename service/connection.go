@@ -18,7 +18,7 @@ import (
 
 const (
 	defaultActiveTimeout = 3 * time.Second
-	// defaultWriteTimeout 单次写超时 超时说明终端网络异常 直接断开连接
+	// defaultWriteTimeout 单次写超时 超时说明终端网络异常 直接断开连接.
 	defaultWriteTimeout = 10 * time.Second
 )
 
@@ -143,14 +143,15 @@ func (c *connection) reader() {
 			}
 			if len(msgs) > 0 {
 				if !join {
-					if err := c.joinHandle(msgs[0]); err != nil {
+					if err := c.joinHandle(msgs[0]); err == nil {
+						join = true
+						c.timeout.Key = c.key
+					} else if errors.Is(err, _errKeyExist) {
 						slog.Warn("key",
 							slog.String("effective data", fmt.Sprintf("%x", effectiveData)),
 							slog.Any("err", err))
 						return
 					}
-					join = true
-					c.timeout.Key = c.key
 				}
 
 				once.Do(func() {
@@ -170,24 +171,30 @@ func (c *connection) reader() {
 		}
 
 		if err != nil {
-			if errors.Is(err, os.ErrDeadlineExceeded) { // 读取超时,仅当设置 idleTimeout 时生效
-				if c.onTerminalTimeoutEvent != nil {
-					c.onTerminalTimeoutEvent(c.timeout)
-				}
-			} else if errors.Is(err, net.ErrClosed) || errors.Is(err, io.EOF) || errors.Is(err, io.ErrClosedPipe) {
-				slog.Debug("connection close",
-					slog.Bool("join", join),
-					slog.Any("platform num", uint16(c.platformSerialNumber.Load())),
-					slog.Any("err", err))
-			} else {
-				slog.Error("read data",
-					slog.Bool("join", join),
-					slog.Any("platform num", uint16(c.platformSerialNumber.Load())),
-					slog.Any("err", err))
-			}
+			c.handleReadError(err, join)
 			return
 		}
 	}
+}
+
+func (c *connection) handleReadError(err error, join bool) {
+	if errors.Is(err, os.ErrDeadlineExceeded) { // 读取超时,仅当设置 idleTimeout 时生效
+		if c.onTerminalTimeoutEvent != nil {
+			c.onTerminalTimeoutEvent(c.timeout)
+		}
+		return
+	}
+	if errors.Is(err, net.ErrClosed) || errors.Is(err, io.EOF) || errors.Is(err, io.ErrClosedPipe) {
+		slog.Debug("connection close",
+			slog.Bool("join", join),
+			slog.Any("platform num", uint16(c.platformSerialNumber.Load())),
+			slog.Any("err", err))
+		return
+	}
+	slog.Error("read data",
+		slog.Bool("join", join),
+		slog.Any("platform num", uint16(c.platformSerialNumber.Load())),
+		slog.Any("err", err))
 }
 
 func (c *connection) joinHandle(msg *Message) error {
@@ -306,7 +313,7 @@ func (c *connection) stop(join bool) {
 }
 
 func (c *connection) defaultReplyEvent(msg *Message) {
-	if has := msg.HasReply(); !has {
+	if !msg.HasReply() {
 		return
 	}
 	body, err := msg.ReplyBody(msg.JTMessage)
@@ -318,38 +325,19 @@ func (c *connection) defaultReplyEvent(msg *Message) {
 			slog.Any("err", err))
 		return
 	}
-	header := msg.JTMessage.Header
-	header.ReplyID = uint16(msg.ReplyProtocol())
-	platformSeq, _ := c.allocSeq(0)
-	header.PlatformSerialNumber = platformSeq
-
-	packets := header.EncodePackets(body)
-	for _, data := range packets {
-		if err = c.writeData(data); err != nil {
-			slog.Warn("write fail",
-				slog.String("data", fmt.Sprintf("%x", data)),
-				slog.Any("err", err))
-			msg.ExtensionFields.Err = errors.Join(ErrWriteDataFail, err)
-		}
-		msg.ExtensionFields.PlatformData = append(msg.ExtensionFields.PlatformData, data...)
-	}
-	if _, seq := c.allocSeq(len(packets)); len(packets) > 1 {
-		platformSeq = seq - 1
-	}
-
+	packets, lastSeq := c.encodePackets(msg.JTMessage.Header, msg.ReplyProtocol(), body)
+	data, writeErr := c.sendPackets(packets, true)
+	msg.ExtensionFields.Err = writeErr
+	msg.ExtensionFields.PlatformData = data
 	msg.ExtensionFields.PlatformCommand = msg.ReplyProtocol()
-	msg.ExtensionFields.PlatformSeq = platformSeq
+	msg.ExtensionFields.PlatformSeq = lastSeq
 
 	c.onWriteExecutionEvent(msg)
 }
 
 func (c *connection) onReissueSubcontractingEvent(msg *Message) {
-	header := msg.JTMessage.Header
-	original, _ := c.allocSeq(1)
-	header.PlatformSerialNumber = original
-	header.ReplyID = uint16(consts.P8003ReissueSubcontractingRequest)
-	packets := header.EncodePackets(msg.JTMessage.Body)
-
+	packets, lastSeq := c.encodePackets(
+		msg.JTMessage.Header, consts.P8003ReissueSubcontractingRequest, msg.JTMessage.Body)
 	if len(packets) != 1 { // 分包补传的报文固定大小，不会分包
 		slog.Warn("onReissueSubcontractingEvent",
 			slog.String("key", c.key),
@@ -357,16 +345,9 @@ func (c *connection) onReissueSubcontractingEvent(msg *Message) {
 			slog.Any("data", fmt.Sprintf("%x", msg.JTMessage.Body)))
 		return
 	}
-
-	data := packets[0]
-	if err := c.writeData(data); err != nil {
-		slog.Warn("write fail",
-			slog.String("data", fmt.Sprintf("%x", data)),
-			slog.Any("err", err))
-		msg.ExtensionFields.Err = errors.Join(ErrWriteDataFail, err)
-	}
-
-	msg.ExtensionFields.PlatformSeq = original
+	data, writeErr := c.sendPackets(packets, true)
+	msg.ExtensionFields.Err = writeErr
+	msg.ExtensionFields.PlatformSeq = lastSeq
 	msg.ExtensionFields.PlatformData = data
 	c.onWriteExecutionEvent(msg)
 }
@@ -431,31 +412,13 @@ func (c *connection) onActiveTimeoutEvent(rec *activeRecord, record map[uint16]*
 }
 
 func (c *connection) activeWritePackets(activeMsg *ActiveMessage) (*jt808.JTMessage, []byte, error) {
-	var (
-		platformData = make([]byte, 0, len(activeMsg.Body)+10)
-		writeErr     error
-		jtMsg        = jt808.NewJTMessage()
-	)
-	header := activeMsg.header
-	platformSeq, _ := c.allocSeq(0)
-	header.PlatformSerialNumber = platformSeq
-	header.ReplyID = uint16(activeMsg.Command)
-	packets := header.EncodePackets(activeMsg.Body)
-
-	for _, data := range packets {
-		if err := c.writeData(data); err != nil {
-			writeErr = errors.Join(ErrWriteDataFail, err)
-		}
-		platformData = append(platformData, data...)
+	packets, _ := c.encodePackets(activeMsg.header, activeMsg.Command, activeMsg.Body)
+	platformData, writeErr := c.sendPackets(packets, false)
+	jtMsg := jt808.NewJTMessage()
+	_ = jtMsg.Decode(packets[len(packets)-1])
+	if len(packets) > 1 {
+		jtMsg.Body = activeMsg.Body
 	}
-
-	if len(packets) > 0 {
-		_ = jtMsg.Decode(packets[len(packets)-1])
-		if len(packets) > 1 {
-			jtMsg.Body = activeMsg.Body
-		}
-	}
-	_, _ = c.allocSeq(len(packets))
 	return jtMsg, platformData, writeErr
 }
 
@@ -532,12 +495,38 @@ func (c *connection) writeData(data []byte) error {
 	return err
 }
 
-func (c *connection) allocSeq(n int) (uint16, uint16) {
-	original := uint16(c.platformSerialNumber.Load())
-	if n == 0 {
-		return original, original
+// encodePackets 分配平台流水号并按协议分包编码，返回分包列表与末包流水号.
+func (c *connection) encodePackets(
+	header *jt808.Header, replyID consts.JT808CommandType, body []byte,
+) ([][]byte, uint16) {
+	startSeq := uint16(c.platformSerialNumber.Load())
+	header.PlatformSerialNumber = startSeq
+	header.ReplyID = uint16(replyID)
+	packets := header.EncodePackets(body)
+	nextSeq := startSeq + uint16(len(packets))
+	c.platformSerialNumber.Store(uint32(nextSeq))
+	return packets, nextSeq - 1
+}
+
+// sendPackets 逐包写出已编码报文并汇总完整字节流与写错误.
+func (c *connection) sendPackets(packets [][]byte, logErr bool) ([]byte, error) {
+	totalLen := 0
+	for _, pkt := range packets {
+		totalLen += len(pkt)
 	}
-	next := original + uint16(n)
-	c.platformSerialNumber.Store(uint32(next))
-	return original, next
+	platformData := make([]byte, 0, totalLen)
+	var writeErr error
+	for _, data := range packets {
+		if err := c.writeData(data); err != nil {
+			if logErr {
+				slog.Warn("write fail",
+					slog.String("key", c.key),
+					slog.String("data", fmt.Sprintf("%x", data)),
+					slog.Any("err", err))
+			}
+			writeErr = errors.Join(ErrWriteDataFail, err)
+		}
+		platformData = append(platformData, data...)
+	}
+	return platformData, writeErr
 }

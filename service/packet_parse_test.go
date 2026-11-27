@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -145,13 +146,18 @@ func Test_packageParse_subcontractLifecycle(t *testing.T) {
 
 	// 3. 超过5s未收齐时，收到新报文触发 0x8003 补传第2包，且不污染已分发首包的 Header
 	const subID = uint16(consts.T0801MultimediaDataUpload)
-	p.timeoutRecord[subID].updateTime = time.Now().Add(-6 * time.Second)
+	p.records[subID].updateTime = time.Now().Add(-6 * time.Second)
 	hbMsgs, err := p.parse(heartbeatPacket)
 	if err != nil || len(hbMsgs) != 2 || hbMsgs[1].Command != consts.P8003ReissueSubcontractingRequest {
 		t.Fatalf("expected heartbeat + P8003, got len=%d err=%v", len(hbMsgs), err)
 	}
 	if firstMsgs[0].JTMessage.Header.ReplyID != origHeader.ReplyID || *firstMsgs[0].JTMessage.Header.Property != origProp {
 		t.Fatal("supplementarySubPackage mutated original message header")
+	}
+	if hbMsgs[1].Header.Property.BodyDayaLen != uint16(len(hbMsgs[1].Body)) ||
+		strings.Contains(hbMsgs[1].Header.Property.String(), "是否分包:[true]") ||
+		len(hbMsgs[1].ExtensionFields.TerminalData) == 0 {
+		t.Fatalf("unexpected P8003 decoded header/data: %s", hbMsgs[1].Header.String())
 	}
 
 	// 4. 补齐第2包后完成重组
@@ -170,7 +176,7 @@ func Test_packageParse_subcontractLifecycle(t *testing.T) {
 	bigHeader.ID = subID
 	bigHeader.SubPackageSum = 300
 	p.add(subID, &bigHeader)
-	p.timeoutRecord[subID].updateTime = time.Now().Add(-6 * time.Second)
+	p.records[subID].updateTime = time.Now().Add(-6 * time.Second)
 	reissueMsgs, ok := p.supplementarySubPackage()
 	if !ok || len(reissueMsgs) != 1 {
 		t.Fatalf("supplementarySubPackage ok=%v len=%d", ok, len(reissueMsgs))
@@ -184,16 +190,16 @@ func Test_packageParse_subcontractLifecycle(t *testing.T) {
 	}
 
 	// 6. 超过60s未完成的分包自动超时清理，以及 clear 清理残余记录
-	p.timeoutRecord[subID].createTime = time.Now().Add(-61 * time.Second)
+	p.records[subID].createTime = time.Now().Add(-61 * time.Second)
 	if _, err := p.parse(heartbeatPacket); err != nil {
 		t.Fatalf("parse for timeout cleanup err = %v", err)
 	}
-	if len(p.timeoutRecord) != 0 {
-		t.Fatalf("expected timeoutRecord empty after 60s expiry, got %d", len(p.timeoutRecord))
+	if len(p.records) != 0 {
+		t.Fatalf("expected records empty after 60s expiry, got %d", len(p.records))
 	}
 	p.add(subID, &bigHeader)
 	p.clear()
-	if len(p.subcontractingRecord) != 0 || len(p.timeoutRecord) != 0 {
-		t.Fatal("clear did not empty subcontracting maps")
+	if len(p.records) != 0 {
+		t.Fatal("clear did not empty records map")
 	}
 }

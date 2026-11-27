@@ -241,7 +241,7 @@ func TestConnection_uplinkReplyAndReissueBranches(t *testing.T) {
 	}
 	_ = waitChan(t, events.writeCmd, time.Second)
 
-	// 5b. 0x8003 报文超大(>1000B)被拦截返回 + 连接关闭时写失败分支
+	// 5b. 0x8003 报文超大(>1000B)被拦截返回 + 连接关闭时补传写失败分支
 	oversizeJT := mustDecodeJTMessage(t, heartbeatPacket)
 	oversizeJT.Body = bytes.Repeat([]byte{0x01}, 1005)
 	conn.onReissueSubcontractingEvent(newTerminalMessage(oversizeJT, nil))
@@ -267,9 +267,48 @@ func TestConnection_readerEdgeCasesAndDefensiveGuards(t *testing.T) {
 	_, _ = client1.Write(mustHex("7e000200000123456789017fff7e"))
 	<-conn1.finallyCompleteChan
 
-	// 2. join 失败立即断开
-	_, conn2, client2, _ := startRawPipeConn(t, nil, WithKeyFunc(func(_ *Message) (string, bool) { return "", false }))
-	_, _ = client2.Write(heartbeatPacket)
+	// 2a. KeyFunc 返回 (_, false) (_errKeyInvalid) 时不断开连接，继续处理应答并在后续报文重试 join
+	g2, conn2, client2, events2 := startRawPipeConn(t, nil, WithKeyFunc(func(m *Message) (string, bool) {
+		if m.Command == consts.T0100Register {
+			return m.JTMessage.Header.TerminalPhoneNo, true
+		}
+		return "", false
+	}))
+	_, _ = client2.Write(encodeTerminalPacket(t, consts.T0102RegisterAuth, []byte{0x31}, 1))
+	_ = readPacket(t, client2, time.Second) // 仍正常收到 0x8001 应答，连接未断开
+	_ = waitChan(t, events2.joined, time.Second)
+	if reply := g2.SendActiveMessage(NewActiveMessage("12345678901", consts.P8201QueryLocation, nil, 20*time.Millisecond)); !errors.Is(reply.ExtensionFields.Err, ErrNotExistKey) {
+		t.Fatalf("before register join, expected ErrNotExistKey, got %v", reply.ExtensionFields.Err)
+	}
+	_, _ = client2.Write(encodeTerminalPacket(t, consts.T0100Register, []byte{0x00}, 2))
+	_ = readPacket(t, client2, time.Second) // 收到 0x8100 应答并正式加入会话
+	if gotKey := waitChan(t, events2.joined, time.Second); gotKey != "12345678901" {
+		t.Fatalf("second join key = %q, want 12345678901", gotKey)
+	}
+
+	// 2b. 重复在线 key (_errKeyExist) 立即断开新连接，且不影响原在线会话；未 join 即断连不触发 OnLeaveEvent
+	dupServer, dupClient := net.Pipe()
+	t.Cleanup(func() { _ = dupClient.Close(); _ = dupServer.Close() })
+	dupEvents := newRecordingTerminalEvent()
+	dupConn := newConnection(connectionParams{
+		conn:                 dupServer,
+		handles:              g2.createCommandHandle(),
+		activeRespondHandles: g2.createActiveRespondHandle(),
+		terminalEvent:        dupEvents,
+		filter:               true,
+		onJoinEvent:          g2.sessionManager.join,
+		onLeaveEvent:         g2.sessionManager.leave,
+	})
+	dupConn.run()
+	_, _ = dupClient.Write(encodeTerminalPacket(t, consts.T0100Register, []byte{0x00}, 3))
+	<-dupConn.finallyCompleteChan
+	select {
+	case k := <-dupEvents.left:
+		t.Fatalf("duplicate unjoined connection should not trigger OnLeaveEvent, got %q", k)
+	default:
+	}
+	_ = client2.Close()
+	_ = waitChan(t, events2.left, time.Second)
 	<-conn2.finallyCompleteChan
 
 	// 3. IdleTimeout 触发 OnTerminalTimeoutEvent
