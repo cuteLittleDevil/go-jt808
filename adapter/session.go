@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"net"
+	"os"
 	"sync"
 	"time"
 )
@@ -18,6 +19,7 @@ type session struct {
 	conn      net.Conn
 	opts      *Options
 	terminals []Terminal
+	onClose   func()
 	// backends：key=TargetAddr(string)，value=*backend。写入必须走 putBackend。
 	backends sync.Map
 	// reconnecting：key=TargetAddr，标记该地址是否已有重连协程在跑（含重试等待期间）。
@@ -29,14 +31,15 @@ type session struct {
 }
 
 func newSession(conn net.Conn, timeoutRetry time.Duration, terminals []Terminal) *session {
-	return newSessionWithOptions(conn, newOptions([]Option{WithTimeoutRetry(timeoutRetry)}), terminals)
+	return newSessionWithOptions(conn, newOptions([]Option{WithTimeoutRetry(timeoutRetry)}), terminals, nil)
 }
 
-func newSessionWithOptions(conn net.Conn, opts *Options, terminals []Terminal) *session {
+func newSessionWithOptions(conn net.Conn, opts *Options, terminals []Terminal, onClose func()) *session {
 	s := &session{
 		conn:       conn,
 		opts:       opts,
 		terminals:  terminals,
+		onClose:    onClose,
 		replyQueue: make(chan []byte, 10),
 		stopCh:     make(chan struct{}),
 	}
@@ -93,9 +96,18 @@ func (s *session) readLoop() {
 	defer s.stop()
 
 	for {
+		if s.opts.IdleTimeout > 0 {
+			_ = s.conn.SetReadDeadline(time.Now().Add(s.opts.IdleTimeout))
+		}
 		n, err := s.conn.Read(readBuf)
 		if err != nil {
-			if errors.Is(err, net.ErrClosed) || errors.Is(err, io.EOF) {
+			if errors.Is(err, os.ErrDeadlineExceeded) {
+				slog.Info("terminal idle timeout",
+					slog.Duration("idleTimeout", s.opts.IdleTimeout),
+					slog.Any("err", err))
+				return
+			}
+			if errors.Is(err, net.ErrClosed) || errors.Is(err, io.EOF) || errors.Is(err, io.ErrClosedPipe) {
 				slog.Debug("terminal close",
 					slog.Any("err", err))
 				return
@@ -166,10 +178,15 @@ func (s *session) writeLoop() {
 			if !ok {
 				return
 			}
+			if s.opts.WriteTimeout > 0 {
+				_ = s.conn.SetWriteDeadline(time.Now().Add(s.opts.WriteTimeout))
+			}
 			if _, err := s.conn.Write(data); err != nil {
 				slog.Warn("write",
 					slog.String("data", fmt.Sprintf("%x", data)),
 					slog.Any("err", err))
+				s.stop()
+				return
 			}
 		}
 	}
@@ -179,8 +196,17 @@ func (s *session) stop() {
 	s.stopOnce.Do(func() {
 		close(s.stopCh)
 		_ = s.conn.Close()
+		s.backends.Range(func(_, value any) bool {
+			if b, ok := value.(*backend); ok && b != nil && b.client != nil {
+				b.client.stop()
+			}
+			return true
+		})
 		s.backends.Clear()
 		s.reconnecting.Clear()
+		if s.onClose != nil {
+			s.onClose()
+		}
 	})
 }
 

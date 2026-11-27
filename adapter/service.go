@@ -6,6 +6,7 @@ import (
 	"net"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 )
@@ -13,6 +14,7 @@ import (
 type Adapter struct {
 	opts     *Options
 	ln       atomic.Pointer[net.TCPListener]
+	sessions sync.Map
 	stopCh   chan struct{}
 	stopOnce sync.Once
 }
@@ -66,21 +68,38 @@ func (a *Adapter) Run() {
 			}
 			slog.Warn("accept fail",
 				slog.Any("err", err))
+			time.Sleep(100 * time.Millisecond) // 如文件描述符耗尽 稍等再重试 避免空转
 			continue
 		}
 
-		s := newSessionWithOptions(c, a.opts, a.createTerminals())
+		var s *session
+		s = newSessionWithOptions(c, a.opts, a.createTerminals(), func() {
+			a.sessions.Delete(s)
+		})
+		a.sessions.Store(s, struct{}{})
+		select {
+		case <-a.stopCh:
+			s.stop()
+			return
+		default:
+		}
 		go s.run()
 	}
 }
 
-// Stop 关闭监听，使 Run 返回；已建立的 session 随真实连接断开或各自 stop 结束。
+// Stop 关闭监听并主动关闭所有已建立的终端会话及其后端模拟连接。
 func (a *Adapter) Stop() {
 	a.stopOnce.Do(func() {
 		close(a.stopCh)
 		if ln := a.ln.Swap(nil); ln != nil {
 			_ = ln.Close()
 		}
+		a.sessions.Range(func(key, _ any) bool {
+			if s, ok := key.(*session); ok {
+				s.stop()
+			}
+			return true
+		})
 	})
 }
 

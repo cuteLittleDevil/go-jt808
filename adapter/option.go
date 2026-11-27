@@ -14,6 +14,8 @@ const (
 	defaultAddr         = "0.0.0.0:18080" // 服务默认地址
 	defaultTimeoutRetry = 10 * time.Second
 	defaultDialTimeout  = 10 * time.Second
+	defaultWriteTimeout = 10 * time.Second
+	defaultIdleTimeout  = 0
 	// defaultMaxFrameBufferSize 下行粘包缓冲区默认上限 单包读取缓冲2048的2倍仍未组成完整帧视为异常.
 	defaultMaxFrameBufferSize = readBufSize * 2
 )
@@ -22,6 +24,8 @@ type Options struct {
 	Addr               string
 	TimeoutRetry       time.Duration
 	DialTimeout        time.Duration
+	WriteTimeout       time.Duration
+	IdleTimeout        time.Duration
 	MaxFrameBufferSize int
 	Terminals          []Terminal
 	AllowCommand       []consts.JT808CommandType
@@ -32,6 +36,8 @@ func newOptions(opts []Option) *Options {
 		Addr:               defaultAddr,
 		TimeoutRetry:       defaultTimeoutRetry,
 		DialTimeout:        defaultDialTimeout,
+		WriteTimeout:       defaultWriteTimeout,
+		IdleTimeout:        defaultIdleTimeout,
 		MaxFrameBufferSize: defaultMaxFrameBufferSize,
 		AllowCommand: []consts.JT808CommandType{
 			// 平台下发的
@@ -90,6 +96,24 @@ func WithDialTimeout(timeout time.Duration) Option {
 	return Option{F: func(o *Options) {
 		if timeout > 0 {
 			o.DialTimeout = timeout
+		}
+	}}
+}
+
+// WithWriteTimeout 自定义单次TCP写超时时间 默认10秒(<=0保持默认).
+func WithWriteTimeout(timeout time.Duration) Option {
+	return Option{F: func(o *Options) {
+		if timeout > 0 {
+			o.WriteTimeout = timeout
+		}
+	}}
+}
+
+// WithIdleTimeout 设置真实终端连接的读空闲超时时间 默认0表示不启用.
+func WithIdleTimeout(idleTimeout time.Duration) Option {
+	return Option{F: func(o *Options) {
+		if idleTimeout > 0 {
+			o.IdleTimeout = idleTimeout
 		}
 	}}
 }

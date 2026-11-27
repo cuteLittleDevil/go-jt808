@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 )
@@ -80,6 +81,9 @@ func (c *backendClient) run() {
 		case data, ok := <-c.writeQueue:
 			if !ok {
 				return
+			}
+			if c.opts != nil && c.opts.WriteTimeout > 0 {
+				_ = c.conn.SetWriteDeadline(time.Now().Add(c.opts.WriteTimeout))
 			}
 			if _, err := c.conn.Write(data); err != nil {
 				slog.Warn("write",
