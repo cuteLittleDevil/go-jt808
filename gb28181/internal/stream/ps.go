@@ -254,19 +254,7 @@ func NewProgramStreamMap(streams ...streamMap) *ProgramStreamMap {
 		MarkerBit:                 1,
 		ProgramStreamInfoLength:   0,
 		ElementaryStreamMapLength: 0,
-		//Streams: []streamMap{
-		//	{
-		//		StreamType:                 0x1b,
-		//		ElementaryStreamId:         0xe0,
-		//		ElementaryStreamInfoLength: 0,
-		//	},
-		//	{
-		//		StreamType:                 0x90,
-		//		ElementaryStreamId:         0xc0,
-		//		ElementaryStreamInfoLength: 0,
-		//	},
-		//},
-		Streams: streams,
+		Streams:                   streams,
 	}
 	tmp.ElementaryStreamMapLength = uint16(4 * len(tmp.Streams))
 	tmp.ProgramStreamMapLength += tmp.ElementaryStreamMapLength
@@ -407,16 +395,5 @@ func (p *PESPacket) Encode() []byte {
 
 	// PTS(14-0) + MarkerBit3(1)
 	data = binary.BigEndian.AppendUint16(data, uint16(p.PTS<<1&0b1111_1111_1111_1110|1))
-
-	//// 固定4位 + DTS(32-30) + MarkerBit4(1)
-	//data = append(data, 0b0001_0000|
-	//	byte(p.DTS>>29)&0b0000_1110|
-	//	byte(1),
-	//)
-	//// DTS(29-15) + MarkerBit5(1)
-	//data = binary.BigEndian.AppendUint16(data, uint16(p.DTS>>14&0b1111_1111_1111_1110|1))
-	//
-	//// DTS(14-0) + MarkerBit6(1)
-	//data = binary.BigEndian.AppendUint16(data, uint16(p.DTS<<1&0b1111_1111_1111_1110|1))
 	return data
 }

@@ -52,10 +52,6 @@ func New(sim string, opts ...Option) *Client {
 	}
 	if client.Options.ToGB28181erFunc == nil {
 		switch client.Options.ToGBType {
-		case command.JT1078ToPS:
-			client.Options.ToGB28181erFunc = func() command.ToGB28181er {
-				return stream.NewJT1078T0GB28181()
-			}
 		case command.JT1078ToPSFilterPacket:
 			client.Options.ToGB28181erFunc = func() command.ToGB28181er {
 				return stream.NewJT1078T0GB28181(func(gb28181 *stream.JT1078ToGB28181) {
@@ -252,6 +248,41 @@ func (c *Client) Stop() {
 			c.manage.Stop()
 		}
 	})
+}
+
+func (c *Client) newSIPRequest(method sip.RequestMethod, transport string, freshFromTag bool) (*sip.Request, uint32) {
+	req := sip.NewRequest(method, c.recipient)
+	req.AppendHeader(&sip.ViaHeader{
+		ProtocolName:    "SIP",
+		ProtocolVersion: "2.0",
+		Transport:       c.Options.Transport,
+		Host:            c.PlatformInfo.IP,
+		Port:            c.PlatformInfo.Port,
+		Params: sip.HeaderParams{
+			{K: "branch", V: sip.GenerateBranchN(16)},
+			{K: "rport", V: ""}, // 不知道实际使用的端口
+		},
+	})
+	if freshFromTag {
+		from := *c.from
+		from.Params = sip.HeaderParams{{K: "tag", V: sip.GenerateTagN(16)}}
+		req.AppendHeader(&from)
+	} else {
+		req.AppendHeader(c.from)
+	}
+	req.AppendHeader(c.to)
+	if transport != "" {
+		req.SetTransport(transport)
+	}
+	req.AppendHeader(&c.callID)
+	maxForwardsHeader := sip.MaxForwardsHeader(70)
+	req.AppendHeader(&maxForwardsHeader)
+	sn := c.nextSN()
+	req.AppendHeader(&sip.CSeqHeader{
+		SeqNo:      sn,
+		MethodName: method,
+	})
+	return req, sn
 }
 
 func (c *Client) nextSN() uint32 {

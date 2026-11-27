@@ -8,34 +8,8 @@ import (
 )
 
 func (c *Client) handleKeepalive(parentCtx context.Context) error {
-	platform := c.Options.PlatformInfo
-	req := sip.NewRequest(sip.MESSAGE, c.recipient)
-	req.SetTransport(c.Options.Transport)
-	req.AppendHeader(&sip.ViaHeader{
-		ProtocolName:    "SIP",
-		ProtocolVersion: "2.0",
-		Transport:       c.Options.Transport,
-		Host:            platform.IP,
-		Port:            platform.Port,
-		Params: sip.HeaderParams{
-			{K: "branch", V: sip.GenerateBranchN(16)},
-			{K: "rport", V: ""}, // 不知道实际使用的端口
-		},
-	})
-
-	from := *c.from
-	from.Params = sip.HeaderParams{{K: "tag", V: sip.GenerateTagN(16)}}
-	req.AppendHeader(&from)
-	req.AppendHeader(c.to)
-	req.AppendHeader(&c.callID)
-	sn := c.nextSN()
-	req.AppendHeader(&sip.CSeqHeader{
-		SeqNo:      sn,
-		MethodName: sip.MESSAGE,
-	})
+	req, sn := c.newSIPRequest(sip.MESSAGE, c.Options.Transport, true)
 	req.AppendHeader(c.contact)
-	maxForwardsHeader := sip.MaxForwardsHeader(70)
-	req.AppendHeader(&maxForwardsHeader)
 	req.AppendHeader(sip.NewHeader("User-Agent", c.Options.UserAgent))
 	req.AppendHeader(sip.NewHeader("Content-Type", "Application/MANSCDP+xml"))
 

@@ -3,11 +3,11 @@ module github.com/cuteLittleDevil/go-jt808/gb28181
 go 1.23.2
 
 require (
-	github.com/cuteLittleDevil/go-jt808/protocol v1.16.0
-	github.com/emiago/sipgo v1.4.3
-	github.com/icholy/digest v1.1.0
+	github.com/cuteLittleDevil/go-jt808/protocol v1.18.1
+	github.com/emiago/sipgo v1.7.4
+	github.com/icholy/digest v1.2.0
 	github.com/pion/rtp v1.8.20
-	golang.org/x/text v0.26.0
+	golang.org/x/text v0.28.0
 )
 
 require (

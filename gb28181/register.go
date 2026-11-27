@@ -9,37 +9,14 @@ import (
 )
 
 func (c *Client) handleRegister(parentCtx context.Context, hasRegister bool) (bool, error) {
-	req := sip.NewRequest(sip.REGISTER, c.recipient)
-	platform := c.Options.PlatformInfo
-	req.AppendHeader(&sip.ViaHeader{
-		ProtocolName:    "SIP",
-		ProtocolVersion: "2.0",
-		Transport:       c.Options.Transport,
-		Host:            platform.IP,
-		Port:            platform.Port,
-		Params: sip.HeaderParams{
-			{K: "branch", V: sip.GenerateBranchN(16)},
-			{K: "rport", V: ""}, // 不知道实际使用的端口
-		},
-	})
-
-	req.AppendHeader(c.from)
-	req.AppendHeader(c.to)
-	req.AppendHeader(&c.callID)
-	req.AppendHeader(&sip.CSeqHeader{
-		SeqNo:      c.nextSN(),
-		MethodName: sip.REGISTER,
-	})
+	req, _ := c.newSIPRequest(sip.REGISTER, "", false)
 	req.AppendHeader(c.contact)
-	maxForwardsHeader := sip.MaxForwardsHeader(70)
-	req.AppendHeader(&maxForwardsHeader)
 	req.AppendHeader(sip.NewHeader("User-Agent", c.Options.UserAgent))
+	expires := "0" // 注销的情况就是 expires=0
 	if hasRegister {
-		req.AppendHeader(sip.NewHeader("Expires", "3600"))
-	} else {
-		// 注销的情况就是 expires=0
-		req.AppendHeader(sip.NewHeader("Expires", "0"))
+		expires = "3600"
 	}
+	req.AppendHeader(sip.NewHeader("Expires", expires))
 	req.AppendHeader(sip.NewHeader("Content-Length", "0"))
 	// 注册wvp 有时候10秒不够 换30秒
 	ctx, cancel := context.WithTimeout(parentCtx, 30*time.Second)

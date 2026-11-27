@@ -48,29 +48,8 @@ func (c *Client) message(req *sip.Request, tx sip.ServerTransaction) {
 			slog.Any("err", err))
 	}
 
-	replyReq := sip.NewRequest(sip.MESSAGE, c.recipient)
-	replyReq.AppendHeader(&sip.ViaHeader{
-		ProtocolName:    "SIP",
-		ProtocolVersion: "2.0",
-		Transport:       c.Options.Transport,
-		Host:            c.PlatformInfo.IP,
-		Port:            c.PlatformInfo.Port,
-		Params: sip.HeaderParams{
-			{K: "branch", V: sip.GenerateBranchN(16)},
-			{K: "rport", V: ""}, // 不知道实际使用的端口
-		},
-	})
-	replyReq.AppendHeader(c.from)
-	replyReq.AppendHeader(c.to)
-	replyReq.SetTransport(req.Transport())
-	replyReq.AppendHeader(&c.callID)
+	replyReq, _ := c.newSIPRequest(sip.MESSAGE, req.Transport(), false)
 	replyReq.AppendHeader(sip.NewHeader("Content-Type", "Application/MANSCDP+xml"))
-	maxForwardsHeader := sip.MaxForwardsHeader(70)
-	replyReq.AppendHeader(&maxForwardsHeader)
-	replyReq.AppendHeader(&sip.CSeqHeader{
-		SeqNo:      c.nextSN(),
-		MethodName: sip.MESSAGE,
-	})
 	replyReq.SetBody(data)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
