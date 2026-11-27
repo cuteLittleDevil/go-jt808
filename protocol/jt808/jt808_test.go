@@ -401,3 +401,27 @@ func TestHeader_EncodeDoesNotMutateProperty(t *testing.T) {
 		t.Fatalf("EncodePackets mutated Header.Property: got=%+v want=%+v", *msg.Header.Property, origProp)
 	}
 }
+
+func TestHeader_DecodeCopiesBCDPhoneIndependentOfInputBuf(t *testing.T) {
+	for _, rawHex := range []string{
+		"7e0002000001234567890100008a7e",
+		"7e0002400001000000000172998417380000027e",
+	} {
+		raw, _ := hex.DecodeString(rawHex)
+		buf := bytes.Clone(raw)
+
+		msg := NewJTMessage()
+		if err := msg.Decode(buf); err != nil {
+			t.Fatalf("Decode(%s) failed: %v", rawHex, err)
+		}
+		// 覆盖复用的输入切片，验证 Header 编码不依赖原读缓冲
+		for i := range buf {
+			buf[i] = 0xFF
+		}
+
+		encoded := msg.Header.EncodePackets(nil)[0]
+		if !bytes.Equal(encoded, raw) {
+			t.Fatalf("Header.EncodePackets corrupted after input buffer overwrite:\ngot  %x\nwant %x", encoded, raw)
+		}
+	}
+}

@@ -1,6 +1,7 @@
 package jt808
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"strings"
@@ -127,7 +128,7 @@ func (h *Header) decode(data []byte) error {
 		return protocol.ErrHeaderLength2Short
 	}
 	h.ProtocolVersion = version
-	h.bcdTerminalPhoneNo = data[start : start+phoneLen]
+	h.bcdTerminalPhoneNo = bytes.Clone(data[start : start+phoneLen])
 	h.TerminalPhoneNo = utils.Bcd2Dec(h.bcdTerminalPhoneNo)
 	h.SerialNumber = binary.BigEndian.Uint16(data[start+phoneLen : start+phoneLen+2])
 	end := start + phoneLen + 2
