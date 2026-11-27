@@ -1,9 +1,11 @@
 package service
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"net"
+	"sync"
 	"testing"
 	"time"
 
@@ -265,6 +267,28 @@ func TestService_sendActiveMessageSuccessAndTimeout(t *testing.T) {
 	if reply.Command != consts.T0201QueryLocation {
 		t.Fatalf("reply command = %s, want %s", reply.Command, consts.T0201QueryLocation)
 	}
+	decodedPlatform := decodeFirstMessage(t, reply.ExtensionFields.PlatformData)
+	if consts.JT808CommandType(decodedPlatform.Header.ID) != consts.P8201QueryLocation {
+		t.Fatalf("PlatformData command = 0x%04X, want 0x8201", decodedPlatform.Header.ID)
+	}
+
+	// 分包主动下发(>1000B)：终端按最后一包流水号应答，应成功匹配
+	subBody := bytes.Repeat([]byte{0x31}, 1500)
+	go func() {
+		fr := jt808.NewFrameReader()
+		var frames [][]byte
+		for len(frames) < 2 {
+			pkt := readPacket(t, conn, 2*time.Second)
+			frames = append(frames, fr.ReadFrames(pkt)...)
+		}
+		lastMsg := decodeFirstMessage(t, frames[len(frames)-1])
+		resp := encodeGeneralRespond(t, lastMsg.Header.SerialNumber, consts.P8300TextInfoDistribution, 6)
+		_, _ = conn.Write(resp)
+	}()
+	subReply := g.SendActiveMessage(NewActiveMessage(key, consts.P8300TextInfoDistribution, subBody, time.Second))
+	if subReply.ExtensionFields.Err != nil {
+		t.Fatalf("subcontract SendActiveMessage err = %v", subReply.ExtensionFields.Err)
+	}
 
 	go func() {
 		_ = readPacket(t, conn, 2*time.Second) // 消费平台下发报文
@@ -410,4 +434,178 @@ func TestMakeSerialMatchHandler(t *testing.T) {
 	if match(active, terminal) {
 		t.Fatal("expected serial mismatch")
 	}
+}
+
+func newPipeTestConnection(t *testing.T) (*GoJT808, *connection, net.Conn, *recordingTerminalEvent) {
+	t.Helper()
+	events := newRecordingTerminalEvent()
+	g := New(WithCustomTerminalEventer(func() TerminalEventer { return events }))
+	serverConn, clientConn := net.Pipe()
+	t.Cleanup(func() {
+		_ = clientConn.Close()
+		_ = serverConn.Close()
+	})
+	conn := newConnection(connectionParams{
+		conn:                 serverConn,
+		handles:              g.createCommandHandle(),
+		activeRespondHandles: g.createActiveRespondHandle(),
+		terminalEvent:        events,
+		filter:               true,
+		onJoinEvent:          g.sessionManager.join,
+		onLeaveEvent:         g.sessionManager.leave,
+	})
+	conn.run()
+
+	if _, err := clientConn.Write(heartbeatPacket); err != nil {
+		t.Fatalf("write heartbeat error = %v", err)
+	}
+	_ = readPacket(t, clientConn, time.Second)
+	_ = waitChan(t, events.joined, time.Second)
+	_ = waitChan(t, events.readCmd, time.Second)
+	_ = waitChan(t, events.writeCmd, time.Second)
+	return g, conn, clientConn, events
+}
+
+func TestConnection_activeTimerLifecycle(t *testing.T) {
+	const key = "12345678901"
+
+	t.Run("来源1_终端按时应答Stop取消定时器且不二次触发超时", func(t *testing.T) {
+		g, _, clientConn, events := newPipeTestConnection(t)
+		go func() {
+			pkt := readPacket(t, clientConn, time.Second)
+			msg := decodeFirstMessage(t, pkt)
+			resp := encodeLocationQueryRespond(t, msg.Header.SerialNumber, 2)
+			_, _ = clientConn.Write(resp)
+		}()
+
+		reply := g.SendActiveMessage(NewActiveMessage(key, consts.P8201QueryLocation, nil, 80*time.Millisecond))
+		if reply.ExtensionFields.Err != nil {
+			t.Fatalf("SendActiveMessage err = %v", reply.ExtensionFields.Err)
+		}
+		// 消费成功完成时的两次写事件（0x0201 与 0x8201）
+		_ = waitChan(t, events.writeCmd, time.Second)
+		_ = waitChan(t, events.writeCmd, time.Second)
+
+		// 等待超过原定 80ms 超时窗口，确认定时器已被 Stop，不会再触发超时写事件
+		time.Sleep(120 * time.Millisecond)
+		select {
+		case cmd := <-events.writeCmd:
+			t.Fatalf("unexpected late timeout write event: %s", cmd)
+		default:
+		}
+	})
+
+	t.Run("来源2_发包后断线等待在途超时_未发请求立即失败_断线前应答正常完成", func(t *testing.T) {
+		// 2a: 发包后终端立即断线 -> 等待在途超时返回 ErrWriteDataOverTime
+		g, _, clientConn, _ := newPipeTestConnection(t)
+		const timeout = 120 * time.Millisecond
+		go func() {
+			_ = readPacket(t, clientConn, time.Second)
+			_ = clientConn.Close()
+		}()
+		start := time.Now()
+		reply := g.SendActiveMessage(NewActiveMessage(key, consts.P8201QueryLocation, nil, timeout))
+		if !errors.Is(reply.ExtensionFields.Err, ErrWriteDataOverTime) {
+			t.Fatalf("err = %v, want %v", reply.ExtensionFields.Err, ErrWriteDataOverTime)
+		}
+		if elapsed := time.Since(start); elapsed < timeout-30*time.Millisecond {
+			t.Fatalf("elapsed = %v, expected wait ~%v for in-flight timeout", elapsed, timeout)
+		}
+
+		// 2b: 终端回包后紧接着 EOF -> 应答被 drainBeforeExit 优先匹配，不误判超时
+		g2, _, clientConn2, _ := newPipeTestConnection(t)
+		go func() {
+			pkt := readPacket(t, clientConn2, time.Second)
+			msg := decodeFirstMessage(t, pkt)
+			_, _ = clientConn2.Write(encodeLocationQueryRespond(t, msg.Header.SerialNumber, 3))
+			_ = clientConn2.Close()
+		}()
+		reply2 := g2.SendActiveMessage(NewActiveMessage(key, consts.P8201QueryLocation, nil, time.Second))
+		if reply2.ExtensionFields.Err != nil {
+			t.Fatalf("reply before EOF failed: %v", reply2.ExtensionFields.Err)
+		}
+
+		// 2c: 无在途请求时普通连接断线应立即关闭（不再固定 sleep 1s）
+		_, conn3, clientConn3, events3 := newPipeTestConnection(t)
+		closeStart := time.Now()
+		_ = clientConn3.Close()
+		_ = waitChan(t, events3.left, time.Second)
+		select {
+		case <-conn3.finallyCompleteChan:
+		case <-time.After(300 * time.Millisecond):
+			t.Fatal("finallyCompleteChan did not close promptly")
+		}
+		if elapsed := time.Since(closeStart); elapsed >= 500*time.Millisecond {
+			t.Fatalf("disconnect took %v, expected prompt close without 1s sleep", elapsed)
+		}
+	})
+
+	t.Run("来源3_流水号回绕冲突停止旧请求且旧定时器不误杀新请求", func(t *testing.T) {
+		g, conn, clientConn, _ := newPipeTestConnection(t)
+
+		// 第 1 条请求发在流水号 1（设短超时 60ms），终端只收不回
+		firstRes := make(chan *Message, 1)
+		firstSent := make(chan struct{})
+		go func() {
+			_ = readPacket(t, clientConn, time.Second)
+			close(firstSent)
+		}()
+		go func() {
+			firstRes <- g.SendActiveMessage(NewActiveMessage(key, consts.P8201QueryLocation, nil, 60*time.Millisecond))
+		}()
+		<-firstSent
+
+		// 模拟跑满 65536 次后流水号回绕回 1，并发出第 2 条同流水号请求（超时 500ms）
+		conn.platformSerialNumber.Store(1)
+		go func() {
+			pkt := readPacket(t, clientConn, time.Second)
+			msg := decodeFirstMessage(t, pkt)
+			// 故意等超过第 1 条的 60ms 超时时间后再回包，验证旧定时器不会误杀第 2 条请求
+			time.Sleep(100 * time.Millisecond)
+			_, _ = clientConn.Write(encodeLocationQueryRespond(t, msg.Header.SerialNumber, 9))
+		}()
+
+		secondReply := g.SendActiveMessage(NewActiveMessage(key, consts.P8201QueryLocation, nil, 500*time.Millisecond))
+		if secondReply.ExtensionFields.Err != nil {
+			t.Fatalf("new request after seq wraparound failed: %v", secondReply.ExtensionFields.Err)
+		}
+
+		select {
+		case oldReply := <-firstRes:
+			if !errors.Is(oldReply.ExtensionFields.Err, ErrWriteDataOverTime) {
+				t.Fatalf("collided old request err = %v, want %v", oldReply.ExtensionFields.Err, ErrWriteDataOverTime)
+			}
+		case <-time.After(time.Second):
+			t.Fatal("collided old request leaked without returning")
+		}
+	})
+
+	t.Run("来源4_高频并发超时与断线退出done兜底无Panic无死锁", func(t *testing.T) {
+		for i := 0; i < 15; i++ {
+			g, _, clientConn, _ := newPipeTestConnection(t)
+			go func() {
+				buf := make([]byte, 2048)
+				for {
+					if _, err := clientConn.Read(buf); err != nil {
+						return
+					}
+					_ = clientConn.Close()
+					return
+				}
+			}()
+
+			var wg sync.WaitGroup
+			for j := 0; j < 16; j++ {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					res := g.SendActiveMessage(NewActiveMessage(key, consts.P8300TextInfoDistribution, []byte{0x01, 0x31}, 5*time.Millisecond))
+					if res.ExtensionFields.Err == nil {
+						t.Errorf("expected error on disconnected/timed-out active message")
+					}
+				}()
+			}
+			wg.Wait()
+		}
+	})
 }

@@ -74,10 +74,6 @@ func (s *sessionManager) leave(key string) {
 }
 
 // write 将主动消息分配到目标终端会话并返回应答结果.
-// 会话表只在 run() 中访问。write 必须在本闭包内完成
-// activeMsgChan 发送，以便与 leave 串行，避免发到已关闭通道。
-// 缓冲 10 是余量：业务上 SendActiveMessage 一问一答，
-// 同一连接同时通常最多一条在途，不会靠堆积连续下发。
 func (s *sessionManager) write(activeMsg *ActiveMessage) *Message {
 	replyChan := make(chan *Message)
 	defer close(replyChan)

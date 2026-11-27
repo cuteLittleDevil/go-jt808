@@ -76,9 +76,10 @@ func newActiveSendMessage(jtMsg *jt808.JTMessage, command consts.JT808CommandTyp
 			CustomData          any                     `json:"customData,omitempty"`
 			Err                 error                   `json:"err,omitempty"`
 		}{
-			ActiveSend:      true,
-			PlatformCommand: command,
-			PlatformSeq:     jtMsg.Header.SerialNumber,
+			ActiveSend:          true,
+			SubcontractComplete: jtMsg.Header.SubPackageSum > 0,
+			PlatformCommand:     command,
+			PlatformSeq:         jtMsg.Header.SerialNumber,
 		},
 	}
 	if changFunc != nil {
