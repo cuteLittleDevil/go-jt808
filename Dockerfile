@@ -1,7 +1,9 @@
 FROM golang:1.23-alpine AS builder
 WORKDIR /app/jt808_to_gb28181
 COPY . .
-RUN cd ./example/jt808_to_gb28181 &&  go build -o jt808-to-gb28181
+RUN go work init ./gb28181 ./example/jt808_to_gb28181 \
+    && cd ./example/jt808_to_gb28181 \
+    && go build -o jt808-to-gb28181
 
 FROM alpine:latest
 WORKDIR /app/jt808_to_gb28181
