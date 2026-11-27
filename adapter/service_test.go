@@ -389,3 +389,32 @@ func TestLifeCycle(t *testing.T) {
 	leader.writeDownlink(testDownlink8001)
 	readExact(t, dev, testDownlink8001, 2*time.Second)
 }
+
+func TestAdapter_StopClosesActiveSessions(t *testing.T) {
+	leader := startMockBackend(t)
+
+	adapterAddr := freeTCPAddr(t)
+	ad := New(
+		WithHostPorts(adapterAddr),
+		WithTerminals(Terminal{
+			Mode:       Leader,
+			TargetAddr: leader.addr,
+		}),
+	)
+	go ad.Run()
+	waitListen(t, adapterAddr)
+
+	dev := dialDevice(t, adapterAddr)
+	defer func() { _ = dev.Close() }()
+	waitSignal(t, leader.connOpen, 2*time.Second, "leader accept")
+
+	ad.Stop()
+
+	waitSignal(t, leader.connClose, 2*time.Second, "leader close after Adapter.Stop")
+	_ = dev.SetReadDeadline(time.Now().Add(time.Second))
+	buf := make([]byte, 16)
+	if _, err := dev.Read(buf); err == nil {
+		t.Fatal("expected device connection closed after Adapter.Stop")
+	}
+}
+
