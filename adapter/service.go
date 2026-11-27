@@ -69,7 +69,7 @@ func (a *Adapter) Run() {
 			continue
 		}
 
-		s := newSession(c, a.opts.TimeoutRetry, a.createTerminals())
+		s := newSessionWithOptions(c, a.opts, a.createTerminals())
 		go s.run()
 	}
 }

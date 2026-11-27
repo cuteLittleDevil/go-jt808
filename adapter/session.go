@@ -15,8 +15,8 @@ import (
 //	真实终端 ──Read──► readLoop 扇出 ──► 多个 backendClient
 //	真实终端 ◄─Write── writeLoop ◄── 后端允许回复的下行
 type session struct {
-	conn         *net.TCPConn
-	timeoutRetry time.Duration
+	conn net.Conn
+	opts *Options
 	// backends：key=TargetAddr(string)，value=*backend。写入必须走 putBackend。
 	backends sync.Map
 	// reconnecting：key=TargetAddr，标记该地址是否已有重连协程在跑（含重试 sleep 期间）。
@@ -27,15 +27,16 @@ type session struct {
 	stopOnce     sync.Once
 }
 
-func newSession(conn *net.TCPConn, timeoutRetry time.Duration, terminals []Terminal) *session {
+func newSession(conn net.Conn, timeoutRetry time.Duration, terminals []Terminal) *session {
+	return newSessionWithOptions(conn, newOptions([]Option{WithTimeoutRetry(timeoutRetry)}), terminals)
+}
+
+func newSessionWithOptions(conn net.Conn, opts *Options, terminals []Terminal) *session {
 	s := &session{
-		conn:         conn,
-		timeoutRetry: timeoutRetry,
-		backends:     sync.Map{},
-		reconnecting: sync.Map{},
-		replyQueue:   make(chan []byte, 10),
-		stopCh:       make(chan struct{}),
-		stopOnce:     sync.Once{},
+		conn:       conn,
+		opts:       opts,
+		replyQueue: make(chan []byte, 10),
+		stopCh:     make(chan struct{}),
 	}
 	for _, terminal := range terminals {
 		s.dialBackend(terminal)
@@ -50,7 +51,7 @@ func (s *session) dialBackend(terminal Terminal) {
 		s.putBackend(terminal, nil)
 		s.startReconnect(terminal)
 	}
-	c, err := newBackendClient(terminal, s.stopCh, s.enqueueReply, onDead)
+	c, err := newBackendClient(terminal, s.opts, s.stopCh, s.enqueueReply, onDead)
 	if err != nil {
 		slog.Error("init backend error",
 			slog.String("addr", terminal.TargetAddr),
@@ -77,7 +78,7 @@ func (s *session) run() {
 
 func (s *session) readLoop() {
 	// readBuf 仅供 Read 复用，不得直接交给 backendClient。
-	readBuf := make([]byte, maxBodyLen)
+	readBuf := make([]byte, readBufSize)
 	defer s.stop()
 
 	for {
@@ -195,7 +196,7 @@ func (s *session) reconnectBackend(terminal Terminal) {
 				s.putBackend(terminal, nil)
 				s.startReconnect(terminal)
 			}
-			c, err := newBackendClient(terminal, s.stopCh, s.enqueueReply, onDead)
+			c, err := newBackendClient(terminal, s.opts, s.stopCh, s.enqueueReply, onDead)
 			if err == nil {
 				s.putBackend(terminal, c)
 				slog.Info("rejoin",
@@ -206,7 +207,7 @@ func (s *session) reconnectBackend(terminal Terminal) {
 				slog.String("addr", terminal.TargetAddr),
 				slog.Any("err", err))
 			// 可配置为 0：仍只在一个协程里空转重试，不会因新包叠加协程
-			time.Sleep(s.timeoutRetry)
+			time.Sleep(s.opts.TimeoutRetry)
 		}
 	}
 }

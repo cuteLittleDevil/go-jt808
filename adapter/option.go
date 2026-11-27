@@ -1,8 +1,9 @@
 package adapter
 
 import (
-	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 	"time"
+
+	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 )
 
 type Option struct {
@@ -12,19 +13,23 @@ type Option struct {
 const (
 	defaultAddr         = "0.0.0.0:18080" // 服务默认地址
 	defaultTimeoutRetry = 10 * time.Second
+	// defaultMaxFrameBufferSize 下行粘包缓冲区默认上限 单包读取缓冲2048的2倍仍未组成完整帧视为异常.
+	defaultMaxFrameBufferSize = readBufSize * 2
 )
 
 type Options struct {
-	Addr         string
-	TimeoutRetry time.Duration
-	Terminals    []Terminal
-	AllowCommand []consts.JT808CommandType
+	Addr               string
+	TimeoutRetry       time.Duration
+	MaxFrameBufferSize int
+	Terminals          []Terminal
+	AllowCommand       []consts.JT808CommandType
 }
 
 func newOptions(opts []Option) *Options {
 	options := &Options{
-		Addr:         defaultAddr,
-		TimeoutRetry: defaultTimeoutRetry,
+		Addr:               defaultAddr,
+		TimeoutRetry:       defaultTimeoutRetry,
+		MaxFrameBufferSize: defaultMaxFrameBufferSize,
 		AllowCommand: []consts.JT808CommandType{
 			// 平台下发的
 			consts.P8003ReissueSubcontractingRequest,
@@ -47,7 +52,7 @@ func newOptions(opts []Option) *Options {
 	return options
 }
 
-// WithHostPorts 修改运行地址 默认0.0.0.0:808.
+// WithHostPorts 修改运行地址 默认0.0.0.0:18080.
 func WithHostPorts(address string) Option {
 	return Option{F: func(o *Options) {
 		o.Addr = address
@@ -61,7 +66,7 @@ func WithTerminals(terminals ...Terminal) Option {
 	}}
 }
 
-// WithAllowCommand 自定义Follower模式允许的回复命令.
+// WithAllowCommand 覆盖全局Follower模式默认允许下发的命令列表(传空则清空全局默认列表,仅使用各Terminal自身的AllowCommands).
 func WithAllowCommand(commands ...consts.JT808CommandType) Option {
 	return Option{F: func(o *Options) {
 		o.AllowCommand = commands
@@ -72,5 +77,14 @@ func WithAllowCommand(commands ...consts.JT808CommandType) Option {
 func WithTimeoutRetry(timeout time.Duration) Option {
 	return Option{F: func(o *Options) {
 		o.TimeoutRetry = timeout
+	}}
+}
+
+// WithMaxFrameBufferSize 设置下行粘包缓冲区最大字节数,默认2048*2.
+// 收到的数据(如7e开头但迟迟没有结束的7e,或非0x7e开头的异常数据)无法组成完整帧时会暂存在缓冲区,
+// 暂存数据达到该值时断开该后端TCP连接并重连,防止异常数据导致内存无限增长. size<=0表示不限制.
+func WithMaxFrameBufferSize(size int) Option {
+	return Option{F: func(o *Options) {
+		o.MaxFrameBufferSize = size
 	}}
 }

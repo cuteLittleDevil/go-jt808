@@ -10,8 +10,8 @@ import (
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 )
 
-// maxBodyLen JT808 消息体最大长度（协议 10bit），读缓冲按此上限复用。
-const maxBodyLen = 1023
+// readBufSize 单次读取缓冲区大小（JT808 消息体最大 1023B，算上消息头、校验码、首尾 0x7e 及 0x7d 转义膨胀后上限约 2048B）。
+const readBufSize = 2048
 
 // backend 是 session.backends 的 value。
 //
@@ -27,10 +27,11 @@ type backend struct {
 // backendClient 表示连向某一个后端 JT808 服务的 TCP 客户端。
 type backendClient struct {
 	terminal    Terminal
+	opts        *Options
 	sessionStop <-chan struct{}
 	// onReply 后端下行且允许回写时，交给 session 写回真实终端。
 	onReply func(data []byte)
-	// onDead 连接因读/写失败关闭时回调一次（session 停止时不再触发重连）。
+	// onDead 连接因读/写/拆包失败关闭时回调一次（session 停止时不再触发重连）。
 	onDead func()
 
 	conn       net.Conn
@@ -41,23 +42,27 @@ type backendClient struct {
 
 func newBackendClient(
 	terminal Terminal,
+	opts *Options,
 	sessionStop <-chan struct{},
 	onReply func(data []byte),
 	onDead func(),
 ) (*backendClient, error) {
+	if opts == nil {
+		opts = newOptions(nil)
+	}
 	conn, err := net.Dial("tcp", terminal.TargetAddr)
 	if err != nil {
 		return nil, err
 	}
 	c := &backendClient{
 		terminal:    terminal,
+		opts:        opts,
 		sessionStop: sessionStop,
 		onReply:     onReply,
 		onDead:      onDead,
 		conn:        conn,
 		writeQueue:  make(chan []byte, 10),
 		stopCh:      make(chan struct{}),
-		stopOnce:    sync.Once{},
 	}
 	go c.run()
 	return c, nil
@@ -104,7 +109,7 @@ func (c *backendClient) enqueueUplink(data []byte) bool {
 }
 
 func (c *backendClient) readLoop() {
-	readBuf := make([]byte, maxBodyLen)
+	readBuf := make([]byte, readBufSize)
 	pack := newPackageParse()
 	defer func() {
 		c.stop()
@@ -112,26 +117,45 @@ func (c *backendClient) readLoop() {
 		pack.clear()
 	}()
 
+	maxBufSize := defaultMaxFrameBufferSize
+	if c.opts != nil {
+		maxBufSize = c.opts.MaxFrameBufferSize
+	}
+
 	for {
 		select {
 		case <-c.stopCh:
 			return
 		default:
 			n, err := c.conn.Read(readBuf)
+			if n > 0 {
+				msgs, unpackErr := pack.unpack(readBuf[:n])
+				for _, msg := range msgs {
+					command := consts.JT808CommandType(msg.JTMessage.Header.ID)
+					if c.terminal.allowReply(command) {
+						// 必须拷贝后再异步入队：msg.originalData 直接引用 readBuf 或粘包缓冲，
+						// 下一轮 Read 会覆盖尚未写回真实终端的数据。
+						c.onReply(bytes.Clone(msg.originalData))
+					}
+				}
+				if unpackErr != nil {
+					slog.Warn("unpack downlink data",
+						slog.String("addr", c.terminal.TargetAddr),
+						slog.String("effective data", fmt.Sprintf("%x", readBuf[:n])),
+						slog.Any("err", unpackErr))
+					return
+				}
+				// 粘包缓冲区未组成完整帧的数据过多（如 7e... 迟迟未闭合或非 0x7e 开头）说明数据异常，断开连接防止内存无限增长
+				if pending := pack.frameReader.Pending(); maxBufSize > 0 && pending >= maxBufSize {
+					slog.Warn("frame buffer overflow",
+						slog.String("addr", c.terminal.TargetAddr),
+						slog.Int("pending", pending),
+						slog.Int("max", maxBufSize))
+					return
+				}
+			}
 			if err != nil {
 				return
-			}
-			if n <= 0 {
-				continue
-			}
-			msgs, _ := pack.unpack(readBuf[:n])
-			for _, msg := range msgs {
-				command := consts.JT808CommandType(msg.JTMessage.Header.ID)
-				if c.terminal.allowReply(command) {
-					// 必须拷贝后再异步入队：msg.originalData 直接引用 readBuf 或粘包缓冲，
-					// 下一轮 Read 会覆盖尚未写回真实终端的数据。
-					c.onReply(bytes.Clone(msg.originalData))
-				}
 			}
 		}
 	}

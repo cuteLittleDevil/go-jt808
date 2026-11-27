@@ -219,7 +219,7 @@ func TestBackendClientEnqueueKeepsPayloadAfterSourceMutates(t *testing.T) {
 	}()
 
 	term := Terminal{Mode: Leader, TargetAddr: backendLn.Addr().String()}
-	bc, err := newBackendClient(term, make(chan struct{}), func([]byte) {}, nil)
+	bc, err := newBackendClient(term, nil, make(chan struct{}), func([]byte) {}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
