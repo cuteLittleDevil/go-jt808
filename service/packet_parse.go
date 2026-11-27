@@ -5,6 +5,7 @@ import (
 	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
 	"github.com/cuteLittleDevil/go-jt808/protocol/model"
 	"log/slog"
+	"math"
 	"time"
 )
 
@@ -140,10 +141,14 @@ func (p *packageParse) completePack(msg *Message) (*Message, bool) {
 func (p *packageParse) add(id uint16, header *jt808.Header) {
 	p.subcontractingRecord[id] = make([][]byte, header.SubPackageSum)
 	now := time.Now()
+	// 深拷贝一份 补传时修改initHeader不影响已分发的消息
+	initHeader := *header
+	property := *header.Property
+	initHeader.Property = &property
 	p.timeoutRecord[id] = &packageComplete{
 		createTime: now,
 		updateTime: now,
-		initHeader: header,
+		initHeader: &initHeader,
 	}
 }
 
@@ -174,6 +179,10 @@ func (p *packageParse) supplementarySubPackage() ([]*Message, bool) {
 				if len(record) == 0 {
 					seqs = append(seqs, uint16(k+1))
 				}
+			}
+			// 0x8003 重传包总数为BYTE 单次最多请求255个 剩余的下一轮再请求
+			if len(seqs) > math.MaxUint8 {
+				seqs = seqs[:math.MaxUint8]
 			}
 			p0x8003 := model.P0x8003{
 				BaseHandle:           model.BaseHandle{},

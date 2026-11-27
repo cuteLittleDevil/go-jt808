@@ -3,8 +3,12 @@ package service
 import (
 	"encoding/hex"
 	"fmt"
+	"math"
 	"reflect"
 	"testing"
+	"time"
+
+	"github.com/cuteLittleDevil/go-jt808/protocol/model"
 )
 
 func Test_packageParse_unpack(t *testing.T) {
@@ -109,5 +113,54 @@ func Test_packageParse_unpack(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func Test_packageParse_supplementarySubPackageMax255(t *testing.T) {
+	header := *mustDecodeJTMessage(t, heartbeatPacket).Header
+	prop := *header.Property
+	header.Property = &prop
+	header.ID = 0x0801
+	header.SubPackageSum = 300
+
+	p := newPackageParse()
+	p.add(header.ID, &header)
+	p.timeoutRecord[header.ID].updateTime = time.Now().Add(-6 * time.Second)
+
+	msgs, ok := p.supplementarySubPackage()
+	if !ok || len(msgs) != 1 {
+		t.Fatalf("supplementarySubPackage ok=%v len=%d", ok, len(msgs))
+	}
+	var p8003 model.P0x8003
+	if err := p8003.Parse(msgs[0].JTMessage); err != nil {
+		t.Fatalf("parse P0x8003 err = %v", err)
+	}
+	if p8003.AgainPackageCount != math.MaxUint8 || len(p8003.AgainPackageList) != math.MaxUint8 {
+		t.Fatalf("count=%d len=%d, want 255", p8003.AgainPackageCount, len(p8003.AgainPackageList))
+	}
+	if first, last := p8003.AgainPackageList[0], p8003.AgainPackageList[254]; first != 1 || last != 255 {
+		t.Fatalf("list range [%d, %d], want [1, 255]", first, last)
+	}
+}
+
+func Test_packageParse_supplementaryNotModifyOriginalHeader(t *testing.T) {
+	header := *mustDecodeJTMessage(t, heartbeatPacket).Header
+	prop := *header.Property
+	prop.PacketFragmented = 1
+	header.Property = &prop
+	header.ID = 0x0801
+	header.SubPackageSum = 3
+	header.SubPackageNo = 1
+	want := header
+	wantProp := prop
+
+	p := newPackageParse()
+	p.add(header.ID, &header)
+	p.timeoutRecord[header.ID].updateTime = time.Now().Add(-6 * time.Second)
+	if _, ok := p.supplementarySubPackage(); !ok {
+		t.Fatal("supplementarySubPackage not triggered")
+	}
+	if header.ReplyID != want.ReplyID || *header.Property != wantProp {
+		t.Fatalf("original header modified: ReplyID=%x Property=%+v", header.ReplyID, *header.Property)
 	}
 }
