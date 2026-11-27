@@ -24,6 +24,10 @@ linters-settings:
 issues:
   exclude-files: # 那些文件不用检查
     - ".*_test.go"
+  exclude-rules:
+    - linters:
+        - funlen
+      source: "readLoop"
 
 output:
   # See the dedicated "output" documentation section.
