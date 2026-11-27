@@ -13,7 +13,7 @@ import (
 
 type Adapter struct {
 	opts     *Options
-	ln       atomic.Pointer[net.TCPListener]
+	ln       atomic.Pointer[net.Listener]
 	sessions sync.Map
 	stopCh   chan struct{}
 	stopOnce sync.Once
@@ -44,27 +44,30 @@ func (a *Adapter) Run() {
 			slog.Any("err", err))
 		return
 	}
-	a.ln.Store(in)
+	a.serve(in)
+}
+
+func (a *Adapter) serve(in net.Listener) {
+	a.ln.Store(&in)
 	select {
 	case <-a.stopCh:
 		if ln := a.ln.Swap(nil); ln != nil {
-			_ = ln.Close()
+			_ = (*ln).Close()
 		}
 		return
 	default:
 	}
 
 	for {
-		c, err := in.AcceptTCP()
+		c, err := in.Accept()
 		if err != nil {
+			if errors.Is(err, net.ErrClosed) {
+				return
+			}
 			select {
 			case <-a.stopCh:
 				return
 			default:
-			}
-			// 监听被关闭时 Accept 也会失败
-			if errors.Is(err, net.ErrClosed) {
-				return
 			}
 			slog.Warn("accept fail",
 				slog.Any("err", err))
@@ -92,7 +95,7 @@ func (a *Adapter) Stop() {
 	a.stopOnce.Do(func() {
 		close(a.stopCh)
 		if ln := a.ln.Swap(nil); ln != nil {
-			_ = ln.Close()
+			_ = (*ln).Close()
 		}
 		a.sessions.Range(func(key, _ any) bool {
 			if s, ok := key.(*session); ok {

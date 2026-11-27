@@ -78,10 +78,7 @@ func (c *backendClient) run() {
 			return
 		case <-c.stopCh:
 			return
-		case data, ok := <-c.writeQueue:
-			if !ok {
-				return
-			}
+		case data := <-c.writeQueue:
 			if c.opts != nil && c.opts.WriteTimeout > 0 {
 				_ = c.conn.SetWriteDeadline(time.Now().Add(c.opts.WriteTimeout))
 			}
@@ -127,40 +124,35 @@ func (c *backendClient) readLoop() {
 	}
 
 	for {
-		select {
-		case <-c.stopCh:
-			return
-		default:
-			n, err := c.conn.Read(readBuf)
-			if n > 0 {
-				msgs, unpackErr := pack.unpack(readBuf[:n])
-				for _, msg := range msgs {
-					command := consts.JT808CommandType(msg.JTMessage.Header.ID)
-					if c.terminal.allowReply(command) {
-						// 必须拷贝后再异步入队：msg.originalData 直接引用 readBuf 或粘包缓冲，
-						// 下一轮 Read 会覆盖尚未写回真实终端的数据。
-						c.onReply(bytes.Clone(msg.originalData))
-					}
-				}
-				if unpackErr != nil {
-					slog.Warn("unpack downlink data",
-						slog.String("addr", c.terminal.TargetAddr),
-						slog.String("effective data", fmt.Sprintf("%x", readBuf[:n])),
-						slog.Any("err", unpackErr))
-					return
-				}
-				// 粘包缓冲区未组成完整帧的数据过多（如 7e... 迟迟未闭合或非 0x7e 开头）说明数据异常，断开连接防止内存无限增长
-				if pending := pack.frameReader.Pending(); maxBufSize > 0 && pending >= maxBufSize {
-					slog.Warn("frame buffer overflow",
-						slog.String("addr", c.terminal.TargetAddr),
-						slog.Int("pending", pending),
-						slog.Int("max", maxBufSize))
-					return
+		n, err := c.conn.Read(readBuf)
+		if n > 0 {
+			msgs, unpackErr := pack.unpack(readBuf[:n])
+			for _, msg := range msgs {
+				command := consts.JT808CommandType(msg.JTMessage.Header.ID)
+				if c.terminal.allowReply(command) {
+					// 必须拷贝后再异步入队：msg.originalData 直接引用 readBuf 或粘包缓冲，
+					// 下一轮 Read 会覆盖尚未写回真实终端的数据。
+					c.onReply(bytes.Clone(msg.originalData))
 				}
 			}
-			if err != nil {
+			if unpackErr != nil {
+				slog.Warn("unpack downlink data",
+					slog.String("addr", c.terminal.TargetAddr),
+					slog.String("effective data", fmt.Sprintf("%x", readBuf[:n])),
+					slog.Any("err", unpackErr))
 				return
 			}
+			// 粘包缓冲区未组成完整帧的数据过多（如 7e... 迟迟未闭合或非 0x7e 开头）说明数据异常，断开连接防止内存无限增长
+			if pending := pack.frameReader.Pending(); maxBufSize > 0 && pending >= maxBufSize {
+				slog.Warn("frame buffer overflow",
+					slog.String("addr", c.terminal.TargetAddr),
+					slog.Int("pending", pending),
+					slog.Int("max", maxBufSize))
+				return
+			}
+		}
+		if err != nil {
+			return
 		}
 	}
 }

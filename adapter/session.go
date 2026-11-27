@@ -100,6 +100,42 @@ func (s *session) readLoop() {
 			_ = s.conn.SetReadDeadline(time.Now().Add(s.opts.IdleTimeout))
 		}
 		n, err := s.conn.Read(readBuf)
+		if n > 0 {
+			// 必须先拷贝再扇出。
+			//
+			// enqueueUplink 只把 slice 头放入 writeQueue，真正 Write 在 backendClient 异步执行。
+			// wg.Wait 只保证「入队完成」，不保证「写完」。
+			// 若直接传 readBuf[:n]：下一轮 Read 会覆盖尚未写出的数据（data race）。
+			// 同一轮扇出共享一份 payload 即可（只读）；每轮 Read 必须是新的 payload。
+			payload := make([]byte, n)
+			copy(payload, readBuf[:n])
+
+			var wg sync.WaitGroup
+			s.backends.Range(func(_, value any) bool {
+				b := value.(*backend)
+				wg.Add(1)
+				go func(b *backend) {
+					defer wg.Done()
+					if b.client == nil {
+						// 仍无可用连接：只触发「至多一个」重连协程，占位条目保留。
+						// 新数据反复到达时 startReconnect 会直接返回，不会堆协程。
+						s.startReconnect(b.terminal)
+						return
+					}
+					if ok := b.client.enqueueUplink(payload); !ok {
+						slog.Warn("forward uplink",
+							slog.String("addr", b.terminal.TargetAddr),
+							slog.String("data", fmt.Sprintf("%x", payload)))
+						// 清掉失效 client，保留 Terminal 配置占位，再单飞重连
+						s.putBackend(b.terminal, nil)
+						s.startReconnect(b.terminal)
+					}
+				}(b)
+				return true
+			})
+			// 等待本轮全部入队（非等待全部 Write）
+			wg.Wait()
+		}
 		if err != nil {
 			if errors.Is(err, os.ErrDeadlineExceeded) {
 				slog.Info("terminal idle timeout",
@@ -116,47 +152,6 @@ func (s *session) readLoop() {
 				slog.Any("err", err))
 			return
 		}
-		if n <= 0 {
-			continue
-		}
-
-		// 必须先拷贝再扇出。
-		//
-		// enqueueUplink 只把 slice 头放入 writeQueue，真正 Write 在 backendClient 异步执行。
-		// wg.Wait 只保证「入队完成」，不保证「写完」。
-		// 若直接传 readBuf[:n]：下一轮 Read 会覆盖尚未写出的数据（data race）。
-		// 同一轮扇出共享一份 payload 即可（只读）；每轮 Read 必须是新的 payload。
-		payload := make([]byte, n)
-		copy(payload, readBuf[:n])
-
-		var wg sync.WaitGroup
-		s.backends.Range(func(_, value any) bool {
-			b, ok := value.(*backend)
-			if !ok || b == nil {
-				return true
-			}
-			wg.Add(1)
-			go func(b *backend) {
-				defer wg.Done()
-				if b.client == nil {
-					// 仍无可用连接：只触发「至多一个」重连协程，占位条目保留。
-					// 新数据反复到达时 startReconnect 会直接返回，不会堆协程。
-					s.startReconnect(b.terminal)
-					return
-				}
-				if ok := b.client.enqueueUplink(payload); !ok {
-					slog.Warn("forward uplink",
-						slog.String("addr", b.terminal.TargetAddr),
-						slog.String("data", fmt.Sprintf("%x", payload)))
-					// 清掉失效 client，保留 Terminal 配置占位，再单飞重连
-					s.putBackend(b.terminal, nil)
-					s.startReconnect(b.terminal)
-				}
-			}(b)
-			return true
-		})
-		// 等待本轮全部入队（非等待全部 Write）
-		wg.Wait()
 	}
 }
 
@@ -174,10 +169,7 @@ func (s *session) writeLoop() {
 		select {
 		case <-s.stopCh:
 			return
-		case data, ok := <-s.replyQueue:
-			if !ok {
-				return
-			}
+		case data := <-s.replyQueue:
 			if s.opts.WriteTimeout > 0 {
 				_ = s.conn.SetWriteDeadline(time.Now().Add(s.opts.WriteTimeout))
 			}

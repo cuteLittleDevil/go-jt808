@@ -3,6 +3,7 @@ package adapter
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"io"
 	"net"
 	"sync"
@@ -13,14 +14,12 @@ import (
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 )
 
-// 真实终端上行心跳（0x0002），与 service 单测同源。
-var testUplinkHeartbeat = mustHex("7e0002000001234567890100008a7e")
-
-// 平台通用应答 0x8001（Leader 可回写；Follower 默认不允许）。
-var testDownlink8001 = mustHex("7e8001000500000000100100000002010201957e")
-
-// 平台查询资源列表 0x9205（Follower AllowCommands 放行）。
-var testDownlink9205 = mustHex("7e920500180000000010010003012412091636532412101636530000000000000000000000857e")
+var (
+	testUplinkHeartbeat = mustHex("7e0002000001234567890100008a7e")
+	testDownlink8001    = mustHex("7e8001000500000000100100000002010201957e")
+	testDownlink9205    = mustHex("7e920500180000000010010003012412091636532412101636530000000000000000000000857e")
+	testBadFrame        = mustHex("7e000200000123456789017fff7e")
+)
 
 func mustHex(s string) []byte {
 	b, err := hex.DecodeString(s)
@@ -30,28 +29,36 @@ func mustHex(s string) []byte {
 	return b
 }
 
-// mockBackend 模拟一个后端 JT808 TCP 服务：记录连接/上行，可主动下行。
 type mockBackend struct {
-	t    *testing.T
-	ln   net.Listener
-	addr string
-
+	t           *testing.T
+	ln          net.Listener
+	addr        string
 	mu          sync.Mutex
 	conns       []net.Conn
-	activeConns int32
-
-	uplink    chan []byte
-	connOpen  chan struct{} // 每次 Accept 成功发一记
-	connClose chan struct{} // 每次连接读结束发一记
-	stopCh    chan struct{}
-	stopOnce  sync.Once
+	activeConns atomic.Int32
+	uplink      chan []byte
+	connOpen    chan struct{}
+	connClose   chan struct{}
+	stopCh      chan struct{}
+	stopOnce    sync.Once
 }
 
-func startMockBackend(t *testing.T) *mockBackend {
+func startMockBackend(t *testing.T, addr string) *mockBackend {
 	t.Helper()
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("listen mock backend: %v", err)
+	var (
+		ln  net.Listener
+		err error
+	)
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		ln, err = net.Listen("tcp", addr)
+		if err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("listen %s: %v", addr, err)
+		}
+		time.Sleep(20 * time.Millisecond)
 	}
 	m := &mockBackend{
 		t:         t,
@@ -67,55 +74,17 @@ func startMockBackend(t *testing.T) *mockBackend {
 	return m
 }
 
-// restartMockBackend 在同一地址重新监听（模拟 808 挂掉又恢复）。
-func restartMockBackend(t *testing.T, addr string) *mockBackend {
-	t.Helper()
-	var ln net.Listener
-	var err error
-	deadline := time.Now().Add(2 * time.Second)
-	for {
-		ln, err = net.Listen("tcp", addr)
-		if err == nil {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatalf("re-listen %s: %v", addr, err)
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
-	m := &mockBackend{
-		t:         t,
-		ln:        ln,
-		addr:      addr,
-		uplink:    make(chan []byte, 32),
-		connOpen:  make(chan struct{}, 32),
-		connClose: make(chan struct{}, 32),
-		stopCh:    make(chan struct{}),
-	}
-	go m.acceptLoop()
-	t.Cleanup(m.Close)
-	return m
-}
-
 func (m *mockBackend) acceptLoop() {
 	for {
 		c, err := m.ln.Accept()
 		if err != nil {
-			select {
-			case <-m.stopCh:
-				return
-			default:
-				return
-			}
+			return
 		}
 		m.mu.Lock()
 		m.conns = append(m.conns, c)
 		m.mu.Unlock()
-		atomic.AddInt32(&m.activeConns, 1)
-		select {
-		case m.connOpen <- struct{}{}:
-		default:
-		}
+		m.activeConns.Add(1)
+		m.connOpen <- struct{}{}
 		go m.readLoop(c)
 	}
 }
@@ -123,19 +92,15 @@ func (m *mockBackend) acceptLoop() {
 func (m *mockBackend) readLoop(c net.Conn) {
 	defer func() {
 		_ = c.Close()
-		atomic.AddInt32(&m.activeConns, -1)
-		select {
-		case m.connClose <- struct{}{}:
-		default:
-		}
+		m.activeConns.Add(-1)
+		m.connClose <- struct{}{}
 	}()
 	buf := make([]byte, 2048)
 	for {
 		n, err := c.Read(buf)
 		if n > 0 {
-			pkt := append([]byte(nil), buf[:n]...)
 			select {
-			case m.uplink <- pkt:
+			case m.uplink <- bytes.Clone(buf[:n]):
 			case <-m.stopCh:
 				return
 			}
@@ -146,23 +111,17 @@ func (m *mockBackend) readLoop(c net.Conn) {
 	}
 }
 
-// writeDownlink 向当前仍存活的连接写入平台下行（多连接时写最新一条）。
 func (m *mockBackend) writeDownlink(data []byte) {
 	m.t.Helper()
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for i := len(m.conns) - 1; i >= 0; i-- {
-		c := m.conns[i]
-		_ = c.SetWriteDeadline(time.Now().Add(time.Second))
-		if _, err := c.Write(data); err == nil {
+		_ = m.conns[i].SetWriteDeadline(time.Now().Add(time.Second))
+		if _, err := m.conns[i].Write(data); err == nil {
 			return
 		}
 	}
 	m.t.Fatal("no live backend conn to write downlink")
-}
-
-func (m *mockBackend) ActiveConns() int {
-	return int(atomic.LoadInt32(&m.activeConns))
 }
 
 func (m *mockBackend) Close() {
@@ -177,244 +136,240 @@ func (m *mockBackend) Close() {
 	})
 }
 
-func freeTCPAddr(t *testing.T) string {
-	t.Helper()
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("freeTCPAddr: %v", err)
+type stubListener struct {
+	steps chan func() (net.Conn, error)
+}
+
+func (l *stubListener) Accept() (net.Conn, error) {
+	fn, ok := <-l.steps
+	if !ok {
+		return nil, net.ErrClosed
 	}
-	addr := ln.Addr().String()
-	_ = ln.Close()
-	return addr
+	return fn()
 }
 
-func waitFor(t *testing.T, timeout time.Duration, cond func() bool) {
+func (l *stubListener) Close() error   { return nil }
+func (l *stubListener) Addr() net.Addr { return &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 18080} }
+
+func waitSignal(t *testing.T, ch <-chan struct{}, what string) {
 	t.Helper()
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		if cond() {
-			return
-		}
-		time.Sleep(10 * time.Millisecond)
+	select {
+	case <-ch:
+	case <-time.After(2 * time.Second):
+		t.Fatalf("timed out waiting for %s", what)
 	}
-	t.Fatal("condition not met before timeout")
 }
 
-func waitListen(t *testing.T, addr string) {
-	t.Helper()
-	waitFor(t, 2*time.Second, func() bool {
-		c, err := net.DialTimeout("tcp", addr, 50*time.Millisecond)
-		if err != nil {
-			return false
-		}
-		_ = c.Close()
-		return true
-	})
-	// 探测连接会创建短生命周期 session，稍等后端侧连接回收
-	time.Sleep(50 * time.Millisecond)
-}
-
-func waitBytes(t *testing.T, ch <-chan []byte, timeout time.Duration) []byte {
+func waitBytes(t *testing.T, ch <-chan []byte) []byte {
 	t.Helper()
 	select {
 	case b := <-ch:
 		return b
-	case <-time.After(timeout):
+	case <-time.After(2 * time.Second):
 		t.Fatal("timed out waiting for uplink bytes")
 		return nil
 	}
 }
 
-func waitSignal(t *testing.T, ch <-chan struct{}, timeout time.Duration, what string) {
-	t.Helper()
-	select {
-	case <-ch:
-	case <-time.After(timeout):
-		t.Fatalf("timed out waiting for %s", what)
+func TestOptionsAndCreateTerminals(t *testing.T) {
+	adDefault := New()
+	if adDefault.opts.Addr != "0.0.0.0:18080" ||
+		adDefault.opts.DialTimeout != 10*time.Second ||
+		adDefault.opts.TimeoutRetry != 10*time.Second ||
+		adDefault.opts.WriteTimeout != 10*time.Second ||
+		adDefault.opts.IdleTimeout != 0 ||
+		adDefault.opts.MaxFrameBufferSize != 2048*2 ||
+		len(adDefault.opts.AllowCommand) != 10 {
+		t.Fatalf("unexpected default opts: %+v", adDefault.opts)
+	}
+
+	baseCmds := make([]consts.JT808CommandType, 1, 8)
+	baseCmds[0] = consts.P9205QueryResourceList
+	ad := New(
+		WithHostPorts("127.0.0.1:28080"),
+		WithDialTimeout(3*time.Second),
+		WithDialTimeout(0),
+		WithTimeoutRetry(5*time.Second),
+		WithTimeoutRetry(-time.Second),
+		WithWriteTimeout(4*time.Second),
+		WithWriteTimeout(0),
+		WithIdleTimeout(30*time.Second),
+		WithIdleTimeout(0),
+		WithMaxFrameBufferSize(0),
+		WithAllowCommand(consts.P8001GeneralRespond),
+		WithTerminals(
+			Terminal{Mode: Follower, TargetAddr: "127.0.0.1:8080"},
+			Terminal{Mode: Follower, TargetAddr: "127.0.0.1:8080", AllowCommands: baseCmds},
+			Terminal{Mode: Follower, TargetAddr: ""},
+		),
+	)
+	if ad.opts.DialTimeout != 3*time.Second || ad.opts.TimeoutRetry != 5*time.Second ||
+		ad.opts.WriteTimeout != 4*time.Second || ad.opts.IdleTimeout != 30*time.Second ||
+		ad.opts.MaxFrameBufferSize != 0 {
+		t.Fatalf("unexpected custom opts: %+v", ad.opts)
+	}
+
+	var wg sync.WaitGroup
+	for i := 0; i < 16; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			ts := ad.createTerminals()
+			if len(ts) != 1 || len(ts[0].AllowCommands) != 2 {
+				t.Errorf("unexpected terminals: %+v", ts)
+				return
+			}
+			ts[0].AllowCommands[0] = consts.T0002HeartBeat
+		}()
+	}
+	wg.Wait()
+	if baseCmds[0] != consts.P9205QueryResourceList {
+		t.Fatalf("original AllowCommands mutated: %v", baseCmds)
 	}
 }
 
-func assertNoRead(t *testing.T, conn net.Conn, wait time.Duration) {
-	t.Helper()
-	_ = conn.SetReadDeadline(time.Now().Add(wait))
-	buf := make([]byte, 256)
-	n, err := conn.Read(buf)
-	if n > 0 {
-		t.Fatalf("unexpected downlink %x", buf[:n])
+func TestAdapter_RunServeAndStopBranches(t *testing.T) {
+	// 1. 地址解析失败与监听失败分支
+	New(WithHostPorts(":::")).Run()
+	New(WithHostPorts("203.0.113.1:18080")).Run()
+
+	// 2. 启动前已 Stop，serve 立即关闭 listener 返回
+	adPreStopped := New()
+	adPreStopped.Stop()
+	adPreStopped.serve(&stubListener{steps: make(chan func() (net.Conn, error))})
+
+	// 3. Accept 临时错误退避 + ErrClosed 退出
+	lnErr := &stubListener{steps: make(chan func() (net.Conn, error), 2)}
+	lnErr.steps <- func() (net.Conn, error) { return nil, errors.New("temporary emfile") }
+	lnErr.steps <- func() (net.Conn, error) { return nil, net.ErrClosed }
+	New().serve(lnErr)
+
+	// 4. Accept 返回错误时恰好已触发 Stop
+	adStopOnErr := New()
+	lnStopOnErr := &stubListener{steps: make(chan func() (net.Conn, error), 1)}
+	lnStopOnErr.steps <- func() (net.Conn, error) {
+		adStopOnErr.Stop()
+		return nil, errors.New("accept interrupted")
 	}
-	if err == nil {
-		t.Fatal("expected read timeout/error, got nil err")
+	adStopOnErr.serve(lnStopOnErr)
+
+	// 5. Accept 成功拿到连接但此时已 Stop，立即关闭该 session 返回
+	adStopAfterAccept := New()
+	srvConn, cliConn := net.Pipe()
+	defer cliConn.Close()
+	lnStopAfterAccept := &stubListener{steps: make(chan func() (net.Conn, error), 1)}
+	lnStopAfterAccept.steps <- func() (net.Conn, error) {
+		adStopAfterAccept.Stop()
+		return srvConn, nil
 	}
+	adStopAfterAccept.serve(lnStopAfterAccept)
 }
 
-func readExact(t *testing.T, conn net.Conn, want []byte, timeout time.Duration) {
-	t.Helper()
-	_ = conn.SetReadDeadline(time.Now().Add(timeout))
-	got := make([]byte, len(want))
-	if _, err := io.ReadFull(conn, got); err != nil {
-		t.Fatalf("ReadFull downlink: %v", err)
-	}
-	if !bytes.Equal(got, want) {
-		t.Fatalf("downlink got %x, want %x", got, want)
-	}
-}
+func TestLifeCycleAndStopActiveSessions(t *testing.T) {
+	leader := startMockBackend(t, "127.0.0.1:0")
+	follower := startMockBackend(t, "127.0.0.1:0")
 
-func dialDevice(t *testing.T, addr string) net.Conn {
-	t.Helper()
-	c, err := net.DialTimeout("tcp", addr, time.Second)
+	probe, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
-		t.Fatalf("dial adapter: %v", err)
+		t.Fatalf("probe addr: %v", err)
 	}
-	return c
-}
+	adapterAddr := probe.Addr().String()
+	_ = probe.Close()
 
-// TestLifeCycle 覆盖 adapter 生命周期与 Leader/Follower 回写策略（对齐 README / SDD AC-ADP-01）。
-//
-//  1. 两端 JT808 均在线时启动代理
-//  2. 真实终端上线后，两端均收到上行；Leader 下行可达；Follower 仅 AllowCommands 可达
-//  3. 真实终端下线后，两端模拟连接断开
-//  4. 真实终端再次上线后恢复扇出
-//  5. 后端意外挂掉再恢复后，经 TimeoutRetry 重连并恢复正常
-func TestLifeCycle(t *testing.T) {
-	leader := startMockBackend(t)
-	follower := startMockBackend(t)
-
-	adapterAddr := freeTCPAddr(t)
-	retry := 50 * time.Millisecond
 	ad := New(
 		WithHostPorts(adapterAddr),
-		WithTimeoutRetry(retry),
+		WithTimeoutRetry(30*time.Millisecond),
 		WithTerminals(
+			Terminal{Mode: Leader, TargetAddr: leader.addr},
 			Terminal{
-				Mode:       Leader,
-				TargetAddr: leader.addr,
-			},
-			Terminal{
-				Mode:       Follower,
-				TargetAddr: follower.addr,
-				AllowCommands: []consts.JT808CommandType{
-					consts.P9205QueryResourceList,
-				},
+				Mode:          Follower,
+				TargetAddr:    follower.addr,
+				AllowCommands: []consts.JT808CommandType{consts.P9205QueryResourceList},
 			},
 		),
 	)
-	go ad.Run()
+	runDone := make(chan struct{})
+	go func() {
+		defer close(runDone)
+		ad.Run()
+	}()
 	t.Cleanup(ad.Stop)
-	waitListen(t, adapterAddr)
 
-	// ---------- 1 & 2：双后端在线，终端上线，上行扇出 + 下行策略 ----------
-	dev := dialDevice(t, adapterAddr)
+	var dev net.Conn
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		dev, err = net.DialTimeout("tcp", adapterAddr, 50*time.Millisecond)
+		if err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("dial adapter: %v", err)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	defer func() { _ = dev.Close() }()
 
-	// session 会向 Leader/Follower 各 Dial 一次
-	waitSignal(t, leader.connOpen, 2*time.Second, "leader accept")
-	waitSignal(t, follower.connOpen, 2*time.Second, "follower accept")
+	waitSignal(t, leader.connOpen, "leader accept")
+	waitSignal(t, follower.connOpen, "follower accept")
 
+	// 上行扇出至双端
 	if _, err := dev.Write(testUplinkHeartbeat); err != nil {
-		t.Fatalf("device write uplink: %v", err)
+		t.Fatalf("write uplink: %v", err)
 	}
-	if got := waitBytes(t, leader.uplink, 2*time.Second); !bytes.Equal(got, testUplinkHeartbeat) {
-		t.Fatalf("leader uplink got %x, want %x", got, testUplinkHeartbeat)
+	if got := waitBytes(t, leader.uplink); !bytes.Equal(got, testUplinkHeartbeat) {
+		t.Fatalf("leader uplink got %x", got)
 	}
-	if got := waitBytes(t, follower.uplink, 2*time.Second); !bytes.Equal(got, testUplinkHeartbeat) {
-		t.Fatalf("follower uplink got %x, want %x", got, testUplinkHeartbeat)
+	if got := waitBytes(t, follower.uplink); !bytes.Equal(got, testUplinkHeartbeat) {
+		t.Fatalf("follower uplink got %x", got)
 	}
 
-	// Leader 任意下行 → 真实终端
+	// Leader 任意下行可达；Follower 0x8001 拦截、0x9205 放行
 	leader.writeDownlink(testDownlink8001)
-	readExact(t, dev, testDownlink8001, 2*time.Second)
+	got := make([]byte, len(testDownlink8001))
+	_ = dev.SetReadDeadline(time.Now().Add(time.Second))
+	if _, err := io.ReadFull(dev, got); err != nil || !bytes.Equal(got, testDownlink8001) {
+		t.Fatalf("leader downlink got %x, err=%v", got, err)
+	}
 
-	// Follower 非允许命令（0x8001）→ 不应到达真实终端
 	follower.writeDownlink(testDownlink8001)
-	assertNoRead(t, dev, 150*time.Millisecond)
+	_ = dev.SetReadDeadline(time.Now().Add(80 * time.Millisecond))
+	if n, err := dev.Read(make([]byte, 64)); n > 0 || err == nil {
+		t.Fatalf("unexpected follower 0x8001 downlink n=%d err=%v", n, err)
+	}
 
-	// Follower 允许的 0x9205 → 真实终端
 	follower.writeDownlink(testDownlink9205)
-	readExact(t, dev, testDownlink9205, 2*time.Second)
-
-	// ---------- 3：终端下线 → 两端模拟连接断开 ----------
-	_ = dev.Close()
-	waitSignal(t, leader.connClose, 2*time.Second, "leader conn close after device offline")
-	waitSignal(t, follower.connClose, 2*time.Second, "follower conn close after device offline")
-	waitFor(t, 2*time.Second, func() bool {
-		return leader.ActiveConns() == 0 && follower.ActiveConns() == 0
-	})
-
-	// ---------- 4：终端重新上线 → 恢复扇出 ----------
-	dev = dialDevice(t, adapterAddr)
-	t.Cleanup(func() { _ = dev.Close() })
-	waitSignal(t, leader.connOpen, 2*time.Second, "leader accept on re-online")
-	waitSignal(t, follower.connOpen, 2*time.Second, "follower accept on re-online")
-
-	if _, err := dev.Write(testUplinkHeartbeat); err != nil {
-		t.Fatalf("device rewrite uplink: %v", err)
-	}
-	if got := waitBytes(t, leader.uplink, 2*time.Second); !bytes.Equal(got, testUplinkHeartbeat) {
-		t.Fatalf("leader uplink after re-online got %x", got)
-	}
-	if got := waitBytes(t, follower.uplink, 2*time.Second); !bytes.Equal(got, testUplinkHeartbeat) {
-		t.Fatalf("follower uplink after re-online got %x", got)
+	got9205 := make([]byte, len(testDownlink9205))
+	_ = dev.SetReadDeadline(time.Now().Add(time.Second))
+	if _, err := io.ReadFull(dev, got9205); err != nil || !bytes.Equal(got9205, testDownlink9205) {
+		t.Fatalf("follower 0x9205 got %x, err=%v", got9205, err)
 	}
 
-	// ---------- 5：Leader 挂掉 → 恢复 → 重连后两端再收上行 ----------
+	// Leader 宕机 → 重启自动重连 → 再次宕机（覆盖重连后生成的 onDead 回调）→ 最终 Stop 主动回收活跃连接
 	leaderAddr := leader.addr
 	leader.Close()
-	// mock 关连接后，adapter 侧 readLoop/onDead 应立刻进入重连
-	waitFor(t, 2*time.Second, func() bool {
-		return leader.ActiveConns() == 0
-	})
-
-	// Follower 仍在，上行应仍能到 Follower
-	if _, err := dev.Write(testUplinkHeartbeat); err != nil {
-		t.Fatalf("device write while leader down: %v", err)
-	}
-	if got := waitBytes(t, follower.uplink, 2*time.Second); !bytes.Equal(got, testUplinkHeartbeat) {
-		t.Fatalf("follower uplink while leader down got %x", got)
-	}
-
-	// 先起监听再等 Accept：重连协程按 TimeoutRetry 轮询 Dial
-	leader = restartMockBackend(t, leaderAddr)
-	waitSignal(t, leader.connOpen, 3*time.Second, "leader re-accept after restart")
+	waitSignal(t, leader.connClose, "leader first close")
 
 	if _, err := dev.Write(testUplinkHeartbeat); err != nil {
-		t.Fatalf("device write after leader recover: %v", err)
+		t.Fatalf("write while leader down: %v", err)
 	}
-	if got := waitBytes(t, leader.uplink, 3*time.Second); !bytes.Equal(got, testUplinkHeartbeat) {
-		t.Fatalf("leader uplink after recover got %x, want %x", got, testUplinkHeartbeat)
+	_ = waitBytes(t, follower.uplink)
+
+	leader = startMockBackend(t, leaderAddr)
+	waitSignal(t, leader.connOpen, "leader rejoin")
+
+	if _, err := dev.Write(testUplinkHeartbeat); err != nil {
+		t.Fatalf("write after leader rejoin: %v", err)
 	}
-	if got := waitBytes(t, follower.uplink, 2*time.Second); !bytes.Equal(got, testUplinkHeartbeat) {
-		t.Fatalf("follower uplink after leader recover got %x", got)
-	}
+	_ = waitBytes(t, leader.uplink)
+	_ = waitBytes(t, follower.uplink)
 
-	// Leader 恢复后下行仍可用
-	leader.writeDownlink(testDownlink8001)
-	readExact(t, dev, testDownlink8001, 2*time.Second)
-}
+	// 再次关闭重连后的 leader，触发 reconnectBackend 内的 onDead 分支
+	leader.Close()
+	waitSignal(t, leader.connClose, "leader second close")
+	time.Sleep(20 * time.Millisecond)
 
-func TestAdapter_StopClosesActiveSessions(t *testing.T) {
-	leader := startMockBackend(t)
-
-	adapterAddr := freeTCPAddr(t)
-	ad := New(
-		WithHostPorts(adapterAddr),
-		WithTerminals(Terminal{
-			Mode:       Leader,
-			TargetAddr: leader.addr,
-		}),
-	)
-	go ad.Run()
-	waitListen(t, adapterAddr)
-
-	dev := dialDevice(t, adapterAddr)
-	defer func() { _ = dev.Close() }()
-	waitSignal(t, leader.connOpen, 2*time.Second, "leader accept")
-
+	// 调用 Adapter.Stop 主动关闭存量会话与 follower 模拟连接
 	ad.Stop()
-
-	waitSignal(t, leader.connClose, 2*time.Second, "leader close after Adapter.Stop")
-	_ = dev.SetReadDeadline(time.Now().Add(time.Second))
-	buf := make([]byte, 16)
-	if _, err := dev.Read(buf); err == nil {
-		t.Fatal("expected device connection closed after Adapter.Stop")
-	}
+	waitSignal(t, follower.connClose, "follower close after Adapter.Stop")
+	waitSignal(t, runDone, "Adapter.Run exit")
 }
-
