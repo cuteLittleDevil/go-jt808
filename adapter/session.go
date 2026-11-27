@@ -109,25 +109,26 @@ func (s *session) readLoop() {
 
 			var wg sync.WaitGroup
 			s.backends.Range(func(_, value any) bool {
-				b := value.(*backend)
-				wg.Add(1)
-				go func(b *backend) {
-					defer wg.Done()
-					if b.client == nil {
-						// 仍无可用连接：只触发「至多一个」重连协程，占位条目保留。
-						// 新数据反复到达时 startReconnect 会直接返回，不会堆协程。
-						s.startReconnect(b.terminal)
-						return
-					}
-					if ok := b.client.enqueueUplink(payload); !ok {
-						slog.Warn("forward uplink",
-							slog.String("addr", b.terminal.TargetAddr),
-							slog.String("data", fmt.Sprintf("%x", payload)))
-						// 清掉失效 client，保留 Terminal 配置占位，再单飞重连
-						s.putBackend(b.terminal, nil)
-						s.startReconnect(b.terminal)
-					}
-				}(b)
+				if b, ok := value.(*backend); ok {
+					wg.Add(1)
+					go func(b *backend) {
+						defer wg.Done()
+						if b.client == nil {
+							// 仍无可用连接：只触发「至多一个」重连协程，占位条目保留。
+							// 新数据反复到达时 startReconnect 会直接返回，不会堆协程。
+							s.startReconnect(b.terminal)
+							return
+						}
+						if ok := b.client.enqueueUplink(payload); !ok {
+							slog.Warn("forward uplink",
+								slog.String("addr", b.terminal.TargetAddr),
+								slog.String("data", fmt.Sprintf("%x", payload)))
+							// 清掉失效 client，保留 Terminal 配置占位，再单飞重连
+							s.putBackend(b.terminal, nil)
+							s.startReconnect(b.terminal)
+						}
+					}(b)
+				}
 				return true
 			})
 			// 等待本轮全部入队（非等待全部 Write）
