@@ -22,12 +22,23 @@ jobs:
           go test -coverprofile=coverage.txt ./jt808 ./model ./utils ./jt1078
           cd ../attachment
           go test -race -coverprofile=coverage.txt ./...
+          cd ../service
+          go test -race -coverprofile=coverage.txt ./...
+          cd ../adapter
+          go test -race -coverprofile=coverage.txt ./...
+          cd ../terminal
+          go test -race -coverprofile=coverage.txt ./...
           cd ../
 
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./protocol/coverage.txt,./attachment/coverage.txt
+          files: >
+            ./protocol/coverage.txt,
+            ./attachment/coverage.txt,
+            ./service/coverage.txt,
+            ./adapter/coverage.txt,
+            ./terminal/coverage.txt
           flags: unittests # optional
           verbose: true # optional (default = false)
