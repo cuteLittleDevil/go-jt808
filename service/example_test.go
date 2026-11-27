@@ -63,7 +63,7 @@ func (m *meTerminal) OnReadExecutionEvent(msg *Message) {
 }
 
 func (m *meTerminal) OnWriteExecutionEvent(msg Message) {
-	fmt.Println(fmt.Sprintf("回复: %s: [%x]", msg.Command, msg.ExtensionFields.TerminalData))
+	fmt.Println(fmt.Sprintf("回复: %s: [%x]", msg.Command, msg.ExtensionFields.PlatformData))
 }
 
 type meLocation struct {
@@ -76,5 +76,5 @@ func (ml *meLocation) OnReadExecutionEvent(msg *Message) {
 }
 
 func (ml *meLocation) OnWriteExecutionEvent(msg Message) {
-	fmt.Println(fmt.Sprintf("读取位置的回复: %s: [%x]", msg.Command, msg.ExtensionFields.TerminalData))
+	fmt.Println(fmt.Sprintf("读取位置的回复: %s: [%x]", msg.Command, msg.ExtensionFields.PlatformData))
 }

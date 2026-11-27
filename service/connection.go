@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -99,7 +100,7 @@ func (c *connection) run() {
 
 func (c *connection) reader() {
 	var (
-		// 复用 1023B 读缓冲（JT808 单包最大长度），热路径零拷贝；详见 doc.go。
+		// 复用 1023B 读缓冲（JT808 单包最大长度），热路径零拷贝。
 		data = make([]byte, 1023)
 		pack = newPackageParse()
 		join = false
@@ -194,8 +195,22 @@ func (c *connection) handleMessages(msgs []*Message) {
 			c.terminalEvent.OnNotSupportedEvent(msg)
 			continue
 		}
+		if !msg.ExtensionFields.SubcontractComplete && !isHighFreqCommand(msg.Command) {
+			msg.Body = bytes.Clone(msg.Body)
+			msg.ExtensionFields.TerminalData = bytes.Clone(msg.ExtensionFields.TerminalData)
+		}
 		c.terminalUplinkMsgChan <- msg
 	}
+}
+
+func isHighFreqCommand(cmd consts.JT808CommandType) bool {
+	switch cmd {
+	case consts.T0002HeartBeat,
+		consts.T0200LocationReport,
+		consts.T0704LocationBatchUpload:
+		return true
+	}
+	return false
 }
 
 // write 是连接的核心处理协程，负责统一处理以下事件：
@@ -278,7 +293,9 @@ func (c *connection) defaultReplyEvent(msg *Message) {
 	body, err := msg.ReplyBody(msg.JTMessage)
 	if err != nil {
 		slog.Warn("reply body fail",
-			slog.String("terminal data", fmt.Sprintf("%x", msg.ExtensionFields.TerminalData)),
+			slog.String("key", c.key),
+			slog.Any("command", msg.Command),
+			slog.Any("seq", msg.ExtensionFields.TerminalSeq),
 			slog.Any("err", err))
 		return
 	}

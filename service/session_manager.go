@@ -53,8 +53,9 @@ func (s *sessionManager) join(message *Message, activeChan chan<- *ActiveMessage
 				key, v.joinTime.Format(time.RFC3339)), _errKeyExist)
 			return
 		}
+		h := *message.Header
 		record[key] = &session{
-			header:        message.Header,
+			header:        &h,
 			joinTime:      time.Now(),
 			activeMsgChan: activeChan,
 		}

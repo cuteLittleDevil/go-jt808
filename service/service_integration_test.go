@@ -609,3 +609,66 @@ func TestConnection_activeTimerLifecycle(t *testing.T) {
 		}
 	})
 }
+
+func TestConnection_zeroCopyHighFreqUplinkAndActiveNoRace(t *testing.T) {
+	g, _, clientConn, events := newPipeTestConnection(t)
+	stopDrain := make(chan struct{})
+	defer close(stopDrain)
+	go func() {
+		for {
+			select {
+			case <-stopDrain:
+				return
+			case <-events.readCmd:
+			case <-events.writeCmd:
+			}
+		}
+	}()
+
+	const burst = 80
+	doneRead := make(chan struct{})
+	go func() {
+		defer close(doneRead)
+		fr := jt808.NewFrameReader()
+		buf := make([]byte, 4096)
+		locReplies := 0
+		for locReplies < burst {
+			_ = clientConn.SetReadDeadline(time.Now().Add(2 * time.Second))
+			n, err := clientConn.Read(buf)
+			if err != nil {
+				t.Errorf("client read err = %v", err)
+				return
+			}
+			for _, frame := range fr.ReadFrames(buf[:n]) {
+				msg := decodeFirstMessage(t, frame)
+				if msg.Header.TerminalPhoneNo != "12345678901" {
+					t.Errorf("phone = %s, want 12345678901", msg.Header.TerminalPhoneNo)
+					return
+				}
+				if consts.JT808CommandType(msg.Header.ID) == consts.P8201QueryLocation {
+					_, _ = clientConn.Write(encodeLocationQueryRespond(t, msg.Header.SerialNumber, 99))
+				} else {
+					locReplies++
+				}
+			}
+		}
+	}()
+
+	activeDone := make(chan error, 1)
+	go func() {
+		res := g.SendActiveMessage(NewActiveMessage("12345678901", consts.P8201QueryLocation, nil, 2*time.Second))
+		activeDone <- res.ExtensionFields.Err
+	}()
+
+	locBody := make([]byte, 28)
+	for i := 0; i < burst; i++ {
+		pkt := encodeTerminalPacket(t, consts.T0200LocationReport, locBody, uint16(i+1))
+		if _, err := clientConn.Write(pkt); err != nil {
+			t.Fatalf("write 0x0200[%d] err = %v", i, err)
+		}
+	}
+	if err := <-activeDone; err != nil {
+		t.Fatalf("concurrent SendActiveMessage err = %v", err)
+	}
+	<-doneRead
+}
