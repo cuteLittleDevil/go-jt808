@@ -13,6 +13,7 @@ type Option struct {
 const (
 	defaultAddr         = "0.0.0.0:18080" // 服务默认地址
 	defaultTimeoutRetry = 10 * time.Second
+	defaultDialTimeout  = 10 * time.Second
 	// defaultMaxFrameBufferSize 下行粘包缓冲区默认上限 单包读取缓冲2048的2倍仍未组成完整帧视为异常.
 	defaultMaxFrameBufferSize = readBufSize * 2
 )
@@ -20,6 +21,7 @@ const (
 type Options struct {
 	Addr               string
 	TimeoutRetry       time.Duration
+	DialTimeout        time.Duration
 	MaxFrameBufferSize int
 	Terminals          []Terminal
 	AllowCommand       []consts.JT808CommandType
@@ -29,6 +31,7 @@ func newOptions(opts []Option) *Options {
 	options := &Options{
 		Addr:               defaultAddr,
 		TimeoutRetry:       defaultTimeoutRetry,
+		DialTimeout:        defaultDialTimeout,
 		MaxFrameBufferSize: defaultMaxFrameBufferSize,
 		AllowCommand: []consts.JT808CommandType{
 			// 平台下发的
@@ -73,10 +76,21 @@ func WithAllowCommand(commands ...consts.JT808CommandType) Option {
 	}}
 }
 
-// WithTimeoutRetry 自定义超时重试时间 和自定义各808服务异常断开后 多久尝试重新连接.
+// WithTimeoutRetry 自定义各808服务异常断开后多久尝试重新连接 默认10秒(<=0保持默认).
 func WithTimeoutRetry(timeout time.Duration) Option {
 	return Option{F: func(o *Options) {
-		o.TimeoutRetry = timeout
+		if timeout > 0 {
+			o.TimeoutRetry = timeout
+		}
+	}}
+}
+
+// WithDialTimeout 自定义连接后端808服务的拨号超时时间 默认10秒(<=0保持默认).
+func WithDialTimeout(timeout time.Duration) Option {
+	return Option{F: func(o *Options) {
+		if timeout > 0 {
+			o.DialTimeout = timeout
+		}
 	}}
 }
 

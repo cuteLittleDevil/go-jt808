@@ -15,11 +15,12 @@ import (
 //	真实终端 ──Read──► readLoop 扇出 ──► 多个 backendClient
 //	真实终端 ◄─Write── writeLoop ◄── 后端允许回复的下行
 type session struct {
-	conn net.Conn
-	opts *Options
+	conn      net.Conn
+	opts      *Options
+	terminals []Terminal
 	// backends：key=TargetAddr(string)，value=*backend。写入必须走 putBackend。
 	backends sync.Map
-	// reconnecting：key=TargetAddr，标记该地址是否已有重连协程在跑（含重试 sleep 期间）。
+	// reconnecting：key=TargetAddr，标记该地址是否已有重连协程在跑（含重试等待期间）。
 	// 用 LoadOrStore 保证同一地址全局最多一个 reconnectBackend，不依赖「从 map 删掉占位」这种隐式约定。
 	reconnecting sync.Map
 	replyQueue   chan []byte // 写回真实终端的下行队列
@@ -35,11 +36,13 @@ func newSessionWithOptions(conn net.Conn, opts *Options, terminals []Terminal) *
 	s := &session{
 		conn:       conn,
 		opts:       opts,
+		terminals:  terminals,
 		replyQueue: make(chan []byte, 10),
 		stopCh:     make(chan struct{}),
 	}
+	// 先写入 nil 占位避免阻塞 Accept，首次拨号在 run 协程内执行。
 	for _, terminal := range terminals {
-		s.dialBackend(terminal)
+		s.putBackend(terminal, nil)
 	}
 	return s
 }
@@ -72,6 +75,14 @@ func (s *session) putBackend(terminal Terminal, c *backendClient) {
 }
 
 func (s *session) run() {
+	for _, terminal := range s.terminals {
+		select {
+		case <-s.stopCh:
+			return
+		default:
+			s.dialBackend(terminal)
+		}
+	}
 	go s.readLoop()
 	go s.writeLoop()
 }
@@ -176,6 +187,11 @@ func (s *session) stop() {
 // startReconnect 确保同一 TargetAddr 最多只有一个 reconnectBackend 在执行。
 // 无论调用多少次（每来一包、多路扇出并发），多余调用直接返回。
 func (s *session) startReconnect(terminal Terminal) {
+	select {
+	case <-s.stopCh:
+		return
+	default:
+	}
 	if _, loaded := s.reconnecting.LoadOrStore(terminal.TargetAddr, struct{}{}); loaded {
 		return
 	}
@@ -183,31 +199,39 @@ func (s *session) startReconnect(terminal Terminal) {
 }
 
 // reconnectBackend 后台重试 Dial，成功后 putBackend 写回可用 client。
-// 整段重试（含 Sleep）期间 reconnecting 都占着位；退出时再删掉，允许日后再次重连。
+// 整段重试（含 Timer 等待）期间 reconnecting 都占着位；退出时再删掉，允许日后再次重连。
 func (s *session) reconnectBackend(terminal Terminal) {
 	defer s.reconnecting.Delete(terminal.TargetAddr)
+
+	timer := time.NewTimer(s.opts.TimeoutRetry)
+	timer.Stop()
+	defer timer.Stop()
 
 	for {
 		select {
 		case <-s.stopCh:
 			return
 		default:
-			onDead := func() {
-				s.putBackend(terminal, nil)
-				s.startReconnect(terminal)
-			}
-			c, err := newBackendClient(terminal, s.opts, s.stopCh, s.enqueueReply, onDead)
-			if err == nil {
-				s.putBackend(terminal, c)
-				slog.Info("rejoin",
-					slog.String("addr", terminal.TargetAddr))
-				return
-			}
-			slog.Warn("reconnect backend error",
-				slog.String("addr", terminal.TargetAddr),
-				slog.Any("err", err))
-			// 可配置为 0：仍只在一个协程里空转重试，不会因新包叠加协程
-			time.Sleep(s.opts.TimeoutRetry)
+		}
+		onDead := func() {
+			s.putBackend(terminal, nil)
+			s.startReconnect(terminal)
+		}
+		c, err := newBackendClient(terminal, s.opts, s.stopCh, s.enqueueReply, onDead)
+		if err == nil {
+			s.putBackend(terminal, c)
+			slog.Info("rejoin",
+				slog.String("addr", terminal.TargetAddr))
+			return
+		}
+		slog.Warn("reconnect backend error",
+			slog.String("addr", terminal.TargetAddr),
+			slog.Any("err", err))
+		timer.Reset(s.opts.TimeoutRetry)
+		select {
+		case <-s.stopCh:
+			return
+		case <-timer.C:
 		}
 	}
 }

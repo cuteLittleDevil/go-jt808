@@ -86,11 +86,20 @@ func (a *Adapter) Stop() {
 
 func (a *Adapter) createTerminals() []Terminal {
 	ts := make([]Terminal, 0, len(a.opts.Terminals))
+	seen := make(map[string]int, len(a.opts.Terminals))
 	for _, t := range a.opts.Terminals {
+		if t.TargetAddr == "" {
+			continue
+		}
 		cmds := make([]consts.JT808CommandType, 0, len(t.AllowCommands)+len(a.opts.AllowCommand))
 		cmds = append(cmds, t.AllowCommands...)
 		cmds = append(cmds, a.opts.AllowCommand...)
 		t.AllowCommands = cmds
+		if idx, ok := seen[t.TargetAddr]; ok {
+			ts[idx] = t
+			continue
+		}
+		seen[t.TargetAddr] = len(ts)
 		ts = append(ts, t)
 	}
 	return ts

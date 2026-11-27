@@ -50,7 +50,7 @@ func newBackendClient(
 	if opts == nil {
 		opts = newOptions(nil)
 	}
-	conn, err := net.Dial("tcp", terminal.TargetAddr)
+	conn, err := net.DialTimeout("tcp", terminal.TargetAddr, opts.DialTimeout)
 	if err != nil {
 		return nil, err
 	}
