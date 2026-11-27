@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"io"
 	"net"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -451,6 +453,7 @@ func newPipeTestConnection(t *testing.T) (*GoJT808, *connection, net.Conn, *reco
 		activeRespondHandles: g.createActiveRespondHandle(),
 		terminalEvent:        events,
 		filter:               true,
+		maxFrameBufferSize:   g.opts.MaxFrameBufferSize,
 		onJoinEvent:          g.sessionManager.join,
 		onLeaveEvent:         g.sessionManager.leave,
 	})
@@ -671,4 +674,278 @@ func TestConnection_zeroCopyHighFreqUplinkAndActiveNoRace(t *testing.T) {
 		t.Fatalf("concurrent SendActiveMessage err = %v", err)
 	}
 	<-doneRead
+}
+
+func TestConnection_maxFrameBufferSize(t *testing.T) {
+	t.Run("默认1023x2阈值_7e未闭合数据达到上限断开连接", func(t *testing.T) {
+		g := New()
+		if g.opts.MaxFrameBufferSize != 1023*2 {
+			t.Fatalf("default MaxFrameBufferSize = %d, want %d", g.opts.MaxFrameBufferSize, 1023*2)
+		}
+
+		_, conn, clientConn, events := newPipeTestConnection(t)
+		// 先分两次写入 0x7e + 1999 字节（共 2000 < 2046），不应断开
+		part1 := append([]byte{0x7e}, bytes.Repeat([]byte{0x01}, 999)...)
+		part2 := bytes.Repeat([]byte{0x02}, 1000)
+		if _, err := clientConn.Write(part1); err != nil {
+			t.Fatalf("write part1 err = %v", err)
+		}
+		if _, err := clientConn.Write(part2); err != nil {
+			t.Fatalf("write part2 err = %v", err)
+		}
+		select {
+		case <-conn.finallyCompleteChan:
+			t.Fatal("connection closed prematurely before reaching 1023*2")
+		case <-time.After(40 * time.Millisecond):
+		}
+
+		// 再补齐 46 字节达到 1023*2（2000 + 46 = 2046），达到上限后应立即断开连接
+		part3 := bytes.Repeat([]byte{0x03}, 1023*2-len(part1)-len(part2))
+		if _, err := clientConn.Write(part3); err != nil {
+			t.Fatalf("write part3 err = %v", err)
+		}
+
+		_ = waitChan(t, events.left, time.Second)
+		select {
+		case <-conn.finallyCompleteChan:
+		case <-time.After(time.Second):
+			t.Fatal("connection did not close after frame buffer reached 1023*2")
+		}
+
+		// 客户端侧读取应收到 EOF
+		_ = clientConn.SetReadDeadline(time.Now().Add(time.Second))
+		buf := make([]byte, 16)
+		if _, err := clientConn.Read(buf); !errors.Is(err, io.EOF) {
+			t.Fatalf("client read after overflow err = %v, want io.EOF", err)
+		}
+	})
+
+	t.Run("自定义WithMaxFrameBufferSize与禁用上限", func(t *testing.T) {
+		// 1. 自定义较小阈值（64B）：非 0x7e 开头的垃圾数据达到阈值即断开
+		events := newRecordingTerminalEvent()
+		g := New(
+			WithMaxFrameBufferSize(64),
+			WithCustomTerminalEventer(func() TerminalEventer { return events }),
+		)
+		if g.opts.MaxFrameBufferSize != 64 {
+			t.Fatalf("custom MaxFrameBufferSize = %d, want 64", g.opts.MaxFrameBufferSize)
+		}
+		serverConn, clientConn := net.Pipe()
+		t.Cleanup(func() {
+			_ = clientConn.Close()
+			_ = serverConn.Close()
+		})
+		conn := newConnection(connectionParams{
+			conn:                 serverConn,
+			handles:              g.createCommandHandle(),
+			activeRespondHandles: g.createActiveRespondHandle(),
+			terminalEvent:        events,
+			filter:               true,
+			maxFrameBufferSize:   g.opts.MaxFrameBufferSize,
+			onJoinEvent:          g.sessionManager.join,
+			onLeaveEvent:         g.sessionManager.leave,
+		})
+		conn.run()
+
+		garbage := bytes.Repeat([]byte("A"), 64)
+		if _, err := clientConn.Write(garbage); err != nil {
+			t.Fatalf("write garbage err = %v", err)
+		}
+		select {
+		case <-conn.finallyCompleteChan:
+		case <-time.After(time.Second):
+			t.Fatal("connection did not close on custom 64B frame buffer overflow")
+		}
+
+		// 2. WithMaxFrameBufferSize(0) 禁用限制：超过 1023*2 仍保持连接不断开
+		gUnlimited := New(WithMaxFrameBufferSize(0))
+		if gUnlimited.opts.MaxFrameBufferSize != 0 {
+			t.Fatalf("unlimited MaxFrameBufferSize = %d, want 0", gUnlimited.opts.MaxFrameBufferSize)
+		}
+		serverConn2, clientConn2 := net.Pipe()
+		t.Cleanup(func() {
+			_ = clientConn2.Close()
+			_ = serverConn2.Close()
+		})
+		conn2 := newConnection(connectionParams{
+			conn:                 serverConn2,
+			handles:              gUnlimited.createCommandHandle(),
+			activeRespondHandles: gUnlimited.createActiveRespondHandle(),
+			terminalEvent:        newRecordingTerminalEvent(),
+			filter:               true,
+			maxFrameBufferSize:   gUnlimited.opts.MaxFrameBufferSize,
+			onJoinEvent:          gUnlimited.sessionManager.join,
+			onLeaveEvent:         gUnlimited.sessionManager.leave,
+		})
+		conn2.run()
+
+		unclosed := append([]byte{0x7e}, bytes.Repeat([]byte{0x01}, 1023*2+100)...)
+		if _, err := clientConn2.Write(unclosed); err != nil {
+			t.Fatalf("write unclosed err = %v", err)
+		}
+		select {
+		case <-conn2.finallyCompleteChan:
+			t.Fatal("connection closed unexpectedly when MaxFrameBufferSize=0")
+		case <-time.After(50 * time.Millisecond):
+		}
+	})
+}
+
+func TestConnection_writeTimeoutClosesStuckConnection(t *testing.T) {
+	const key = "12345678901"
+
+	t.Run("上行应答写超时自动断开连接并清理会话", func(t *testing.T) {
+		events := newRecordingTerminalEvent()
+		g := New(WithCustomTerminalEventer(func() TerminalEventer { return events }))
+		serverConn, clientConn := net.Pipe()
+		t.Cleanup(func() {
+			_ = clientConn.Close()
+			_ = serverConn.Close()
+		})
+		conn := newConnection(connectionParams{
+			conn:                 serverConn,
+			handles:              g.createCommandHandle(),
+			activeRespondHandles: g.createActiveRespondHandle(),
+			terminalEvent:        events,
+			filter:               true,
+			maxFrameBufferSize:   g.opts.MaxFrameBufferSize,
+			writeTimeout:         50 * time.Millisecond,
+			onJoinEvent:          g.sessionManager.join,
+			onLeaveEvent:         g.sessionManager.leave,
+		})
+		conn.run()
+
+		// 首次心跳正常读取应答完成上线
+		if _, err := clientConn.Write(heartbeatPacket); err != nil {
+			t.Fatalf("write heartbeat err = %v", err)
+		}
+		_ = readPacket(t, clientConn, time.Second)
+		_ = waitChan(t, events.joined, time.Second)
+
+		// 第二次心跳后客户端不再读取，迫使服务端 writeData 触发写超时并关闭连接
+		if _, err := clientConn.Write(heartbeatPacket); err != nil {
+			t.Fatalf("write second heartbeat err = %v", err)
+		}
+
+		_ = waitChan(t, events.left, time.Second)
+		select {
+		case <-conn.finallyCompleteChan:
+		case <-time.After(time.Second):
+			t.Fatal("connection did not close after write timeout")
+		}
+
+		reply := g.SendActiveMessage(NewActiveMessage(key, consts.P8201QueryLocation, nil, 100*time.Millisecond))
+		if !errors.Is(reply.ExtensionFields.Err, ErrNotExistKey) {
+			t.Fatalf("after write timeout SendActiveMessage err = %v, want %v", reply.ExtensionFields.Err, ErrNotExistKey)
+		}
+	})
+
+	t.Run("主动下发写超时返回ErrWriteDataFail并断开连接", func(t *testing.T) {
+		events := newRecordingTerminalEvent()
+		g := New(WithCustomTerminalEventer(func() TerminalEventer { return events }))
+		serverConn, clientConn := net.Pipe()
+		t.Cleanup(func() {
+			_ = clientConn.Close()
+			_ = serverConn.Close()
+		})
+		conn := newConnection(connectionParams{
+			conn:                 serverConn,
+			handles:              g.createCommandHandle(),
+			activeRespondHandles: g.createActiveRespondHandle(),
+			terminalEvent:        events,
+			filter:               true,
+			maxFrameBufferSize:   g.opts.MaxFrameBufferSize,
+			writeTimeout:         50 * time.Millisecond,
+			onJoinEvent:          g.sessionManager.join,
+			onLeaveEvent:         g.sessionManager.leave,
+		})
+		conn.run()
+
+		if _, err := clientConn.Write(heartbeatPacket); err != nil {
+			t.Fatalf("write heartbeat err = %v", err)
+		}
+		_ = readPacket(t, clientConn, time.Second)
+		_ = waitChan(t, events.joined, time.Second)
+
+		// 客户端不读取主动下发报文，触发 50ms 写超时
+		reply := g.SendActiveMessage(NewActiveMessage(key, consts.P8201QueryLocation, nil, time.Second))
+		if !errors.Is(reply.ExtensionFields.Err, ErrWriteDataFail) || !errors.Is(reply.ExtensionFields.Err, os.ErrDeadlineExceeded) {
+			t.Fatalf("active write timeout err = %v, want ErrWriteDataFail + os.ErrDeadlineExceeded", reply.ExtensionFields.Err)
+		}
+
+		_ = waitChan(t, events.left, time.Second)
+		select {
+		case <-conn.finallyCompleteChan:
+		case <-time.After(time.Second):
+			t.Fatal("connection did not close after active write timeout")
+		}
+	})
+}
+
+type stubListener struct {
+	steps chan func() (net.Conn, error)
+}
+
+func (l *stubListener) Accept() (net.Conn, error) {
+	fn, ok := <-l.steps
+	if !ok {
+		return nil, net.ErrClosed
+	}
+	return fn()
+}
+
+func (l *stubListener) Close() error   { return nil }
+func (l *stubListener) Addr() net.Addr { return &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 8080} }
+
+func TestService_serveReturnsOnErrClosedAndAppliesMaxFrameBufferSize(t *testing.T) {
+	events := newRecordingTerminalEvent()
+	g := New(
+		WithMaxFrameBufferSize(32),
+		WithCustomTerminalEventer(func() TerminalEventer { return events }),
+	)
+
+	serverConn, clientConn := net.Pipe()
+	t.Cleanup(func() {
+		_ = clientConn.Close()
+		_ = serverConn.Close()
+	})
+
+	ln := &stubListener{steps: make(chan func() (net.Conn, error), 3)}
+	// 1. 临时错误：退避后继续循环
+	ln.steps <- func() (net.Conn, error) {
+		return nil, errors.New("temporary accept error")
+	}
+	// 2. 正常接入一条连接（用于验证 serve 将 MaxFrameBufferSize 传入连接）
+	ln.steps <- func() (net.Conn, error) {
+		return serverConn, nil
+	}
+	// 3. 监听器关闭：serve 应立即退出而不死循环
+	ln.steps <- func() (net.Conn, error) {
+		return nil, net.ErrClosed
+	}
+
+	serveDone := make(chan struct{})
+	go func() {
+		defer close(serveDone)
+		g.serve(ln)
+	}()
+
+	// 验证接入的连接正常工作且继承了 MaxFrameBufferSize=32
+	if _, err := clientConn.Write(heartbeatPacket); err != nil {
+		t.Fatalf("write heartbeat err = %v", err)
+	}
+	_ = readPacket(t, clientConn, time.Second)
+	_ = waitChan(t, events.joined, time.Second)
+
+	// 发送 32 字节未闭合帧，触发溢出断连
+	if _, err := clientConn.Write(append([]byte{0x7e}, bytes.Repeat([]byte{0x01}, 31)...)); err != nil {
+		t.Fatalf("write overflow err = %v", err)
+	}
+	_ = waitChan(t, events.left, time.Second)
+
+	select {
+	case <-serveDone:
+	case <-time.After(time.Second):
+		t.Fatal("g.serve did not return upon net.ErrClosed")
+	}
 }

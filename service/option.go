@@ -1,8 +1,9 @@
 package service
 
 import (
-	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 	"time"
+
+	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 )
 
 const (
@@ -10,6 +11,8 @@ const (
 	defaultNetwork           = "tcp"         // 服务默认网络协议
 	defaultFilterSubcontract = true          // 是否过滤分包的情况
 	defaultTimeout           = 0             // 默认不开启超时检测
+	// defaultMaxFrameBufferSize 粘包缓冲区默认上限 JT808单包最大1023 2倍仍未组成完整帧视为异常.
+	defaultMaxFrameBufferSize = 1023 * 2
 )
 
 type (
@@ -37,6 +40,8 @@ type (
 		IdleTimeout time.Duration
 		// OnTerminalTimeoutEvent 空闲超时事件，设置IdleTimeout时触发
 		OnTerminalTimeoutEvent func(TerminalTimeout)
+		// MaxFrameBufferSize 粘包缓冲区(7e...未结束的数据)最大字节数,达到后断开连接 默认1023*2.
+		MaxFrameBufferSize int
 	}
 
 	TerminalTimeout struct {
@@ -57,10 +62,11 @@ type (
 
 func newOptions(opts []Option) *Options {
 	options := &Options{
-		Addr:              defaultAddr,
-		Network:           defaultNetwork,
-		FilterSubcontract: defaultFilterSubcontract,
-		IdleTimeout:       defaultTimeout,
+		Addr:               defaultAddr,
+		Network:            defaultNetwork,
+		FilterSubcontract:  defaultFilterSubcontract,
+		IdleTimeout:        defaultTimeout,
+		MaxFrameBufferSize: defaultMaxFrameBufferSize,
 		KeyFunc: func(message *Message) (string, bool) {
 			return message.JTMessage.Header.TerminalPhoneNo, true
 		},
@@ -156,5 +162,14 @@ func WithTerminalTimeout(idleTimeout time.Duration, onTimeoutEvent func(Terminal
 		if onTimeoutEvent != nil {
 			o.OnTerminalTimeoutEvent = onTimeoutEvent
 		}
+	}}
+}
+
+// WithMaxFrameBufferSize 设置粘包缓冲区最大字节数,默认1023*2.
+// 收到的数据(如7e开头但迟迟没有结束的7e,或非0x7e开头的异常数据)无法组成完整帧时会暂存在缓冲区,
+// 暂存数据达到该值时断开TCP连接,防止异常数据导致内存无限增长. size<=0表示不限制.
+func WithMaxFrameBufferSize(size int) Option {
+	return Option{F: func(o *Options) {
+		o.MaxFrameBufferSize = size
 	}}
 }

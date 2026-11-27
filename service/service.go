@@ -1,10 +1,12 @@
 package service
 
 import (
-	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
+	"errors"
 	"log/slog"
 	"net"
 	"time"
+
+	"github.com/cuteLittleDevil/go-jt808/protocol/jt808"
 
 	"github.com/cuteLittleDevil/go-jt808/protocol/model"
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
@@ -46,12 +48,20 @@ func (g *GoJT808) Run() {
 			slog.Any("err", err))
 		return
 	}
+	g.serve(in)
+}
 
+func (g *GoJT808) serve(in net.Listener) {
 	for {
-		conn, err := in.AcceptTCP()
+		conn, err := in.Accept()
 		if err != nil {
+			if errors.Is(err, net.ErrClosed) {
+				slog.Warn("listener closed", slog.Any("err", err))
+				return
+			}
 			slog.Warn("accept fail",
 				slog.Any("err", err))
+			time.Sleep(100 * time.Millisecond) // 如文件描述符耗尽 稍等再重试 避免空转
 			continue
 		}
 		client := newConnection(connectionParams{
@@ -60,6 +70,7 @@ func (g *GoJT808) Run() {
 			activeRespondHandles:   g.createActiveRespondHandle(),
 			terminalEvent:          g.opts.CustomTerminalEventerFunc(),
 			filter:                 g.opts.FilterSubcontract,
+			maxFrameBufferSize:     g.opts.MaxFrameBufferSize,
 			onTerminalTimeoutEvent: g.opts.OnTerminalTimeoutEvent,
 			timeout: TerminalTimeout{
 				ConnectionStartTime: time.Now(),

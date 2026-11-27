@@ -7,4 +7,4 @@ require (
 	github.com/cuteLittleDevil/go-jt808/shared v1.6.0
 )
 
-require golang.org/x/text v0.26.0 // indirect
+require golang.org/x/text v0.28.0 // indirect

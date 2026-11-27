@@ -16,7 +16,11 @@ import (
 	"github.com/cuteLittleDevil/go-jt808/shared/consts"
 )
 
-const defaultActiveTimeout = 3 * time.Second
+const (
+	defaultActiveTimeout = 3 * time.Second
+	// defaultWriteTimeout 单次写超时 超时说明终端网络异常 直接断开连接
+	defaultWriteTimeout = 10 * time.Second
+)
 
 type (
 	// connection 表示与一个终端（车载设备）保持的长连接会话对象。
@@ -67,6 +71,10 @@ type (
 		terminalEvent TerminalEventer
 		// filter 是否启用消息过滤,过滤分包情况的事件，默认过滤.
 		filter bool
+		// maxFrameBufferSize 粘包缓冲区最大字节数 达到后断开连接 <=0不限制.
+		maxFrameBufferSize int
+		// writeTimeout 单次写超时 <=0时使用默认defaultWriteTimeout.
+		writeTimeout time.Duration
 		// timeout 超时相关配置(空闲超时、首次包时间、最后包时间等).
 		timeout TerminalTimeout
 		// onTerminalTimeoutEvent 空闲超时事件，设置IdleTimeout时触发.
@@ -79,6 +87,9 @@ type (
 )
 
 func newConnection(params connectionParams) *connection {
+	if params.writeTimeout <= 0 {
+		params.writeTimeout = defaultWriteTimeout
+	}
 	return &connection{
 		connectionParams: params,
 
@@ -148,6 +159,14 @@ func (c *connection) reader() {
 				c.timeout.LastPacketTime = time.Now()
 				c.handleMessages(msgs)
 			}
+			// 粘包缓冲区未组成完整帧的数据过多 说明数据异常 断开连接防止内存无限增长
+			if pending := pack.frameReader.Pending(); c.maxFrameBufferSize > 0 && pending >= c.maxFrameBufferSize {
+				slog.Warn("frame buffer overflow",
+					slog.String("key", c.key),
+					slog.Int("pending", pending),
+					slog.Int("max", c.maxFrameBufferSize))
+				return
+			}
 		}
 
 		if err != nil {
@@ -155,7 +174,7 @@ func (c *connection) reader() {
 				if c.onTerminalTimeoutEvent != nil {
 					c.onTerminalTimeoutEvent(c.timeout)
 				}
-			} else if errors.Is(err, net.ErrClosed) || errors.Is(err, io.EOF) {
+			} else if errors.Is(err, net.ErrClosed) || errors.Is(err, io.EOF) || errors.Is(err, io.ErrClosedPipe) {
 				slog.Debug("connection close",
 					slog.Bool("join", join),
 					slog.Any("platform num", uint16(c.platformSerialNumber.Load())),
@@ -278,7 +297,7 @@ func (c *connection) stop(join bool) {
 		c.onLeaveEvent(c.key)
 		c.terminalEvent.OnLeaveEvent(c.key)
 	}
-	if err := c.conn.Close(); err != nil {
+	if err := c.conn.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
 		slog.Warn("conn close fail",
 			slog.String("key", c.key),
 			slog.Any("err", err))
@@ -306,7 +325,7 @@ func (c *connection) defaultReplyEvent(msg *Message) {
 
 	packets := header.EncodePackets(body)
 	for _, data := range packets {
-		if _, err = c.conn.Write(data); err != nil {
+		if err = c.writeData(data); err != nil {
 			slog.Warn("write fail",
 				slog.String("data", fmt.Sprintf("%x", data)),
 				slog.Any("err", err))
@@ -340,7 +359,7 @@ func (c *connection) onReissueSubcontractingEvent(msg *Message) {
 	}
 
 	data := packets[0]
-	if _, err := c.conn.Write(data); err != nil {
+	if err := c.writeData(data); err != nil {
 		slog.Warn("write fail",
 			slog.String("data", fmt.Sprintf("%x", data)),
 			slog.Any("err", err))
@@ -424,7 +443,7 @@ func (c *connection) activeWritePackets(activeMsg *ActiveMessage) (*jt808.JTMess
 	packets := header.EncodePackets(activeMsg.Body)
 
 	for _, data := range packets {
-		if _, err := c.conn.Write(data); err != nil {
+		if err := c.writeData(data); err != nil {
 			writeErr = errors.Join(ErrWriteDataFail, err)
 		}
 		platformData = append(platformData, data...)
@@ -498,6 +517,19 @@ func (c *connection) onWriteExecutionEvent(msg *Message) {
 	msg.Handler.OnWriteExecutionEvent(*msg)
 
 	c.terminalEvent.OnWriteExecutionEvent(*msg)
+}
+
+// writeData 带超时的写 超时说明终端网络异常 关闭连接让读协程退出走正常收尾.
+func (c *connection) writeData(data []byte) error {
+	_ = c.conn.SetWriteDeadline(time.Now().Add(c.writeTimeout))
+	_, err := c.conn.Write(data)
+	if errors.Is(err, os.ErrDeadlineExceeded) {
+		slog.Warn("write timeout, close connection",
+			slog.String("key", c.key),
+			slog.Any("err", err))
+		_ = c.conn.Close()
+	}
+	return err
 }
 
 func (c *connection) allocSeq(n int) (uint16, uint16) {

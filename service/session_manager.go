@@ -83,7 +83,13 @@ func (s *sessionManager) write(activeMsg *ActiveMessage) *Message {
 		if v, ok := record[key]; ok {
 			activeMsg.header = v.header
 			activeMsg.replyChan = replyChan
-			v.activeMsgChan <- activeMsg
+			// 非阻塞投递 避免单个终端写阻塞拖死全局会话管理
+			select {
+			case v.activeMsgChan <- activeMsg:
+			default:
+				replyChan <- newErrMessage(errors.Join(ErrActiveQueueFull,
+					fmt.Errorf("key=[%s] queue=[%d] ", key, cap(v.activeMsgChan))))
+			}
 			return
 		}
 		replyChan <- newErrMessage(errors.Join(ErrNotExistKey,
