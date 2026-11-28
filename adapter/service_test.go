@@ -325,10 +325,21 @@ func TestLifeCycle(t *testing.T) {
 	leader = startMockBackend(t, leaderAddr)
 	waitSignal(t, leader.connOpen, "leader rejoin")
 
-	if _, err := dev.Write(testUplinkHeartbeat); err != nil {
-		t.Fatalf("write after leader rejoin: %v", err)
+	// Accept 返回时 reconnectBackend 可能尚未完成 putBackend，短轮询写入直至重连后的 leader 收到上行
+	deadline := time.Now().Add(2 * time.Second)
+	for received := false; !received; {
+		if _, err := dev.Write(testUplinkHeartbeat); err != nil {
+			t.Fatalf("write after leader rejoin: %v", err)
+		}
+		select {
+		case <-leader.uplink:
+			received = true
+		case <-time.After(10 * time.Millisecond):
+			if time.Now().After(deadline) {
+				t.Fatalf("timed out waiting for leader uplink after rejoin")
+			}
+		}
 	}
-	_ = waitBytes(t, leader.uplink)
 	_ = waitBytes(t, follower.uplink)
 
 	// 再次关闭重连后的 leader，覆盖 reconnectBackend 内的 onDead 回调
