@@ -2,11 +2,28 @@
 
 ![适配原理](./testdata/适配方案.jpg)
 
+## 工作原理
+
 1. 真实设备连接到适配器
-2. 适配器向808服务发起多个连接
-- leader模式 相当于真实设备直连
-- follower模式 控制808服务下发到真实设备的指令（允许下发全局默认 `AllowCommand` 如 `0x8003`/`0x8103`/`0x9101` 等 10 条指令 + 节点自身的 `AllowCommands`；传空 `adapter.WithAllowCommand()` 可清空全局默认列表）
-3. 真实设备断开则模拟连接全部断开 模拟连接断开则隔一段时间重试
+2. 适配器向多个 808 服务发起模拟连接：
+   - `Leader` 模式：相当于真实设备直连，服务和设备之间读写全部正常
+   - `Follower` 模式：控制 808 服务下发到真实设备的指令（允许下发全局默认 `AllowCommand` 如 `0x8003`/`0x8103`/`0x9101` 等 10 条指令 + 节点自身的 `AllowCommands`；传空 `adapter.WithAllowCommand()` 可清空全局默认列表）
+3. 真实设备断开则模拟连接全部断开；某个模拟连接断开则按 `WithTimeoutRetry` 间隔自动重试
+
+## 目录说明
+
+- [main.go](./main.go)：启动适配器（`18080`）、Leader 服务（`18081`）、Follower 服务（`18082`）并演示断线重连与指令放行
+- [client.go](./client.go)：模拟真实终端连接适配器
+- [terminal.go](./terminal.go)：服务端终端生命周期事件日志
+
+## 运行方式
+
+无需外部依赖，直接运行即可观察完整流程：
+
+```bash
+cd example/adapter
+go run .
+```
 
 - [代码参考](./main.go)
 

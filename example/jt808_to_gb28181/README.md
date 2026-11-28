@@ -80,7 +80,18 @@ http://121.40.19.233:12336
 ```
 ![zlm-play](./testdata/wvp/zlm-play.jpg)
 
-<h2 id="config"> 配置文件说明 </h2>
+<h2 id="config"> 运行与配置文件说明 </h2>
+
+### 方式一：本地运行
+
+修改同目录下的 [config.yaml](./config.yaml)（将外网 IP、GB28181 平台信息替换为你的环境）后执行：
+
+```bash
+cd example/jt808_to_gb28181
+go run .
+```
+
+### 方式二：Docker 运行
 
 
 ```

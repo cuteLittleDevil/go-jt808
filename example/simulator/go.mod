@@ -3,12 +3,12 @@ module simulator
 go 1.23.2
 
 require (
-	github.com/cuteLittleDevil/go-jt808/protocol v1.0.0
-	github.com/cuteLittleDevil/go-jt808/service v0.1.3
-	github.com/cuteLittleDevil/go-jt808/shared v1.0.0
-	github.com/cuteLittleDevil/go-jt808/terminal v0.1.3
+	github.com/cuteLittleDevil/go-jt808/protocol v1.18.2
+	github.com/cuteLittleDevil/go-jt808/service v0.4.0
+	github.com/cuteLittleDevil/go-jt808/shared v1.6.0
+	github.com/cuteLittleDevil/go-jt808/terminal v0.2.0
 	github.com/nats-io/nats.go v1.37.0
-	github.com/taosdata/driver-go/v3 v3.5.8
+	github.com/taosdata/driver-go/v3 v3.8.2
 )
 
 require (

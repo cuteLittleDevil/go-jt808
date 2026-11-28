@@ -1,5 +1,13 @@
 # 性能测试
 
+> 版本说明：本目录为历史性能基准测试示例，刻意保留 `service v0.4.0` / `terminal v0.2.0`（`v0.x.x` 系列）以复现原压测基线，未升级至 `service v1.x.x`。如需基于最新版本做并发压测，请参考 [example/client](../client/README.md)。
+
+## 目录说明
+
+- [server](./server)：JT808 服务端，接收 `0x0200` / `0x0704` 并投递到 NATS
+- [client](./client)：多并发模拟终端，支持自定义心跳/位置/批量上传周期
+- [save](./save)：从 NATS 消费轨迹消息并批量写入 TDengine
+
 mac系统的参数 临时修改
 ``` shell
 # 增大系统默认的最大连接数限制
@@ -133,7 +141,7 @@ select tbname, count(*) from power.meters group by tbname order by count(*) >> /
 各服务的资源使用情况
 - [atop采样详情](./testdata/atop.log)
 - [atop 使用的cpu](./testdata/atop_cpu.png)
-- [atop 使用的内存](./testdata/atop_cpu.png)
+- [atop 使用的内存](./testdata/atop_mem.png)
 
 | 服务  |   cpu   | 内存 | 描述 |
 | :---:   | :-------: | :--: | :--: |

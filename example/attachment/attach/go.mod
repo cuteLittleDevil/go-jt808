@@ -3,11 +3,10 @@ module attach
 go 1.25.0
 
 require (
-	github.com/cuteLittleDevil/go-jt808/attachment v0.4.0
-	github.com/cuteLittleDevil/go-jt808/protocol v1.16.0
+	github.com/cuteLittleDevil/go-jt808/attachment v0.5.0
+	github.com/cuteLittleDevil/go-jt808/protocol v1.18.2
 	github.com/cuteLittleDevil/go-jt808/shared v1.6.0
-	github.com/cuteLittleDevil/go-jt808/terminal v1.3.0
-	github.com/go-resty/resty/v2 v2.17.1
+	github.com/go-resty/resty/v2 v2.17.2
 	github.com/spf13/viper v1.21.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )

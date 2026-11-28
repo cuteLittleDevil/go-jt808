@@ -2,6 +2,15 @@
 
 ![架构图](./testdata/集群方案.jpg)
 
+## 目录与前置依赖
+
+- **前置依赖**：[Nginx](https://nginx.org/)（带 `stream` 四层代理模块）、[NATS](https://github.com/nats-io/nats-server/releases)
+- **目录结构**：
+  - [service](./service)：JT808 接入服务节点（可多实例部署）
+  - [alarm](./alarm)：订阅 NATS 轨迹主题处理业务消息
+  - [coordinator](./coordinator)：指令协调器，维护在线状态并广播下发指令（默认 HTTP 端口 `12310`）
+  - [internal](./internal)：NATS 客户端与公共结构定义
+
 <h2 id="nginx"> nginx </h2>
 
 - 使用nginx把终端分配到多台机器上

@@ -1,8 +1,26 @@
-# 协议解析
+# 协议解析与扩展
+
+本目录包含 JT808 协议编解码、自定义扩展、主动指令下发与分包补传等独立子示例。
+
+## 目录导航
+
+| 序号 | 子目录 | 说明 | 运行方式 |
+| --- | --- | --- | --- |
+| 1 | [register](./register) | 协议解析与报文详情输出（单测示例） | `go test -v ./register` |
+| 2 | [custom_parse](./custom_parse) | `0x0200` 自定义附加信息解析扩展 | `go run ./custom_parse` |
+| 3 | [active_reply](./active_reply) | 平台主动下发 `0x8104` 查询终端参数并接收应答 | `go run ./active_reply` |
+| 4 | [camera](./camera) | 平台下发 `0x8801` 立即拍摄/录像并接收多媒体分包 | `go run ./camera` |
+| 5 | [custom_command](./custom_command) | 自定义协议指令与读写事件回调流程 | `go run ./custom_command` |
+| 6 | [custom_active_respond](./custom_active_respond) | 自定义平台主动下发指令与终端回复的匹配映射 | `go run ./custom_active_respond` |
+| 7 | [custom_active_sub_packet](./custom_active_sub_packet) | 自定义平台主动下发超长报文自动分包与回复匹配 | `go run ./custom_active_sub_packet` |
+| 8 | [sub_package](./sub_package) | 终端上行分包（`0x1205`）完整接收、缺失补传（`0x8003`）与超时清理 | `go run ./sub_package` |
+
+> 以上命令均在 `example/protocol` 目录下执行。
 
 <h2 id="register"> 1. 协议解析 </h2>
 
-- [代码参考](./register/main.go)
+- [代码参考](./register/register_test.go)
+- 运行：`go test -v ./register`
 
 <details>
         <summary>输出详情</summary>
@@ -729,12 +747,33 @@
 ![事件流程图1](./custom_command/testdata/event1.jpg)
 
 ```
-如平台下发0x9001请求实时音视频 -> 设备回复0x0001通用应答
-1. 发送0x9001指令后 触发OnReadExecutionEvent （读事件回调)
+如平台下发0x9101请求实时音视频 -> 设备回复0x0001通用应答
+1. 发送0x9101指令后 触发OnReadExecutionEvent （读事件回调)
 2.1 如果超时的情况 则触发OnWriteExecutionEvent (写事件回调)
 2.2 如果匹配完成的情况
 触发0x0001指令的OnWriteExecutionEvent (写事件回调)
-在触发0x9001指令的OnWriteExecutionEvent (写事件回调)
+再触发0x9101指令的OnWriteExecutionEvent (写事件回调)
 ```
 
 ![事件流程图2](./custom_command/testdata/event2.jpg)
+
+<h2 id="custom_active_respond"> 6. 自定义主动下发回复映射 </h2>
+
+- [代码参考](./custom_active_respond/main.go)
+- 运行：`go run ./custom_active_respond`
+- 演示通过 `service.WithCustomActiveRespondHandlerFunc` 为自定义指令（`0x6666` -> `0x6667`）注册应答匹配规则，同时涵盖 `0x9003`、`0x9101`、`0x8104`、`0x8201`、`0x9205`、`0x9206`、`0x8801` 等常见标准指令的主动下发与应答解析。
+
+<h2 id="custom_active_sub_packet"> 7. 自定义主动下发分包 </h2>
+
+- [代码参考](./custom_active_sub_packet/main.go)
+- 运行：`go run ./custom_active_sub_packet`
+- 演示平台主动下发超过单包长度的自定义报文（`0x3333`，示例消息体 3333 字节），由服务端自动分包发送，终端收齐后回复 `0x3334` 完成应答匹配。
+
+<h2 id="sub_package"> 8. 分包与补传演示 </h2>
+
+- [代码参考](./sub_package/main.go)
+- 运行：`go run ./sub_package`
+- 基于本地 `0x1205` 分包测试数据，依次演示三种分包场景：
+  1. 完整分包数据（`0x1205.txt`）：收齐后直接合并回调 `OnReadExecutionEvent`。
+  2. 缺失部分分包（`0x1205缺失.txt` + `0x1205缺失补传.txt`）：服务端自动下发 `0x8003` 补传分包请求，收到补传包后完成合并。
+  3. 长期缺失不补传：超过等待周期后自动清理未完成的分包缓存。

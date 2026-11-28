@@ -3,9 +3,9 @@ module client
 go 1.25.0
 
 require (
-	github.com/cuteLittleDevil/go-jt808/protocol v1.16.0
+	github.com/cuteLittleDevil/go-jt808/protocol v1.18.2
 	github.com/cuteLittleDevil/go-jt808/shared v1.6.0
-	github.com/cuteLittleDevil/go-jt808/terminal v1.3.0
+	github.com/cuteLittleDevil/go-jt808/terminal v1.4.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/spf13/viper v1.21.0
 )

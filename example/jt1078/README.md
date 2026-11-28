@@ -2,6 +2,17 @@
 
 本目录包含 JT1078 推流与播放的多种对接示例。
 
+## 目录说明
+
+| 子目录 | 流媒体 | 模块说明 |
+| --- | --- | --- |
+| [rtvs](./rtvs) | RTVS | 对接 RTVS 流媒体服务 |
+| [lal](./lal) | LAL | 模拟推送 JT1078 流到 LAL 并输出播放地址 |
+| [sky/java](./sky/java) | sky-java | 对接 sky-java 流媒体接口 |
+| [zlm_single_port](./zlm_single_port) | ZLMediaKit（推荐） | 单端口模式推流、Hook 按需拉流与 WebRTC 语音对讲 |
+| [zlm](./zlm) | ZLMediaKit | 多端口模式示例（不推荐，仅供参考） |
+| [srs](./srs) | SRS | 独立子模块（含 `srs` 与 `srs/jt808`），对接 SRS 流媒体 |
+
 典型流程：
 1. 平台下发 0x9101（实时音视频传输请求）
 2. 终端开始推送音视频流

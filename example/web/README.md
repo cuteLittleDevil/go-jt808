@@ -2,12 +2,18 @@
 
 ![架构图](./testdata/web架构图.jpg)
 
+完整生产级参考工程，将 JT808 接入服务、HTTP API、主动安全附件服务、轨迹告警消费与车辆交互通知拆分为独立进程，通过 NATS 解耦。
+
 - [apifox文档](https://vsh9jdgg5d.apifox.cn) [离线导入](./testdata/JT808协议.apifox.json)
 - nats参考 https://github.com/nats-io/nats-server/releases
-- jt1078流媒体参考 https://github.com/cuteLittleDevil/go-jt808/tree/main/example/jt1078#-rtvs-
+- jt1078流媒体参考 [example/jt1078](../jt1078/README.md#1-rtvs)
 
-```
-./nats-service
+## 前置依赖
+
+基础运行需先启动 NATS 服务（如需对接存储，再按配置文件启用 MinIO / MongoDB / TDengine）：
+
+```bash
+./nats-server
 ```
 
 | 服务  |   默认IP   | 默认端口 | 描述 |

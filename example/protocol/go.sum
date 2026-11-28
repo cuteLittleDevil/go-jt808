@@ -1,10 +1,10 @@
-github.com/cuteLittleDevil/go-jt808/protocol v1.17.0 h1:B5F4gMBxMdqPdPUzhKT8Dn7p2W81c4RV8ylKCHExLF0=
-github.com/cuteLittleDevil/go-jt808/protocol v1.17.0/go.mod h1:5wF2o2JCjVVj/oAqkwvCzgu23UYMrnDO+PkhiS0/egs=
-github.com/cuteLittleDevil/go-jt808/service v1.13.1 h1:703eLuR4gcl3d4wRW6HqXrzMsMfdmORfH+QDLSS3h+g=
-github.com/cuteLittleDevil/go-jt808/service v1.13.1/go.mod h1:EGV/UDDu8r++5+C4QU/F9S+B05s/1Tn91zciYvcVUBw=
+github.com/cuteLittleDevil/go-jt808/protocol v1.18.2 h1:J0+CAB0Wp95AybSj0uiQ6qqO5tqCQIFKUQRR1L+uIS8=
+github.com/cuteLittleDevil/go-jt808/protocol v1.18.2/go.mod h1:5wF2o2JCjVVj/oAqkwvCzgu23UYMrnDO+PkhiS0/egs=
+github.com/cuteLittleDevil/go-jt808/service v1.15.0 h1:MoGVYMqcZx+0CP/VJ1Zebo6kdjhKDpmt96kriUWDKCs=
+github.com/cuteLittleDevil/go-jt808/service v1.15.0/go.mod h1:yac7S8aD9ZAQXK5vA00FzazUa/9Pdx/8H99cOG8eIvk=
 github.com/cuteLittleDevil/go-jt808/shared v1.6.0 h1:aJ6a8f3AVS47p5Nja7+/kLRqhnRcv+j/7Jmd+SpnkQ4=
 github.com/cuteLittleDevil/go-jt808/shared v1.6.0/go.mod h1:BMWFmkDRLNjcXcuiPm/yphfWfZ6xNuTAJDkDDNhysOM=
-github.com/cuteLittleDevil/go-jt808/terminal v1.3.0 h1:vo/AbRc7qX+vCdVyftM/47AgztwwTNt2FXlJTGrWCG0=
-github.com/cuteLittleDevil/go-jt808/terminal v1.3.0/go.mod h1:1GbC4DcH6vTTINJo0q4/s/yq+aC3JwrR0yJjexGgPBU=
+github.com/cuteLittleDevil/go-jt808/terminal v1.4.0 h1:FD9Dpbd6Hb/+dKxzk32KcVz6KksXMUhjdON7sqgZ6jw=
+github.com/cuteLittleDevil/go-jt808/terminal v1.4.0/go.mod h1:EgZqFfFs+1j7hibLzmiKZdNNxNch/C40nTs/QT7bXtU=
 golang.org/x/text v0.28.0 h1:rhazDwis8INMIwQ4tpjLDzUhx6RlXqZNPEM0huQojng=
 golang.org/x/text v0.28.0/go.mod h1:U8nCwOR8jO/marOQ0QbDiOngZVEBB7MAiitBuMjXiNU=

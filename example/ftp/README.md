@@ -1,5 +1,14 @@
 # FTP例子
 
+演示平台通过 HTTP 接口向终端主动下发 `0x9205`（查询音视频资源列表）与 `0x9206`（文件上传指令），模拟终端将指定文件（`atop_cpu.png`）上传至 FTP 服务并回复 `0x1206` 上传完成通知。
+
+## 目录说明
+
+- [main.go](./main.go)：启动 JT808 服务端、模拟终端及 HTTP 接口（默认端口 `8080`）
+- [web.go](./web.go)：提供 `/api/v1/ftp/9205`、`/api/v1/ftp/9206` 接口
+- [simulator.go](./simulator.go)：模拟终端收到 `0x9206` 后连接 FTP 上传文件
+- [ftpserver.json](./ftpserver.json)：示例 FTP 服务配置
+
 ## 启动FTP服务
 
 1. https://github.com/fclairamb/ftpserver/releases
